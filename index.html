@@ -336,6 +336,24 @@
 #tutStep{flex:1;font-size:11px;color:#8a6a4a}
 .tut-hl{outline:3px solid #60ff90!important;outline-offset:3px;animation:tutP 1s infinite;border-radius:6px}
 @keyframes tutP{50%{outline-color:#fff}}
+
+.art{width:64%;height:64%;object-fit:contain;pointer-events:none}
+.income-badge.up{color:#8f8!important}.income-badge.down{color:#f88!important}
+.cell.best-spot{outline:2px solid #ffd34d;box-shadow:0 0 14px #ffd34d;animation:bp 1s infinite;cursor:cell}@keyframes bp{50%{box-shadow:0 0 4px #ffd34d}}
+#advice{background:#1a0f08;border:1px solid #c9a22788;border-radius:6px;padding:5px 10px;margin:4px 0;font-size:13px;color:#ffe9a0;text-align:center}
+.hubg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}.hubg button{font-size:20px;padding:16px;background:linear-gradient(#5a3a20,#2a1a0f);border:2px solid #c9a227;color:#ffe080;border-radius:8px;cursor:pointer;font-family:Georgia,serif}.hubg button:hover{filter:brightness(1.3)}
+#avC{width:100%;background:#0a0f1a;border:2px solid #c9a227;border-radius:8px}#avM{font-size:34px;text-align:center;color:#ffe080;font-weight:bold}
+.bet{display:flex;gap:6px;align-items:center;justify-content:center;margin:6px 0;flex-wrap:wrap}.bet input{width:100px;padding:3px;background:#150d05;color:#ffe080;border:1px solid #c9a227;border-radius:4px}
+.res{text-align:center;margin:6px 0;font-size:13px}.res.w{color:#8f8}.res.l{color:#f88}.hist{text-align:center;font-size:12px;margin:4px}
+#rw{width:170px;height:170px;border-radius:50%;margin:6px auto;border:6px solid #c9a227;position:relative;transition:transform 4.2s cubic-bezier(.1,.7,.1,1)}#rw::before{content:'▼';position:absolute;top:-22px;left:50%;transform:translateX(-50%);color:#ffd34d}
+#rn{position:absolute;inset:0;margin:auto;width:60px;height:60px;border-radius:50%;background:#150d05;display:flex;align-items:center;justify-content:center;font-size:26px;color:#ffe080;transform:rotate(0)}
+.rg{display:grid;grid-template-rows:repeat(3,32px);grid-auto-flow:column;grid-auto-columns:minmax(24px,1fr);gap:2px}.ro{display:grid;grid-template-columns:repeat(9,1fr);gap:2px;margin-top:3px}
+.rg>div,.ro>div{display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;border:1px solid #ffffff33;cursor:pointer;position:relative;min-height:28px;background:#143a1c}.rg>div:hover,.ro>div:hover{filter:brightness(1.5)}
+[data-amt]::after{content:attr(data-amt);position:absolute;bottom:0;right:0;background:#ffd34d;color:#000;font-size:9px;padding:0 3px;border-radius:6px}.chips{text-align:center;margin:4px}.mini.on{border-color:#ffd34d;color:#ffd34d}
+.pc{display:inline-block;min-width:34px;padding:6px 4px;margin:3px;background:#f4ecd8;color:#111;border-radius:5px;font-weight:bold;text-align:center;font-size:16px}.pc.r{color:#c01818}.pc.back{background:#5a1a1a;color:#c9a227}.pkb{margin:8px 0;padding:6px;background:#0d3a1c;border-radius:8px;text-align:center;min-height:44px}
+.ups{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}.up{background:#150d05;border:1px solid #5a3a20;border-radius:6px;padding:6px;font-size:12px}.up button{float:right}
+.goal{position:relative;background:#150d05;border:1px solid #3a2414;border-radius:4px;margin:3px 0;padding:4px 8px;font-size:12px;overflow:hidden;display:flex;justify-content:space-between}.goal i{position:absolute;left:0;top:0;bottom:0;background:#2a5a2a55;z-index:0}.goal>*{position:relative;z-index:1}.goal.done{opacity:.55}.goal em{font-style:normal;color:#ffd34d}
+.stt{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:2px 10px;font-size:13px;margin:6px 0}#statsBox{font-size:13px;line-height:1.7}
 </style>
 </head>
 <body>
@@ -376,7 +394,7 @@
         <div id="memo">
           <div class="counter-row">Контры: <b>Нежить > Звери > Культисты > Демоны > Нежить</b></div>
           <div class="syn-row">Синергии — <b>цепочки по 2 юнита</b>.</div>
-          <div class="anti-row">Антисинергии: Нежить ↔ Демоны, Звери ↔ Культисты</div><div class="syn-row">Сет-бонус: 3/6/10 юнитов одной фракции = <b>+10/25/50%</b> дохода. Одинаковые карты можно стакать (до x5).</div>
+          <div class="anti-row">Антисинергии: Нежить ↔ Демоны, Звери ↔ Культисты</div><div class="syn-row">Сет-бонус: 3/6/10 юнитов одной фракции = <b>+10/25/50%</b> дохода. Одинаковые карты можно стакать (до x5).</div><div class="syn-row">⛓ Формации одной фракции: 3 в ряд ×1.2 · 2×2 ×1.35 · 5 в ряд ×1.5.</div>
         </div>
       </div>
     </div>
@@ -408,7 +426,7 @@
 
 <div class="modal" id="dropModal"><div class="modal-card" id="dropModalCard"><div class="rarity-banner" id="dropRarityBanner"></div><div class="big-card" id="dropCard" style="cursor:pointer;"></div><div class="stars-big" id="dropStars"></div><h2 id="dropName"></h2><div class="desc" id="dropEffect"></div><div class="flavor" id="dropFlavor"></div><div class="btn-row"><button class="btn btn-take" id="takeBtn">ПРИНЯТЬ</button><button class="btn btn-take" id="placeBtn">НА ПОЛЕ</button></div></div></div>
 <div class="modal" id="multiModal"><div class="modal-card" id="multiModalCard" style="max-width: 520px;"><div class="rarity-banner" id="multiRarityBanner"></div><h2 id="multiTitle">Крутки</h2><div class="multi-reveal" id="multiReveal"></div><div class="btn-row"><button class="btn btn-take" id="multiOk">ПРИНЯТЬ ВСЁ</button><button class="btn btn-take" id="multiFight">★1 СРАЗУ В БОЙ</button></div></div></div>
-<div class="modal" id="settingsModal"><div class="modal-card"><h2>НАСТРОЙКИ</h2><div class="setting-row"><label>Интервал спавна врагов (сек)</label><input type="number" id="setSpawnInterval" min="1" max="300" value="15"></div><div class="setting-row"><label><input type="checkbox" id="setSpawnEnabled" checked> Появление противников</label></div><div class="setting-row"><label><input type="checkbox" id="setCellPriceGrowth" checked> Возрастание стоимости клеток</label></div><div class="setting-row" style="border:none;"><label><input type="checkbox" id="setEnemyBuff"> Усиление противников (HP + время)</label></div><div class="btn-row"><button class="btn btn-take" id="resetBtn" style="background:#4a1010">СБРОС</button><button class="btn btn-take" id="settingsClose">ЗАКРЫТЬ</button></div></div></div>
+<div class="modal" id="settingsModal"><div class="modal-card"><div id="statsBox"></div><h2>НАСТРОЙКИ</h2><div class="setting-row"><label>Интервал спавна врагов (сек)</label><input type="number" id="setSpawnInterval" min="1" max="300" value="15"></div><div class="setting-row"><label><input type="checkbox" id="setSpawnEnabled" checked> Появление противников</label></div><div class="setting-row"><label><input type="checkbox" id="setCellPriceGrowth" checked> Возрастание стоимости клеток</label></div><div class="setting-row" style="border:none;"><label><input type="checkbox" id="setEnemyBuff"> Усиление противников (HP + время)</label></div><div class="btn-row"><button class="btn btn-take" id="resetBtn" style="background:#4a1010">СБРОС</button><button class="btn btn-take" id="settingsClose">ЗАКРЫТЬ</button></div></div></div>
 
 <div class="modal" id="casinoModal">
   <div class="modal-card">
@@ -480,7 +498,7 @@ const SYNERGY_PAIRS = [];
 function addPair(a, b, kind, value) {
   if (!CARDS[a] || (!isFactionKey(b) && !CARDS[b])) { console.warn('bad pair', a, b); return; }
   const fp = isFactionKey(a) || isFactionKey(b); const N = id => CARDS[id].symbol + CARDS[id].name;
-  const text = fp ? `${N(a)} рядом с «${FACTION_NAMES[b]}»: эта карта ×${value} (один раз)` : kind === 'flat' ? `${N(a)} ↔ ${N(b)}: обе карты +${value}/сек за соседа (×стак)` : `${N(a)} ↔ ${N(b)}: обе карты ×${value} за соседа`;
+  const text = fp ? `${N(a)} + ${FACTION_NAMES[b]} → ×${value}` : kind === 'flat' ? `${N(a)} + ${N(b)} → +${value}/с` : `${N(a)} + ${N(b)} → ×${value}`;
   SYNERGY_PAIRS.push({ a, b, kind, value, text, factionPair: fp });
 }
 // [1] Вычищены все ссылки на несуществующих юнитов (все ID от card_0 до card_99 существуют)
@@ -532,7 +550,7 @@ function renderGrid() {
         cardEl.className = `card star${card.rarity} f-${card.faction}`; cardEl.style.setProperty('--glow', rarityColor(card.rarity)); cardEl.style.setProperty('--cardBg', rarityBg(card.rarity));
         const anti = cardHasAnti(r, c); if (anti) cardEl.classList.add('has-anti');
         const income = calcCardIncome(r, c); const hpPct = Math.max(0, (item.hp / item.maxHp) * 100); const hpColor = hpPct > 50 ? '#40d040' : hpPct > 20 ? '#e0c040' : '#ff3030';
-        cardEl.innerHTML = `<div class="hp-bar" style="width:${hpPct}%;background:${hpColor};color:${hpColor};"></div><span class="faction-dot" style="background:${FACTION_COLORS[card.faction]}"></span><span class="glyph">${card.symbol}</span><span class="card-name">${card.name}</span><span class="hp-text">${Math.ceil(item.hp)}/${item.maxHp}</span><span class="income-badge">+${income.toFixed(2)}</span>`;
+        cardEl.innerHTML = `<div class="hp-bar" style="width:${hpPct}%;background:${hpColor};color:${hpColor};"></div><span class="faction-dot" style="background:${FACTION_COLORS[card.faction]}"></span><img class="glyph art" src="assets/cards/${card.id}.svg" draggable="false" onerror="this.replaceWith(document.createTextNode('${card.symbol}'))"><span class="card-name">${card.name}</span><span class="hp-text">${Math.ceil(item.hp)}/${item.maxHp}</span><span class="income-badge">+${income.toFixed(2)}</span>`;
         if (anti) cardEl.innerHTML += `<span class="anti-badge">⚡</span>`; if (item.stacks > 1) cardEl.innerHTML += `<span class="stack-badge">x${item.stacks}</span>`;
         cardEl.addEventListener('mouseenter', (e) => { showTooltip(e, card, income, r, c); }); cardEl.addEventListener('mousemove', moveTooltip); cardEl.addEventListener('mouseleave', hideTooltip); cell.appendChild(cardEl);
       }
@@ -666,7 +684,7 @@ function cancelSelection() { placingMode = false; pendingCard = null; deleteMode
 function onCellClick(e, r, c) {
   hideTooltip(); const item = grid[r][c];
   if (moveMode) { if (!moveSource) { if (item && !item.isEnemy) { moveSource = { r, c }; renderGrid(); updateBanner(); } return; } if (moveSource.r === r && moveSource.c === c) { moveSource = null; renderGrid(); updateBanner(); return; } if (!playableMask[r][c] || (item && item.isEnemy)) return; const src = grid[moveSource.r][moveSource.c]; if (!src || src.isEnemy) { moveSource = null; renderGrid(); updateBanner(); return; } grid[r][c] = src; grid[moveSource.r][moveSource.c] = item || null; moveSource = null; renderGrid(); renderCollection(); updateHUD(); updateBanner(); return; }
-  if (deleteMode) { if (item && !item.isEnemy) { if ((CARDS[item.cardId].rarity >= 4 || item.stacks > 1) && !confirm('Удалить навсегда: ' + CARDS[item.cardId].name + ' ×' + item.stacks + '?')) return; grid[r][c] = null; renderGrid(); renderCollection(); updateHUD(); cancelSelection(); } return; }
+  if (deleteMode) { if (item && !item.isEnemy) { if (CARDS[item.cardId].rarity >= 4 || item.stacks > 1) { const rr = r, cc = c; ask('Удалить навсегда: ' + CARDS[item.cardId].name + ' ×' + item.stacks + '?', () => { grid[rr][cc] = null; renderGrid(); renderCollection(); updateHUD(); }); return; } grid[r][c] = null; renderGrid(); renderCollection(); updateHUD(); cancelSelection(); } return; }
   if (placingMode && pendingCard) { if (!playableMask[r][c] || (inventory[pendingCard] || 0) <= 0) return; const card = CARDS[pendingCard]; const hp = cardHp(card.rarity); if (item) { if (item.isEnemy || item.cardId !== pendingCard || item.stacks >= 5) return; item.stacks++; item.maxHp += hp; item.hp += hp; } else grid[r][c] = { cardId: pendingCard, stacks: 1, hp, maxHp: hp }; inventory[pendingCard]--; if (inventory[pendingCard] <= 0) { delete inventory[pendingCard]; cancelSelection(); } else { renderGrid(); renderCollection(); updateHUD(); } return; }
   if (!playableMask[r][c] && !item && isAdjacentToPlayable(r, c)) { const price = cellPrice(); if (crystals >= price) { crystals -= price; playableMask[r][c] = true; boughtCells++; renderGrid(); updateHUD(); } return; }
 }
@@ -674,7 +692,7 @@ document.getElementById('deleteToolBtn').addEventListener('click', function() { 
 document.getElementById('moveToolBtn').addEventListener('click', function() { moveMode = !moveMode; moveSource = null; placingMode = false; pendingCard = null; deleteMode = false; document.getElementById('deleteToolBtn').classList.remove('active'); this.classList.toggle('active', moveMode); renderGrid(); renderCollection(); updateBanner(); });
 document.getElementById('settingsBtn').addEventListener('click', () => { document.getElementById('settingsModal').classList.add('show'); document.getElementById('setSpawnInterval').value = settings.spawnInterval; document.getElementById('setSpawnEnabled').checked = settings.spawnEnabled; document.getElementById('setCellPriceGrowth').checked = settings.cellPriceGrowth; document.getElementById('setEnemyBuff').checked = settings.enemyBuff; });
 document.getElementById('settingsClose').addEventListener('click', () => { document.getElementById('settingsModal').classList.remove('show'); settings.spawnInterval = Math.max(1, parseInt(document.getElementById('setSpawnInterval').value) || 15); settings.spawnEnabled = document.getElementById('setSpawnEnabled').checked; settings.cellPriceGrowth = document.getElementById('setCellPriceGrowth').checked; settings.enemyBuff = document.getElementById('setEnemyBuff').checked; renderGrid(); });
-const ROLL_COST=150;
+let ROLL_COST=150;
 let pity4=0,pity5=0,gameTime=0,noSave=false,gameStarted=false,toastT;
 function toast(t){const e=document.getElementById('toast');e.textContent=t;e.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>e.classList.remove('show'),1800);}
 function weightedRoll(){pity4++;pity5++;const r=Math.random()*100;let t;if(pity5>=80||r>=99)t=5;else if(pity4>=10||r>=90)t=4;else t=r<45?1:3;if(t>=4)pity4=0;if(t===5)pity5=0;const P={1:POOL_1,3:POOL_3,4:POOL_4,5:POOL_5}[t];return P[Math.floor(Math.random()*P.length)];}
@@ -682,10 +700,10 @@ let factionCounts={undead:0,demon:0,cultist:0,beast:0};
 function recountFactions(){FACTION_KEYS.forEach(f=>factionCounts[f]=0);for(const row of grid)for(const i of row)if(i&&!i.isEnemy)factionCounts[CARDS[i.cardId].faction]+=i.stacks;}
 function setBonus(f){const n=factionCounts[f];return n>=10?1.5:n>=6?1.25:n>=3?1.1:1;}
 const SAVE_KEY='gacha_grinder2_v2';
-function saveGame(){if(noSave||!gameStarted)return;try{const g=grid.map(r=>r.map(i=>i&&!i.isEnemy?i:null));localStorage.setItem(SAVE_KEY,JSON.stringify({t:Date.now(),crystals,g,playableMask,boughtCells,inventory,disc:[...discovered],fighters,fighterHpState,arena:{floor:arenaState.floor,room:arenaState.room,cleared:arenaState.cleared},settings,pity4,pity5,gameTime}));}catch(e){}}
-function loadGame(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!d)return;crystals=d.crystals;grid=d.g;playableMask=d.playableMask;boughtCells=d.boughtCells;inventory=d.inventory;discovered=new Set(d.disc);fighters=d.fighters;fighterHpState=d.fighterHpState;Object.assign(arenaState,d.arena);Object.assign(settings,d.settings);pity4=d.pity4||0;pity5=d.pity5||0;gameTime=d.gameTime||0;const gain=calculateIncome()*Math.min((Date.now()-d.t)/1000,3600)*0.5;if(gain>=1){crystals+=gain;setTimeout(()=>toast('Пока вас не было: +'+Math.floor(gain)+' 💎'),500);}}catch(e){}}
+function saveGame(){if(noSave||!gameStarted)return;try{const g=grid.map(r=>r.map(i=>i&&!i.isEnemy?i:null));localStorage.setItem(SAVE_KEY,JSON.stringify({t:Date.now(),crystals,g,playableMask,boughtCells,inventory,disc:[...discovered],fighters,fighterHpState,arena:{floor:arenaState.floor,room:arenaState.room,cleared:arenaState.cleared},settings,pity4,pity5,gameTime,stats,ess,essT,up,goalsDone,run}));}catch(e){}}
+function loadGame(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!d)return;crystals=d.crystals;grid=d.g;playableMask=d.playableMask;boughtCells=d.boughtCells;inventory=d.inventory;discovered=new Set(d.disc);fighters=d.fighters;fighterHpState=d.fighterHpState;Object.assign(arenaState,d.arena);Object.assign(settings,d.settings);pity4=d.pity4||0;pity5=d.pity5||0;gameTime=d.gameTime||0;stats=d.stats||stats;ess=d.ess||0;essT=d.essT||0;up=d.up||up;goalsDone=d.goalsDone||{};run=d.run||run;const gain=calculateIncome()*Math.min((Date.now()-d.t)/1000,3600)*0.5;if(gain>=1){crystals+=gain;setTimeout(()=>toast('Пока вас не было: +'+Math.floor(gain)+' 💎'),500);}}catch(e){}}
 setInterval(saveGame,5000);window.addEventListener('beforeunload',saveGame);
-document.getElementById('resetBtn').addEventListener('click',()=>{if(confirm('Стереть весь прогресс?')){noSave=true;localStorage.removeItem(SAVE_KEY);location.reload();}});
+document.getElementById('resetBtn').addEventListener('click',()=>{ask('Стереть весь прогресс?',()=>{noSave=true;localStorage.removeItem(SAVE_KEY);location.reload();});});
 
 // [3] Возвращены кнопки 1, 10, 100, 1000, ВСЕ
 function doRolls(count) {
@@ -703,7 +721,7 @@ document.getElementById('roll1000').addEventListener('click', () => doRolls(1000
 document.getElementById('rollAll').addEventListener('click', () => {
   if (crystals < ROLL_COST) return;
   const maxRolls = Math.min(2000, Math.floor(crystals / ROLL_COST));
-  if (!confirm(`Потратить ${maxRolls * ROLL_COST} 💎 на ${maxRolls} круток?`)) return;
+  
   doRolls(maxRolls);
 });
 function playRarityEffect(modalCardEl, bannerEl, rarity) { bannerEl.className = 'rarity-banner'; bannerEl.textContent = ''; if (rarity === 4) { bannerEl.textContent = 'РЕДКАЯ КАРТА'; bannerEl.classList.add('r4','show'); modalCardEl.classList.add('rarity4'); spawnSparks(modalCardEl,'r4',10); } else if (rarity === 5) { bannerEl.textContent = 'ЛЕГЕНДАРНАЯ КАРТА'; bannerEl.classList.add('r5','show'); modalCardEl.classList.add('rarity5'); spawnSparks(modalCardEl,'r5',18); } else modalCardEl.classList.remove('rarity4','rarity5'); }
@@ -742,7 +760,7 @@ function renderCollection() {
     const card = CARDS[id], count = inventory[id], el = document.createElement('div'); el.className = `coll-card star${card.rarity} f-${card.faction}`;
     el.style.setProperty('--glow', rarityColor(card.rarity)); el.style.setProperty('--cardBg', rarityBg(card.rarity));
     if (pv(id)) el.classList.add('partner'); if (sel && sel.id === id) el.classList.add('selected');
-    el.innerHTML = `<span class="coll-glyph">${card.symbol}</span><span class="faction-dot" style="background:${FACTION_COLORS[card.faction]}"></span><span class="count">${count}</span>`;
+    el.innerHTML = `<img class="coll-glyph art" src="assets/cards/${card.id}.svg" draggable="false" onerror="this.replaceWith(document.createTextNode('${card.symbol}'))"><span class="faction-dot" style="background:${FACTION_COLORS[card.faction]}"></span><span class="count">${count}</span>`;
     el.addEventListener('mouseenter', e => showTooltip(e, card, card.baseRate)); el.addEventListener('mousemove', moveTooltip); el.addEventListener('mouseleave', hideTooltip);
     el.addEventListener('click', e => {
       if (e.ctrlKey || e.shiftKey) { addFighter(id, 1); return; }
@@ -766,7 +784,7 @@ document.getElementById('cardActions').addEventListener('click', e => { const n 
 document.getElementById('rarityFilter').addEventListener('change', e => { rarityFilter = e.target.value; renderCollection(); });
 function bulkFight(mode) { let n = 0; Object.keys(inventory).forEach(id => { const c = inventory[id]; const k = mode === 'dup' ? c - 1 : mode === 'one' ? (CARDS[id].rarity === 1 ? c : 0) : c; if (k > 0) { addFighter(id, k); n += k; } }); toast(n ? 'В бой отправлено: ' + n : 'Нечего отправлять'); }
 document.getElementById('bulkDup').onclick = () => bulkFight('dup'); document.getElementById('bulk1').onclick = () => bulkFight('one');
-document.getElementById('bulkAll').onclick = () => { if (confirm('Отправить в бой ВСЕ карты из коллекции?')) bulkFight('all'); };
+document.getElementById('bulkAll').onclick = () => { ask('Отправить в бой ВСЕ карты из коллекции?', () => bulkFight('all')); };
 function addFighter(cardId, cnt = 1) {
   const have = inventory[cardId] || 0; cnt = Math.min(cnt, have); if (cnt <= 0) return; inventory[cardId] = have - cnt;
   if (inventory[cardId] <= 0) { delete inventory[cardId]; if (pendingCard === cardId) { placingMode = false; pendingCard = null; } }
@@ -917,7 +935,7 @@ function renderSlotGrid(grid, winLines = []) {
     polyline.setAttribute('stroke', lineColors[win.line % lineColors.length]); polyline.setAttribute('class', 'active'); svg.appendChild(polyline);
   });
 }
-document.getElementById('casinoBtn').addEventListener('click', () => { if (casinoSpinning) return; casinoBet = Math.max(MIN_BET, Math.min(casinoBet, Math.floor(crystals))); if (crystals < MIN_BET) { toast('Минимальная ставка 1000 💎'); return; } updateCasinoUI(); const grid = generateSlotGrid(); renderSlotGrid(grid); document.getElementById('casinoModal').classList.add('show'); document.getElementById('slotResult').textContent = ''; document.getElementById('slotResult').className = ''; });
+window.openSlots = () => { if (casinoSpinning) return; casinoBet = Math.max(MIN_BET, Math.min(casinoBet, Math.floor(crystals))); if (crystals < MIN_BET) { toast('Минимальная ставка 1000 💎'); return; } updateCasinoUI(); const grid = generateSlotGrid(); renderSlotGrid(grid); document.getElementById('casinoModal').classList.add('show'); document.getElementById('slotResult').textContent = ''; document.getElementById('slotResult').className = ''; };
 document.getElementById('slotCloseBtn').addEventListener('click', () => { if (casinoSpinning) return; document.getElementById('casinoModal').classList.remove('show'); });
 function updateCasinoUI() { document.getElementById('slotBetAmount').textContent = Math.floor(casinoBet); const addBtns = ['betAdd1000','betAdd10000']; const vals = [1000,10000]; addBtns.forEach((id, i) => { document.getElementById(id).disabled = casinoSpinning || casinoBet + vals[i] > Math.floor(crystals); }); document.getElementById('betAll').disabled = casinoSpinning || Math.floor(crystals) <= casinoBet; document.getElementById('betReset').disabled = casinoSpinning || casinoBet === 0; const lever = document.getElementById('slotLeverBtn'); lever.disabled = casinoSpinning || casinoBet < MIN_BET || casinoBet > Math.floor(crystals); }
 function addBet(amount) { if (casinoSpinning) return; const max = Math.floor(crystals); casinoBet = Math.min(max, casinoBet + amount); updateCasinoUI(); }
@@ -937,14 +955,14 @@ document.getElementById('slotLeverBtn').addEventListener('click', () => {
       for (let r = 0; r < 3; r++) for (let c = 0; c < 5; c++) { const cell = document.getElementById(`cell-${r}-${c}`); if (cell) cell.textContent = finalGrid[r][c]; }
       const winData = checkGridWin(finalGrid); renderSlotGrid(finalGrid, winData.results);
       if (winData.totalWin > 0) {
-        const winAmount = Math.round(casinoBet * winData.totalWin * 0.38); crystals += winAmount; updateHUD();
+        const winAmount = Math.round(casinoBet * winData.totalWin * 0.38); crystals += winAmount; rec('slots', winAmount - casinoBet); updateHUD();
         winData.results.forEach(res => { if (res.type === 'scatter') { for (let r = 0; r < 3; r++) for (let c = 0; c < 5; c++) if (finalGrid[r][c] === SCATTER_SYMBOL) document.getElementById(`cell-${r}-${c}`).classList.add('win'); } else { const coords = PAYLINES[res.line]; coords.slice(0, res.len).forEach((r, c) => { const cell = document.getElementById(`cell-${r}-${c}`); if (cell) cell.classList.add('win'); }); } });
         const resEl = document.getElementById('slotResult'); let text = '';
         if (winData.totalWin >= 50) { text = `🎉 ДЖЕКПОТ! Выигрыш: ${winAmount} 💎 (x${(winData.totalWin * 0.38).toFixed(1)})`; resEl.className = 'jackpot'; }
         else if (winData.totalWin >= 10) { text = `✨ Крупный выигрыш: ${winAmount} 💎 (x${(winData.totalWin * 0.38).toFixed(1)})`; resEl.className = 'win'; }
         else { text = `Выигрыш: ${winAmount} 💎 (x${(winData.totalWin * 0.38).toFixed(1)})`; resEl.className = 'win'; }
         resEl.textContent = text;
-      } else { const resEl = document.getElementById('slotResult'); resEl.textContent = `Нет совпадений. Вы проиграли ${casinoBet} 💎.`; resEl.className = 'lose'; }
+      } else { rec('slots', -casinoBet); const resEl = document.getElementById('slotResult'); resEl.textContent = `Нет совпадений. Вы проиграли ${casinoBet} 💎.`; resEl.className = 'lose'; }
       casinoSpinning = false; casinoBet = Math.max(MIN_BET, Math.min(casinoBet, Math.floor(crystals))); updateCasinoUI();
     }
   }
@@ -960,7 +978,7 @@ function showMenu() { gamePaused = true; document.getElementById('menuContinue')
 function hideMenu() { document.getElementById('menu').classList.remove('show'); gamePaused = false; }
 function restartWith(mode) { try { sessionStorage.setItem('gg_mode', mode); } catch (e) {} noSave = true; location.reload(); }
 document.getElementById('menuContinue').onclick = () => { if (!gameStarted) { loadGame(); gameStarted = true; refreshAll(); } hideMenu(); };
-document.getElementById('menuNew').onclick = () => { if ((hasSave() || gameStarted) && !confirm('Начать заново? Текущий прогресс будет стёрт.')) return; try { localStorage.removeItem(SAVE_KEY); } catch (e) {} noSave = true; try { sessionStorage.setItem('gg_mode', 'new'); } catch (e) {} location.reload(); };
+document.getElementById('menuNew').onclick = () => { const go = () => { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} noSave = true; try { sessionStorage.setItem('gg_mode', 'new'); } catch (e) {} location.reload(); }; if (hasSave() || gameStarted) ask('Начать заново? Текущий прогресс будет стёрт.', go); else go(); };
 document.getElementById('menuTut').onclick = () => restartWith('tutorial');
 document.getElementById('menuBtn').onclick = () => { saveGame(); showMenu(); };
 const GIVE = l => { l.forEach(([id, n]) => { inventory[id] = (inventory[id] || 0) + n; discovered.add(id); }); renderCollection(); };
@@ -990,9 +1008,137 @@ function startTutorial() {
   tutGo(0); tutTimer = setInterval(() => { const st = TUT[tutI]; if (st && st.ok && st.ok()) tutGo(tutI + 1); }, 400);
 }
 (function boot() {
-  let m = null; try { m = sessionStorage.getItem('gg_mode'); sessionStorage.removeItem('gg_mode'); } catch (e) {}
-  if (m === 'new') { gameStarted = true; hideMenu(); } else if (m === 'tutorial') { hideMenu(); startTutorial(); } else showMenu();
+  let m = null; try { m = sessionStorage.getItem('gg_mode'); sessionStorage.removeItem('gg_mode'); } catch (e) {} window.BOOT_MODE = m;
+  if (m === 'new' || m === 'asc') { gameStarted = true; hideMenu(); } else if (m === 'tutorial') { hideMenu(); startTutorial(); } else showMenu();
 })();
+</script>
+<script>
+/* ===== Расширение v3 ===== */
+const $=id=>document.getElementById(id);
+let busy=0,bestSpot=null,stats={g:{},pulls:{},rolls:0,maxInc:0},ess=0,essT=0,up={inc:0,disc:0,fight:0,start:0},goalsDone={},run={earned:0,rolls:0};
+function mk(id,html,z){const d=document.createElement('div');d.className='modal';d.id=id;d.innerHTML='<div class="modal-card" style="max-width:580px;align-items:stretch;max-height:92vh;overflow:auto">'+html+'</div>';if(z)d.style.zIndex=z;document.body.appendChild(d);return d;}
+const open_=id=>$(id).classList.add('show'),close_=id=>$(id).classList.remove('show');
+mk('dlg','<div id="dlgT" style="font-size:15px;text-align:center;margin:10px"></div><div class="btn-row"><button class="btn btn-take" id="dlgNo">Отмена</button><button class="btn btn-take" id="dlgYes">Да</button></div>',600);
+function ask(t,yes){$('dlgT').textContent=t;open_('dlg');$('dlgYes').onclick=()=>{close_('dlg');yes();};$('dlgNo').onclick=()=>close_('dlg');}
+function rec(g,net){if(!net)return;const o=stats.g[g]||(stats.g[g]={w:0,l:0,net:0});net>0?o.w++:o.l++;o.net+=net;}
+const _wr=weightedRoll;weightedRoll=function(){const id=_wr();stats.pulls[id]=(stats.pulls[id]||0)+1;stats.rolls++;run.rolls++;return id;};
+
+/* ===== Синергии: формации, авто-расстановка, подсветка ===== */
+function formation(r,c){const it=grid[r][c];if(!it||it.isEnemy)return 1;const f=CARDS[it.cardId].faction;const same=(a,b)=>{const x=grid[a]&&grid[a][b];return x&&!x.isEnemy&&CARDS[x.cardId].faction===f;};let m=1;
+ for(const [dr,dc] of [[0,1],[1,0]]){let n=1;for(let k=1;k<9;k++){if(same(r+dr*k,c+dc*k))n++;else break;}for(let k=1;k<9;k++){if(same(r-dr*k,c-dc*k))n++;else break;}if(n>=3)m=Math.max(m,1.2);if(n>=5)m=Math.max(m,1.5);}
+ for(const [a,b] of [[0,0],[0,-1],[-1,0],[-1,-1]])if(same(r+a,c+b)&&same(r+a+1,c+b)&&same(r+a,c+b+1)&&same(r+a+1,c+b+1))m=Math.max(m,1.35);return m;}
+const _cci=calcCardIncome;calcCardIncome=function(r,c){return _cci(r,c)*formation(r,c)*(1+0.15*up.inc)*(1+0.03*essT);};
+const _ad=arenaDmg;arenaDmg=function(e){return Math.round(_ad(e)*(1+0.1*up.fight));};
+function localInc(r,c){let s=0;[[r,c]].concat(getNeighbors(r,c).map(n=>[n.r,n.c])).forEach(([a,b])=>{if(grid[a][b]&&!grid[a][b].isEnemy)s+=calcCardIncome(a,b);});return s;}
+function bestFor(id){const hp=cardHp(CARDS[id].rarity);let best=null,bv=-1e9;for(let r=0;r<GRID_SIZE;r++)for(let c=0;c<GRID_SIZE;c++)if(playableMask[r][c]&&!grid[r][c]){const b0=localInc(r,c);grid[r][c]={cardId:id,stacks:1,hp,maxHp:hp};const v=localInc(r,c)-b0;grid[r][c]=null;if(v>bv){bv=v;best={r,c,v};}}return best;}
+function autoPlace(){let n=0;Object.keys(inventory).sort((a,b)=>CARDS[b].rarity-CARDS[a].rarity).forEach(id=>{while(inventory[id]>0){const b=bestFor(id);if(!b||b.v<=0)break;const hp=cardHp(CARDS[id].rarity);grid[b.r][b.c]={cardId:id,stacks:1,hp,maxHp:hp};inventory[id]--;n++;}if(!inventory[id])delete inventory[id];});
+ cancelSelection();renderGrid();renderCollection();updateHUD();toast(n?`🪄 Расставлено карт: ${n}`:'Нет свободных клеток или карт');}
+const _hc=hintClass;hintClass=function(r,c){return bestSpot&&bestSpot.r===r&&bestSpot.c===c?'best-spot':_hc(r,c);};
+const _rg=renderGrid;renderGrid=function(){bestSpot=placingMode&&pendingCard&&inventory[pendingCard]?bestFor(pendingCard):null;_rg();decorate();};
+function decorate(){for(let r=0;r<GRID_SIZE;r++)for(let c=0;c<GRID_SIZE;c++){const it=grid[r][c];if(!it||it.isEnemy)continue;const b=gridEl.children[r*GRID_SIZE+c].querySelector('.income-badge');if(!b)continue;const base=CARDS[it.cardId].baseRate*it.stacks*(1+0.15*up.inc)*(1+0.03*essT),v=calcCardIncome(r,c);b.classList.remove('up','down');if(v>base*1.01){b.classList.add('up');b.textContent='▲'+v.toFixed(1);}else if(v<base*.99){b.classList.add('down');b.textContent='▼'+v.toFixed(1);}else b.textContent='+'+v.toFixed(1);if(formation(r,c)>1)b.textContent+=' ⛓';}}
+{const b=document.createElement('button');b.className='mini';b.id='autoBtn';b.textContent='🪄 Авто';b.title='Расставить все карты в лучшие клетки';b.onclick=autoPlace;const p=$('bulkDup').parentNode;p.parentNode.insertBefore(b,p);}
+{const a=document.createElement('div');a.id='advice';$('gridWrap').parentNode.insertBefore(a,$('gridWrap'));}
+function advice(){const inv=Object.values(inventory).reduce((a,b)=>a+b,0);let free=0;for(let r=0;r<GRID_SIZE;r++)for(let c=0;c<GRID_SIZE;c++)if(playableMask[r][c]&&!grid[r][c])free++;
+ if(ascGain()>0&&run.earned>=40000&&!inv)return `🔱 Можно вознестись: +${ascGain()} эссенции`;
+ if(!cardsOnGrid()&&!inv)return crystals>=ROLL_COST?'🎲 Крутите карты справа →':'⏳ Копим кристаллы…';
+ if(inv&&free)return '🪄 Жмите «Авто» над коллекцией — карты встанут в лучшие клетки';
+ if(inv&&crystals>=cellPrice())return '➕ Алтарь забит: купите клетку «+» рядом с зоной';
+ if(inv>4&&!Object.keys(fighters).length)return '⚔ Лишние карты — в бой (кнопки над коллекцией)';
+ if(crystals>=ROLL_COST*10)return '🎲 Хватает на ×10 круток';
+ return '💡 ▲ зелёное — бонус синергии, ▼ красное — штраф, ⛓ — формация фракции';}
+
+/* ===== Вознесение, цели, улучшения ===== */
+const ascGain=()=>run.earned>=40000?Math.floor(Math.sqrt(run.earned/2500)):0;
+const UPS=[['inc','📈 Доход','+15% дохода за уровень',3],['disc','🏷 Скидка','−5% цены круток',3],['fight','⚔ Мощь','+10% урона арены',4],['start','🎁 Дар','+1500 💎 на старте',2]];
+const sumNet=()=>Object.values(stats.g).reduce((a,o)=>a+Math.max(0,o.net),0);
+const GOALS=[['Заработать 5 000 💎',()=>run.earned,5000,'c',1500],['Заработать 50 000 💎',()=>run.earned,5e4,'e',1],['Заработать 500 000 💎',()=>run.earned,5e5,'e',2],['Заработать 5 000 000 💎',()=>run.earned,5e6,'e',4],
+ ['Арена: этаж 2',()=>arenaState.floor,2,'c',2000],['Арена: этаж 4',()=>arenaState.floor,4,'e',1],['Арена: этаж 7',()=>arenaState.floor,7,'e',3],['10 карт на Алтаре',cardsOnGrid,10,'c',3000],['25 карт на Алтаре',cardsOnGrid,25,'e',2],
+ ['5 активных звеньев',countLinks,5,'c',3000],['15 активных звеньев',countLinks,15,'e',2],['Открыть 30 карт',()=>discovered.size,30,'e',1],['Открыть 60 карт',()=>discovered.size,60,'e',2],['Открыть 100 карт',()=>discovered.size,100,'e',5],['Выиграть в казино 20 000 💎',sumNet,2e4,'e',1]];
+mk('asc','<h2>🔱 Вознесение</h2><div id="ascB"></div><button class="btn btn-take" style="align-self:center" id="ascX">Закрыть</button>');
+function renderAsc(){const g=ascGain();$('ascB').innerHTML=`<div class="res">Эссенция: <b>${ess}</b> · всего ${essT} (+${essT*3}% дохода)</div><button class="btn btn-take" data-asc="go" ${g?'':'disabled'} style="max-width:none">${g?`ВОЗНЕСТИСЬ → +${g} 🔱`:`Вознесение с ${(40000).toLocaleString('ru-RU')} 💎 за забег (сейчас ${Math.floor(run.earned).toLocaleString('ru-RU')})`}</button>
+ <div class="ups">${UPS.map(([k,n,d,c])=>{const l=up[k],cost=c*(l+1);return `<div class="up"><b>${n}</b> ур.${l}/10<br><small>${d}</small><button class="mini" data-asc="${k}" ${l>=10||ess<cost?'disabled':''}>${l>=10?'МАКС':cost+' 🔱'}</button></div>`;}).join('')}</div><h3>Цели</h3>`+GOALS.map((g,i)=>{const v=Math.min(g[1](),g[2]),done=goalsDone[i];return `<div class="goal ${done?'done':''}"><span>${done?'✔ ':''}${g[0]}</span><i style="width:${v/g[2]*100}%"></i><em>${g[3]==='e'?g[4]+' 🔱':g[4]+' 💎'}</em></div>`;}).join('');}
+$('asc').addEventListener('click',e=>{const k=e.target.dataset&&e.target.dataset.asc;if(!k)return;if(k==='go'){const g=ascGain();ask(`Вознестись? Поле, карты и 💎 сбросятся, вы получите ${g} 🔱.`,()=>{ess+=g;essT+=g;try{localStorage.setItem('gg_meta',JSON.stringify({ess,essT,up,goalsDone,stats,disc:[...discovered]}));localStorage.removeItem(SAVE_KEY);sessionStorage.setItem('gg_mode','asc');}catch(x){}noSave=true;location.reload();});return;}
+ const c=UPS.find(u=>u[0]===k)[3]*(up[k]+1);if(ess>=c&&up[k]<10){ess-=c;up[k]++;renderAsc();toast('Улучшено!');}});
+$('ascX').onclick=()=>close_('asc');
+{const b=document.createElement('button');b.className='mini';b.textContent='🔱 Цели';b.onclick=()=>{renderAsc();open_('asc');};$('menuBtn').before(b);}
+let lastC=crystals;
+setInterval(()=>{const d=crystals-lastC;if(d>0&&!document.querySelector('#cgModal.show,#casinoModal.show'))run.earned+=d;lastC=crystals;
+ const rc=Math.max(50,Math.round(150*(1+run.rolls/250)*(1-0.05*up.disc)));if(rc!==ROLL_COST){ROLL_COST=rc;[1,10,100,1000].forEach(n=>{const e=document.querySelector('#roll'+n+' .cost');if(e)e.textContent=n*ROLL_COST;});}
+ stats.maxInc=Math.max(stats.maxInc,calculateIncome());},250);
+setInterval(()=>{if(gamePaused||!gameStarted&&!noSave)return;GOALS.forEach((g,i)=>{if(!goalsDone[i]&&g[1]()>=g[2]){goalsDone[i]=1;if(g[3]==='e'){ess+=g[4];essT+=g[4];}else crystals+=g[4];toast(`🏆 ${g[0]}: +${g[4]} ${g[3]==='e'?'🔱':'💎'}`);}});$('advice').textContent=advice();},1000);
+
+/* ===== Статистика ===== */
+const GN={slots:'🎰 Слоты',aviator:'✈ Авиатор',roulette:'🎡 Рулетка',poker:'🃏 Покер'};
+function renderStats(){const top=Object.entries(stats.pulls).sort((a,b)=>b[1]-a[1])[0];const fmt=n=>(n>0?'+':'')+Math.round(n).toLocaleString('ru-RU');
+ $('statsBox').innerHTML=`<h3>📊 Статистика игры</h3><div class="stt">`+Object.keys(GN).map(k=>{const o=stats.g[k]||{w:0,l:0,net:0};return `<div>${GN[k]}</div><div>✔${o.w} ✖${o.l}</div><div style="color:${o.net>=0?'#8f8':'#f88'}">${fmt(o.net)} 💎</div>`;}).join('')+`</div><div>⭐ Любимая карта: <b>${top?CARDS[top[0]].symbol+' '+CARDS[top[0]].name+' (×'+top[1]+')':'—'}</b></div><div>📈 Рекорд дохода: <b>${stats.maxInc.toFixed(1)}/сек</b></div><div>🎲 Круток всего: <b>${stats.rolls}</b></div><hr>`;}
+$('settingsBtn').addEventListener('click',renderStats);
+
+/* ===== Казино: хаб ===== */
+mk('hub','<h2>🎰 Казино</h2><div class="hubg"><button data-g="slots">🎰<br>Слоты</button><button data-g="aviator">✈<br>Авиатор</button><button data-g="roulette">🎡<br>Рулетка</button><button data-g="poker">🃏<br>Покер</button></div><button class="btn btn-take" style="align-self:center" id="hubX">Закрыть</button>');
+mk('cgModal','<div id="cgBody"></div><button class="btn btn-take" id="cgClose" style="align-self:center">Назад</button>');
+$('casinoBtn').addEventListener('click',()=>open_('hub'));$('hubX').onclick=()=>close_('hub');
+$('cgClose').onclick=()=>{if(busy)return toast('Сначала завершите раунд');close_('cgModal');open_('hub');};
+$('hub').addEventListener('click',e=>{const g=e.target.closest('[data-g]');if(!g)return;close_('hub');if(g.dataset.g==='slots')return openSlots();open_('cgModal');({aviator:gAviator,roulette:gRoulette,poker:gPoker})[g.dataset.g]();});
+const betUI=(id,d)=>`<div class="bet">Ставка: <input type="number" id="${id}" value="${d}" min="100" step="100"> <button class="mini" data-b="${id}:h">½</button><button class="mini" data-b="${id}:d">×2</button><button class="mini" data-b="${id}:m">МАКС</button></div>`;
+document.addEventListener('click',e=>{const b=e.target.dataset&&e.target.dataset.b;if(!b)return;const [id,k]=b.split(':'),i=$(id),v=+i.value||0;i.value=k==='h'?Math.max(100,Math.floor(v/2)):k==='d'?Math.min(Math.floor(crystals),v*2):Math.floor(crystals);});
+const getBet=id=>{const v=Math.floor(+$(id).value);if(!(v>=100)){toast('Минимальная ставка 100 💎');return 0;}if(v>crystals){toast('Не хватает 💎');return 0;}return v;};
+
+/* ===== Авиатор ===== */
+let av=null,avH=[];
+function gAviator(){$('cgBody').innerHTML=`<h2>✈ Авиатор</h2><canvas id="avC" width="520" height="220"></canvas><div id="avM">1.00×</div>${betUI('avBet',1000)}<div class="bet">Авто-вывод на: <input type="number" id="avAuto" value="2" step="0.1" min="1.1" style="width:70px"> ×</div><div class="btn-row"><button class="btn btn-take" id="avGo">СТАРТ</button></div><div id="avH" class="hist"></div><div id="avR" class="res">Заберите выигрыш до того, как самолёт улетит!</div>`;$('avGo').onclick=avClick;avDraw(1,0);avHist();}
+function avHist(){$('avH').innerHTML=avH.slice(-12).map(x=>`<span style="color:${x>=2?'#8f8':'#f88'}">${x.toFixed(2)}×</span>`).join(' ');}
+function avDraw(m,t,boom){const c=$('avC').getContext('2d'),W=520,H=220;c.clearRect(0,0,W,H);c.strokeStyle='#223';for(let i=1;i<5;i++){c.beginPath();c.moveTo(0,H*i/5);c.lineTo(W,H*i/5);c.stroke();}
+ const xm=Math.max(10,t*1.1),ym=Math.max(2,m*1.15),X=s=>s/xm*(W-40)+10,Y=v=>H-10-(v-1)/(ym-1)*(H-30);c.strokeStyle=boom?'#f44':'#ffd34d';c.lineWidth=3;c.beginPath();for(let s=0;s<=t;s+=t/60||1){const v=Math.exp(.1*s);c.lineTo(X(s),Y(v));}c.lineTo(X(t),Y(m));c.stroke();c.font='26px serif';c.fillText(boom?'💥':'✈',X(t)-10,Y(m)-6);}
+function avClick(){if(av&&av.on)return avCash();const bet=getBet('avBet');if(!bet)return;crystals-=bet;updateHUD();av={on:1,bet,crash:Math.max(1,Math.floor(96/(1-Math.random()))/100),t0:performance.now(),auto:+$('avAuto').value||0};busy=1;$('avGo').textContent='ЗАБРАТЬ';$('avR').textContent='';requestAnimationFrame(avTick);}
+function avEnd(win,m){av.on=0;busy=0;const net=win?Math.floor(av.bet*m)-av.bet:-av.bet;if(win){crystals+=Math.floor(av.bet*m);}rec('aviator',net);updateHUD();avH.push(av.crash);avHist();$('avGo').textContent='СТАРТ';$('avR').textContent=win?`✔ Забрали на ${m.toFixed(2)}× → +${net} 💎 (самолёт улетел бы на ${av.crash.toFixed(2)}×)`:`💥 Улетел на ${av.crash.toFixed(2)}× — ставка потеряна`;$('avR').className='res '+(win?'w':'l');}
+function avCash(){const m=Math.min(av.crash,Math.exp(.1*(performance.now()-av.t0)/1000));avEnd(true,Math.floor(m*100)/100);}
+function avTick(now){if(!av||!av.on||!$('avC'))return;const t=(now-av.t0)/1000,m=Math.exp(.1*t);if(m>=av.crash){avDraw(av.crash,t,1);$('avM').textContent=av.crash.toFixed(2)+'×';return avEnd(false,0);}
+ if(av.auto>=1.1&&m>=av.auto){return avEnd(true,av.auto);}$('avM').textContent=m.toFixed(2)+'×';avDraw(m,t);requestAnimationFrame(avTick);}
+
+/* ===== Рулетка (европейская) ===== */
+const RED=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]),WH=[0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+let rb={},chip=100,rrot=0;const rcol=n=>n===0?'#0a7a2a':RED.has(n)?'#b01818':'#1a1a1a';
+function gRoulette(){rb={};const seg=360/37,grad=WH.map((n,i)=>`${rcol(n)} ${i*seg}deg ${(i+1)*seg}deg`).join(',');let g='<div class="rg"><div data-k="n:0" style="grid-row:span 3;background:#0a7a2a">0</div>';
+ for(let c=0;c<12;c++)for(let r=0;r<3;r++){const n=c*3+(3-r);g+=`<div data-k="n:${n}" style="background:${rcol(n)}">${n}</div>`;}
+ g+='<div data-k="c3">2:1</div><div data-k="c2">2:1</div><div data-k="c1">2:1</div></div><div class="ro">'+[['d1','1-12'],['d2','13-24'],['d3','25-36'],['low','1-18'],['even','Чёт'],['red','🔴'],['black','⚫'],['odd','Нечёт'],['high','19-36']].map(([k,t])=>`<div data-k="${k}">${t}</div>`).join('')+'</div>';
+ $('cgBody').innerHTML=`<h2>🎡 Рулетка</h2><div id="rw" style="background:conic-gradient(${grad})"><b id="rn">?</b></div><div class="chips">${[100,1000,10000,100000].map(v=>`<button class="mini ${v===chip?'on':''}" data-chip="${v}">${v}</button>`).join('')} <button class="mini" id="rClr">Очистить</button></div>${g}<div class="res" id="rR">Выберите фишку и кликайте по полю. Число 35:1, цвет/чёт/диапазон 1:1, дюжины и колонки 2:1.</div><div class="btn-row"><button class="btn btn-take" id="rGo">КРУТИТЬ</button></div>`;
+ $('rGo').onclick=rSpin;$('rClr').onclick=()=>{if(busy)return;rb={};rMark();};}
+function rMark(){document.querySelectorAll('#cgBody [data-k]').forEach(e=>{const v=rb[e.dataset.k];v?e.setAttribute('data-amt',v):e.removeAttribute('data-amt');});}
+$('cgBody').addEventListener('click',e=>{const ch=e.target.dataset.chip;if(ch){chip=+ch;document.querySelectorAll('[data-chip]').forEach(b=>b.classList.toggle('on',b===e.target));return;}const k=e.target.dataset.k;if(!k||busy)return;const tot=Object.values(rb).reduce((a,b)=>a+b,0);if(tot+chip>crystals)return toast('Не хватает 💎');rb[k]=(rb[k]||0)+chip;rMark();});
+function rPay(k,n){if(k[0]==='n')return +k.slice(2)===n?36:0;if(!n)return 0;return {red:RED.has(n)?2:0,black:!RED.has(n)?2:0,even:n%2===0?2:0,odd:n%2?2:0,low:n<=18?2:0,high:n>=19?2:0,d1:n<=12?3:0,d2:n>12&&n<=24?3:0,d3:n>24?3:0,c1:n%3===1?3:0,c2:n%3===2?3:0,c3:n%3===0?3:0}[k];}
+function rSpin(){if(busy)return;const tot=Object.values(rb).reduce((a,b)=>a+b,0);if(!tot)return toast('Сделайте ставку');crystals-=tot;updateHUD();busy=1;const n=Math.floor(Math.random()*37),k=WH.indexOf(n),seg=360/37;rrot=(Math.floor(rrot/360)+7)*360-(k+.5)*seg;$('rw').style.transform=`rotate(${rrot}deg)`;$('rR').textContent='Шарик катится…';
+ setTimeout(()=>{let pay=0;for(const q in rb)pay+=rb[q]*rPay(q,n);crystals+=pay;rec('roulette',pay-tot);updateHUD();busy=0;$('rn').textContent=n;$('rn').style.color=n===0?'#6f6':RED.has(n)?'#f66':'#fff';$('rR').className='res '+(pay>tot?'w':'l');$('rR').textContent=`Выпало ${n} ${n===0?'🟢':RED.has(n)?'🔴':'⚫'} · ${pay>tot?'+'+(pay-tot):pay===tot?'в ноль':'−'+(tot-pay)} 💎`;rb={};rMark();},4300);}
+
+/* ===== Покер: Техасский холдем 1 на 1 ===== */
+const RK='23456789TJQKA',ST='♠♥♦♣',CATN=['Старшая карта','Пара','Две пары','Сет','Стрит','Флеш','Фулл-хаус','Каре','Стрит-флеш'];
+const cs=c=>RK[c>>2]+ST[c&3],isRed=c=>(c&3)===1||(c&3)===2;
+function mkDeck(){const d=[];for(let i=0;i<52;i++)d.push(i);for(let i=51;i>0;i--){const j=Math.random()*(i+1)|0;[d[i],d[j]]=[d[j],d[i]];}return d;}
+function score5(a){const r=a.map(c=>c>>2).sort((x,y)=>y-x),fl=a.every(c=>(c&3)===(a[0]&3)),cnt={};r.forEach(x=>cnt[x]=(cnt[x]||0)+1);const g=Object.entries(cnt).map(([k,v])=>[v,+k]).sort((x,y)=>y[0]-x[0]||y[1]-x[1]),u=[...new Set(r)];let st=0;if(u.length===5){if(u[0]-u[4]===4)st=u[0]+1;else if(u.join()==='12,3,2,1,0')st=4;}
+ const cat=st&&fl?8:g[0][0]===4?7:g[0][0]===3&&g[1][0]===2?6:fl?5:st?4:g[0][0]===3?3:g[0][0]===2&&g[1][0]===2?2:g[0][0]===2?1:0,key=st?[st-1]:g.map(x=>x[1]);return cat*1e7+key.reduce((s,x,i)=>s+x*Math.pow(15,4-i),0);}
+function best(h){let b=0;for(let i=0;i<h.length;i++)for(let j=i+1;j<h.length;j++){const s=score5(h.filter((_,k)=>k!==i&&k!==j));if(s>b)b=s;}return b;}
+function equity(h,bd,n){const used=new Set(h.concat(bd)),rest=[];for(let c=0;c<52;c++)if(!used.has(c))rest.push(c);const need=2+5-bd.length;let w=0;for(let i=0;i<n;i++){for(let k=0;k<need;k++){const j=k+Math.random()*(rest.length-k)|0;[rest[k],rest[j]]=[rest[j],rest[k]];}const bd2=bd.concat(rest.slice(2,need)),a=best(h.concat(bd2)),b=best([rest[0],rest[1]].concat(bd2));w+=a>b?1:a===b?.5:0;}return w/n;}
+let pk=null,pkLast='';
+function gPoker(){$('cgBody').innerHTML='<h2>🃏 Холдем 1 на 1</h2><div id="pkT"></div>';pkIdle();}
+function pkIdle(){$('pkT').innerHTML=`<div class="res">Против бота. Обе стороны вносят блайнд-анте. Улицы: префлоп, флоп, тёрн, ривер. Ставка = размер блайнда, рейз = ещё 2 блайнда. Нужно иметь минимум 6 блайндов.</div>${betUI('pkBet',500)}<div class="btn-row"><button class="btn btn-take" data-p="deal">РАЗДАТЬ</button></div><div class="res">${pkLast}</div>`;}
+function pkR(show){const c=x=>`<span class="pc ${isRed(x)?'r':''}">${cs(x)}</span>`,h='<span class="pc back">?</span>',ph=pk.phase;
+ $('pkT').innerHTML=`<div>Бот: ${show?pk.b.map(c).join(''):h+h}</div><div class="pkb">${pk.bd.map(c).join('')||'<small>стол пуст</small>'}</div><div>Вы: ${pk.p.map(c).join('')}</div><div class="res">Банк: ${pk.pot} 💎 · ${pk.msg}</div><div class="btn-row">`+(ph==='p'?`<button class="btn btn-take" data-p="check">Чек</button><button class="btn btn-take" data-p="bet">Ставка ${pk.B}</button>`:ph==='owe'?`<button class="btn btn-take" data-p="call">Колл ${pk.owe}</button>`+(pk.owe===pk.B?`<button class="btn btn-take" data-p="raise">Рейз +${2*pk.B}</button>`:''):`<button class="btn btn-take" data-p="again">Новая раздача</button>`)+(ph!=='end'?'<button class="btn btn-take" data-p="fold">Фолд</button>':'')+'</div>';}
+function pkPay(x){if(x>crystals){toast('Не хватает 💎');return false;}crystals-=x;pk.pc+=x;pk.pot+=x;updateHUD();return true;}
+function pkEnd(w,msg){const p=w>0?pk.pot:w===0?Math.floor(pk.pot/2):0;crystals+=p;updateHUD();rec('poker',p-pk.pc);pk.phase='end';pk.msg=msg+(p?` (+${p} 💎)`:'');pkLast=`Итог прошлой раздачи: ${p-pk.pc>=0?'+':''}${p-pk.pc} 💎`;busy=0;pkR(true);}
+function pkNext(){if(++pk.st>3){const a=best(pk.p.concat(pk.bd)),b=best(pk.b.concat(pk.bd)),n=s=>CATN[Math.floor(s/1e7)];return pkEnd(a>b?1:a<b?-1:0,`Вскрытие: у вас ${n(a)}, у бота ${n(b)}. ${a>b?'Вы победили!':a<b?'Бот победил.':'Ничья.'}`);}
+ for(let i=pk.st===1?3:1;i>0;i--)pk.bd.push(pk.d.pop());pk.phase='p';pk.owe=0;pk.msg=['','Флоп','Тёрн','Ривер'][pk.st]+' — ваш ход';pkR();}
+function pkAct(a){if(!pk&&a!=='deal')return;
+ if(a==='deal'){const B=getBet('pkBet');if(!B)return;if(crystals<B*6)return toast('Нужно минимум 6 блайндов: '+B*6+' 💎');crystals-=B;updateHUD();const d=mkDeck();pk={d,p:[d.pop(),d.pop()],b:[d.pop(),d.pop()],bd:[],B,pot:2*B,pc:B,st:0,phase:'p',msg:'префлоп — ваш ход',owe:0};busy=1;return pkR();}
+ if(a==='again')return pkIdle();if(a==='fold')return pkEnd(-1,'Вы сбросили карты.');
+ const e=()=>equity(pk.b,pk.bd,140);
+ if(pk.phase==='p'){if(a==='check'){const q=e();if(q>0.62&&Math.random()<0.8||q<0.4&&Math.random()<0.1){pk.pot+=pk.B;pk.owe=pk.B;pk.phase='owe';pk.msg=`бот ставит ${pk.B}`;pkR();}else{pk.msg='бот чекает';pkNext();}}
+  else if(a==='bet'){if(!pkPay(pk.B))return;const q=e();if(q<0.38&&Math.random()>0.12)return pkEnd(1,'Бот сбросил карты.');if(q>0.75&&Math.random()<0.5){pk.pot+=3*pk.B;pk.owe=2*pk.B;pk.phase='owe';pk.msg='бот рейзит!';pkR();}else{pk.pot+=pk.B;pkNext();}}}
+ else if(pk.phase==='owe'){if(a==='call'){if(pkPay(pk.owe))pkNext();}else if(a==='raise'){if(!pkPay(pk.owe+2*pk.B))return;const q=e();if(q<0.5&&Math.random()>0.1)return pkEnd(1,'Бот не потянул рейз.');pk.pot+=2*pk.B;pkNext();}}}
+$('cgBody').addEventListener('click',e=>{const a=e.target.dataset.p;if(a)pkAct(a);});
+
+/* ===== Старт после вознесения ===== */
+if(window.BOOT_MODE==='asc'){try{const m=JSON.parse(localStorage.getItem('gg_meta'));ess=m.ess;essT=m.essT;up=m.up;goalsDone=m.goalsDone;stats=m.stats;discovered=new Set(m.disc);crystals+=1500*up.start;renderCollection();updateHUD();toast(`🔱 Вы вознеслись! Эссенции: ${ess}`);}catch(e){}}
+if(window.BOOT_MODE==='new'){try{localStorage.removeItem('gg_meta');}catch(e){}}
+
 </script>
 </body>
 </html>
