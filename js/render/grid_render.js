@@ -79,6 +79,9 @@ function renderGrid() {
       if (card.id === 'u10' || card.id === 'c4' || card.id === 'b10' || card.id === 'd10') badges += '<span class="anchor-badge">🔱</span>';
       /* Уникальная механика ★4/★5 — золотой значок ✦ */
       if (SPECIALS[card.id]) badges += '<span class="anchor-badge" style="color:#e8c060">✦</span>';
+      /* Счётчик перезарядки периодических способностей (пункт 5 ТЗ): Жатва (u9, 30с) и Кузня Хаоса (d9, 20с) */
+      if (card.id === 'u9') badges += '<span class="cd-badge" data-cd="harv"></span>';
+      if (card.id === 'd9') badges += '<span class="cd-badge" data-cd="balr"></span>';
       if (item.mutBuff && item.mutBuff !== 1 && FACTION_INFO[faction].mechanic === 'chaos')
         badges += '<span class="mut-badge">' + (item.mutBuff > 1 ? '▲' : '▼') + '</span>';
       if (item.predBuff > 0 && FACTION_INFO[faction].mechanic === 'cycle')
@@ -174,4 +177,22 @@ function updateGridStats() {
   $('gridStats').innerHTML = 'Активных звеньев: <b>' + countLinks() + '</b>' +
     ' · Уникальных пар: <b>' + currentDiversity() + '</b> (+' + Math.round((incomeCache.diversityMult - 1) * 100) + '%)' +
     ' · Доход: <b>+' + inc.toFixed(2) + '/сек</b>' + extra;
+  updateCooldownBadges();
+}
+
+/* Живые счётчики перезарядки способностей прямо на картах (пункт 5 ТЗ).
+   Патчит текст существующих бейджей каждый кадр — полный рендер поля не нужен. */
+function updateCooldownBadges() {
+  const mech = FACTION_INFO[faction].mechanic;
+  qsa('.cd-badge').forEach(el => {
+    let txt = '';
+    if (el.dataset.cd === 'harv' && mech === 'chain') {
+      const ab = activeAltBuff();
+      if (ab.mult > 1 && altBuff.label.indexOf('ЖАТВА') >= 0) txt = '⚔ ×' + ab.mult + ' ' + Math.max(0, Math.ceil(altBuff.until - gameTime)) + 'с';
+      else txt = '⚔ ' + Math.max(0, Math.ceil(30 - harvTimer)) + 'с';
+    } else if (el.dataset.cd === 'balr' && mech === 'chaos') {
+      txt = '🌋 ' + Math.max(0, Math.ceil(20 - balrTimer)) + 'с';
+    }
+    if (el.textContent !== txt) el.textContent = txt;
+  });
 }

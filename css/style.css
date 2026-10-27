@@ -175,6 +175,7 @@ h1 small { display: block; font-size: 9px; letter-spacing: 2px; color: #8a6a4a; 
 .card .anchor-badge { position: absolute; top: 1px; right: 2px; font-size: 9px; filter: drop-shadow(0 0 3px #ffd34d); }
 .card .mut-badge { position: absolute; bottom: 4px; right: 1px; font-size: 8px; font-weight: bold; color: #ff8060; background: #2a0a0add; border-radius: 2px; padding: 0 2px; line-height: 1; border: 1px solid #8b3a1a; }
 .card .stack-badge { position: absolute; top: -1px; left: 1px; font-size: 9px; color: #ffe080; text-shadow: 0 0 4px #000; }
+.card .cd-badge { position: absolute; top: 1px; left: 50%; transform: translateX(-50%); font-size: 8px; font-weight: bold; color: #ffd34d; background: #0a0503dd; border: 1px solid #c9a227; border-radius: 2px; padding: 0 2px; line-height: 1.2; white-space: nowrap; text-shadow: 0 0 3px #000; }
 .card .faction-dot { position: absolute; top: 2px; right: 2px; width: 7px; height: 7px; border-radius: 50%; border: 1px solid #000000aa; }
 .card .hp-bar { position: absolute; top: 0; left: 0; height: 4px; transition: width .2s; box-shadow: 0 0 4px currentColor; }
 #synergySvg { position: absolute; top: 8px; left: 8px; width: calc(100% - 16px); height: calc(100% - 16px); pointer-events: none; z-index: 4; overflow: visible; }
