@@ -99,7 +99,10 @@ function confirmEpochUp() {
 
 /* Выбор фракции на новую Эпоху (пункты 3 и 11 ТЗ) */
 function pickFactionAndAscend() {
-  const avail = epochFactions(epoch);
+  /* Фикс (пункт 9 ТЗ): фракции доступны по НОВОЙ эпохе (epoch + 1).
+     Раньше список считался по старой — фракцию нельзя было выбрать
+     ровно в ту Эпоху, в которую она разблокировалась (4→5 и т.д.). */
+  const avail = epochFactions(epoch + 1);
   if (avail.length <= 1) { doEpochUp(avail[0]); return; }
   mk('factionModal',
     '<h2>Выберите фракцию Эпохи ' + (epoch + 1) + '</h2>' +
