@@ -51,6 +51,7 @@ function doEpochUp(newFaction) {
   fighters = {}; fighterHpState = {};
   arenaState = { floor: 1, room: 1, enemy: null, fighting: false, status: '', cleared: Array(ARENA.roomsPerFloor).fill(false), fallen: {} };
   arenaAuto = false; const chk = $('arenaAutoChk'); if (chk) chk.checked = false;
+  arenaStreak = 0;
   pity4 = 0; pity5 = 0; runRolls = 0; runEarned = 0; runTime = 0;
   altBuff = { mult: 1, until: 0, label: '' };
   ritualResonance = 0; surgeUntil = 0;

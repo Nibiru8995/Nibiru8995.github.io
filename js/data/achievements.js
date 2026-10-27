@@ -59,5 +59,13 @@ const ACHIEVEMENTS = [
   { id: 'boss_10',      name: 'Гроза владык',             desc: 'Победить 10 боссов Арены',               check: () => stats.bossKills >= 10 },
   { id: 'casino_net',   name: 'Дом НЕ всегда в плюсе',    desc: 'Выйти из казино в суммарном плюсе +100 000 💎', check: () => Object.values(stats.g || {}).reduce((s, x) => s + (x.net || 0), 0) >= 100000 },
   { id: 'syn_20',       name: 'Симфония синергий',        desc: 'Активировать 20 уникальных пар синергий одновременно', check: () => currentDiversity() >= 20 },
-  { id: 'time_10h',     name: 'Бездна смотрит в ответ',   desc: 'Играть 10 часов суммарно',               check: () => gameTime >= 36000 }
+  { id: 'time_10h',     name: 'Бездна смотрит в ответ',   desc: 'Играть 10 часов суммарно',               check: () => gameTime >= 36000 },
+
+  /* --- Пакет v1.0–v1.2 «Голос Тьмы» --- */
+  { id: 'surge_10',     name: 'Камертон Бездны',          desc: 'Дождаться 10 всплесков Резонанса ритуала', check: () => (stats.surges || 0) >= 10 },
+  { id: 'diamond_rit',  name: 'Геометр тьмы',             desc: 'Собрать формацию «Ромб» вокруг Алтаря',  check: () => Object.values(INC_CTX.formActive || {}).some(f => f.kind === 'diamond') },
+  { id: 'hunt_25',      name: 'Красный пищевой цепи',     desc: 'Хищники Алтаря совершили 25 убийств',    check: () => (stats.predKills || 0) >= 25 },
+  { id: 'boom_50',      name: 'Пиротехник легиона',       desc: '50 взрывов Хаоса на Алтаре',             check: () => (stats.demonBooms || 0) >= 50 },
+  { id: 'elite_10',     name: 'Гроза элит',               desc: 'Разбить 10 элитных отрядов Колыбели Войны', check: () => (stats.eliteKills || 0) >= 10 },
+  { id: 'streak_8',     name: 'Серия без промаха',        desc: '8 побед Колыбели Войны подряд',          check: () => (stats.streakMax || 0) >= 8 }
 ];

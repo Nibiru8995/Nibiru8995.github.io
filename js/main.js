@@ -115,7 +115,7 @@ function startFreshRun() {
   inventory = {}; pendingCard = null;
   fighters = {}; fighterHpState = {};
   arenaState = { floor: 1, room: 1, enemy: null, fighting: false, status: '', cleared: Array(ARENA.roomsPerFloor).fill(false), fallen: {} };
-  arenaAuto = false;
+  arenaAuto = false; arenaStreak = 0;
   pity4 = 0; pity5 = 0; runRolls = 0; runEarned = 0; runTime = 0;
   relicSlots = {}; relicPity = 0;
   altBuff = { mult: 1, until: 0, label: '' };
@@ -180,7 +180,7 @@ function startDebugRun(ep, f, rich, keepSave) {
   inventory = {}; pendingCard = null;
   fighters = {}; fighterHpState = {};
   arenaState = { floor: 1, room: 1, enemy: null, fighting: false, status: '', cleared: Array(ARENA.roomsPerFloor).fill(false), fallen: {} };
-  arenaAuto = false;
+  arenaAuto = false; arenaStreak = 0;
   pity4 = 0; pity5 = 0; runRolls = 0; runEarned = 0; runTime = 0;
   relicSlots = {}; relicPity = 0;
   altBuff = { mult: 1, until: 0, label: '' };

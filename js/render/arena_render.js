@@ -110,12 +110,18 @@ function drawUnit(ctx, u, imgCache, tNow) {
   ctx.ellipse(u.x, u.y + S * 0.42, S * 0.34, S * 0.12, 0, 0, 6.29);
   ctx.fill();
 
-  /* боссовая аура: багровое пульсирующее сияние */
+  /* боссовая аура: багровое пульсирующее сияние; элита — золотистая */
   if (u.boss && !u.dead) {
     const pulse = 0.22 + 0.12 * Math.sin(battle.t * 5);
     ctx.fillStyle = 'rgba(255,60,40,' + pulse.toFixed(3) + ')';
     ctx.beginPath();
     ctx.ellipse(u.x, u.y + 4, S * 0.62, S * 0.5, 0, 0, 6.29);
+    ctx.fill();
+  } else if (u.elite && !u.dead) {
+    const pulse = 0.16 + 0.1 * Math.sin(battle.t * 4 + u.bob);
+    ctx.fillStyle = 'rgba(255,208,80,' + pulse.toFixed(3) + ')';
+    ctx.beginPath();
+    ctx.ellipse(u.x, u.y + 4, S * 0.55, S * 0.45, 0, 0, 6.29);
     ctx.fill();
   }
 
@@ -386,13 +392,15 @@ function updateArenaUI() {
     const d = document.createElement('div');
     d.className = 'room-dot';
     if (i === ARENA.roomsPerFloor) d.classList.add('boss');
+    if (isEliteRoom(i)) d.classList.add('elite');
     if (arenaState.cleared[i - 1]) d.classList.add('cleared');
     if (i === arenaState.room) d.classList.add('current');
     ind.appendChild(d);
   }
-  /* Комната + фракция волны (цветом фракции) */
+  /* Комната + фракция волны (цветом фракции) + метка элиты (v1.2) */
   const wf = waveFaction(arenaState.floor, arenaState.room);
   $('arenaRoomText').innerHTML = 'Комната ' + arenaState.room + ' / ' + ARENA.roomsPerFloor +
+    (isEliteRoom(arenaState.room) ? ' · <b style="color:#ffe080">ЭЛИТА</b>' : '') +
     ' · <b style="color:' + FACTION_INFO[wf].color + '">' + FACTION_INFO[wf].name + '</b>';
   /* Волна врагов: имя + суммарный HP (по живым отрядам в бою или полный) */
   if (wave) {

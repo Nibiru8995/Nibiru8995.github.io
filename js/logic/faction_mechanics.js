@@ -56,6 +56,7 @@ function ritualResonanceTick(dt) {
 function ritualSurge() {
   surgeUntil = gameTime + SURGE_TIME;
   ritualResonance = 0;
+  stats.surges = (stats.surges || 0) + 1; /* v1.2: счётчик всплесков */
   /* Шоу: золотая волна по всем клеткам ритуала + текст над Алтарём */
   let altarKey = null;
   INC_CTX.ritual.forEach(k => {
@@ -137,6 +138,12 @@ function beastCycleTick() {
     const r = relicById(relicSlots[k]);
     if (r && r.kind === 'apex') apexCols[+k] = 1;
   }
+  /* v1.2: «Рог Бешенства» (savage) — укусы хищников столбца ×1.5 */
+  const savageCols = {};
+  if (epoch >= RELIC_SLOT_EPOCH) for (const k in relicSlots) {
+    const r = relicById(relicSlots[k]);
+    if (r && r.kind === 'savage') savageCols[+k] = 1;
+  }
 
   /* 1. ФЛОРА v1.1: Древень/Гриб лечат ХИЩНИКОВ (+12% HP); Кровавая Лоза (b14) НАОБОРОТ —
      жжёт соседних хищников (−8% HP/тик, насмерть не убивает) и лечит травоядных (+8%) */
@@ -213,7 +220,7 @@ function beastCycleTick() {
     const preyCard = CARDS[b.prey.item.cardId];
     /* Толстая Шкура (b13) и Живая Крепость (b17): укусы по ним вдвое слабее */
     const thickHide = preyCard.id === 'b13' || preyCard.id === 'b17';
-    const biteDmg = 0.5 * (thickHide ? 0.5 : 1);
+    const biteDmg = 0.5 * (thickHide ? 0.5 : 1) * (savageCols[b.predator.c] ? 1.5 : 1); /* Рог Бешенства */
     /* Стая: Волк и Лютоволк бьют ×1.5, если рядом другой волк */
     const pack = (b.predator.card.id === 'b1' || b.predator.card.id === 'b4') &&
       getNeighbors(b.predator.r, b.predator.c).some(n => n.item.cardId === 'b1' || n.item.cardId === 'b4');
@@ -234,6 +241,7 @@ function beastCycleTick() {
       const eaten = preyCard.name;
       deaths.push([b.prey.r, b.prey.c]);
       grid[b.prey.r][b.prey.c] = null;
+      stats.predKills = (stats.predKills || 0) + 1; /* v1.2: счётчик охоты */
       const dbl = kingCols[b.predator.c] ? 2 : 1;               /* «Корона Зверя» */
       const base = b.predator.card.id === 'b11' ? 1.0 : 0.75;   /* v1.1: +75% базово, Хищник ★5 +100% */
       const cap = (b.predator.card.id === 'b11' ? 4 : 3) * dbl;
@@ -320,7 +328,7 @@ function demonEmberTick() {
     const crowd = getNeighbors8(r, c).filter(n => CARDS[n.item.cardId].faction === 'demon').length;
     const needCrowd = card.id === 'd1' ? 1 : 2;          /* Дьяволёнок злится рано */
     if (crowd < needCrowd) continue;
-    const tutored = getNeighbors8(r, c).some(n => n.item.cardId === 'd12'); /* Мучитель */
+    const tutored = getNeighbors8(r, c).some(n => n.item.cardId === 'd12') || (function(){ const ef = colEngine(c); return !!(ef && ef.forge); })(); /* Мучитель или Сердце Вулкана */
     it.embers = Math.min(5, (it.embers || 0) + (tutored ? 2 : 1));
     fxAtCell(r, c, ['#ff9030', '#ffd34d'], 4);
     changed = true;
@@ -329,6 +337,7 @@ function demonEmberTick() {
     /* ВЗРЫВ ХАОСА */
     it.embers = 0;
     it.lastBoom = gameTime;
+    stats.demonBooms = (stats.demonBooms || 0) + 1; /* v1.2: счётчик взрывов */
     const eng = colEngine(c);
     let buffVal = 1.25;
     let stabilized = princeHere || getNeighbors(r, c).some(n => n.item.cardId === 'd6') ||

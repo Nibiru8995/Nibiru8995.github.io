@@ -204,6 +204,8 @@ function factionMult(r, c, card, item) {
     }
     if (card.id === 'u10') m *= 1 + 0.1 * Math.max(0, radius2Count - 1);
     else if (nearAnchor) m *= 1.25;
+    /* v1.2: Псалмопевец — Гимн Легиона: +10% за каждое своё активное звено */
+    if (card.id === 'u12') m *= 1 + 0.10 * getNeighbors(r, c).filter(n => findPair(card, CARDS[n.item.cardId])).length;
     return m;
   }
   if (mech === 'formation') {
@@ -225,7 +227,14 @@ function factionMult(r, c, card, item) {
     else if (INC_CTX.ritual.has(k)) {
       if (getNeighbors(r, c).some(n => n.item.cardId === 'c4')) m = 1.15; /* соседи Алтаря */
     } else if (INC_CTX.ritualOuter.has(k)) m = 1.075;              /* Второй круг (c9) */
-    else m = 0.15;                                                 /* ВНЕ РИТУАЛА — почти ноль */
+    else {
+      m = 0.15;                                                    /* ВНЕ РИТУАЛА — почти ноль */
+      /* v1.2: «Служка Полой Луны» (c12) рядом — тихий шёпот утешает: ×0.35 */
+      if (getNeighbors(r, c).some(n => n.item.cardId === 'c12')) m = 0.35;
+      /* v1.2: реликвия «Кадило Успокоения» (medic) в столбце — ×0.35 */
+      const engM = colEngine(c);
+      if (engM && engM.medic) m = Math.max(m, 0.35);
+    }
     /* «Инквизитор» (★4): +25% за каждую уникальную пару на поле */
     if (card.id === 'c8') m *= Math.min(5, 1 + 0.25 * INC_CTX.uniquePairs);
     return m;
@@ -387,10 +396,16 @@ function computeIncome() {
   /* Контекст для factionMult: уникальные пары */
   INC_CTX.uniquePairs = uniquePairs;
 
-  /* АРМИЯ нежити: бонус за размер непрерывной компоненты (BFS по 4-соседству) */
+  /* АРМИЯ нежити: бонус за размер непрерывной компоненты (BFS по 4-соседству).
+     v1.2: реликвия «Штандарт Легиона» (kind legion) поднимает кап с ×2 до ×2.6 */
   INC_CTX.armyMult = {};
   let armyBest = 0;
   if (mech === 'chain') {
+    let armyCap = 2;
+    if (epoch >= RELIC_SLOT_EPOCH) for (const k in relicSlots) {
+      const r = relicById(relicSlots[k]);
+      if (r && r.kind === 'legion') armyCap = Math.max(armyCap, 2.6);
+    }
     const compId = {};
     for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
       const it = grid[r][c];
@@ -406,7 +421,7 @@ function computeIncome() {
           compId[n.r + ',' + n.c] = 1; q.push([n.r, n.c]);
         });
       }
-      const am = Math.min(2, 1 + 0.015 * (cells.length - 1));
+      const am = Math.min(armyCap, 1 + 0.015 * (cells.length - 1));
       if (cells.length > armyBest) armyBest = cells.length;
       cells.forEach(([cr, cc]) => { INC_CTX.armyMult[cr + ',' + cc] = am; });
     }
@@ -454,9 +469,10 @@ function countLinks() {
   return n;
 }
 
-/* Мощь Алтаря: бонус к урону Арены от синергий */
+/* Мощь Алтаря: бонус к урону Арены от синергий (v1.2: кап 4, сильнее за звено —
+   петля баланса арена↔алтарь: чем богаче ритуал, тем больнее бьют отряды) */
 function altarPower() {
-  return Math.min(3, (1 + 0.03 * countLinks()) * incomeCache.diversityMult);
+  return Math.min(4, (1 + 0.035 * countLinks()) * incomeCache.diversityMult);
 }
 
 /* ---------------- ЦЕНА КРУТКИ ----------------

@@ -33,9 +33,10 @@ function calcTotalHp() {
   return hp;
 }
 
-/* ---------------- ВОЛНА ВРАГОВ ---------------- */
+/* ---------------- ВОЛНА ВРАГОВ (v1.2: элита + боссы по фракциям) ---------------- */
 function generateWave(floor, room) {
   const isBoss = room === ARENA.roomsPerFloor;
+  const isElite = isEliteRoom(room);
   const f = waveFaction(floor, room);
   const defs = [];
   if (isBoss) {
@@ -46,7 +47,7 @@ function generateWave(floor, room) {
     }
   } else {
     const n = ARENA.count(floor, room);
-    const w = ARENA.tierW(floor);
+    const w = isElite ? ARENA.tierWElite(floor) : ARENA.tierW(floor);
     /* отряды врага растут с этажом: f1 — по 1 копии, f2 — до 2, f3+ — до 3 */
     const kMax = Math.min(3, Math.max(1, floor));
     for (let i = 0; i < n; i++) {
@@ -54,15 +55,18 @@ function generateWave(floor, room) {
       defs.push({ rarity: t, k: 1 + rand(kMax), faction: f, boss: false });
     }
   }
-  const name = isBoss ? ARENA.bossNames[(floor - 1) % ARENA.bossNames.length]
+  const bNames = ARENA.bossNamesByFaction[f] || ARENA.bossNamesByFaction.undead;
+  const name = isBoss ? bNames[(floor - 1) % bNames.length]
+    : isElite ? ARENA.eliteName + ' «' + ARENA.enemyNames[f] + '» · ' + defs.length + ' отрядов'
     : 'Волна «' + ARENA.enemyNames[f] + '» · ' + defs.length + ' отрядов';
-  return { name, faction: f, isBoss, units: defs, floor, room };
+  return { name, faction: f, isBoss, isElite, units: defs, floor, room };
 }
 
 function waveMaxHp(wave) {
   const hm = ARENA.hpMult(wave.floor);
+  const em = ARENA.eliteHpMult;
   const bm = 1 + 0.35 * wave.floor;
-  return wave.units.reduce((s, u) => s + fighterHp(u.rarity) * u.k * (u.boss ? bm : hm), 0);
+  return wave.units.reduce((s, u) => s + fighterHp(u.rarity) * u.k * (u.boss ? bm : (wave.isElite ? em * hm : hm)), 0);
 }
 
 /* ---------------- НАБОР БОЙЦОВ ---------------- */
@@ -138,9 +142,10 @@ function spawnBattle() {
   });
   (wave ? wave.units : []).forEach((d, i) => {
     const r = d.rarity;
-    const hpM = d.boss ? bm : hm, dmM = d.boss ? bdm : dm;
+    const hpM = d.boss ? bm : (wave.isElite ? hm * ARENA.eliteHpMult : hm), dmM = d.boss ? bdm : dm;
     battle.units.push({
-      side: 'foe', rarity: r, k: d.k, boss: !!d.boss, name: d.boss ? wave.name : ARENA.enemyNames[d.faction],
+      side: 'foe', rarity: r, k: d.k, boss: !!d.boss, elite: !d.boss && !!wave.isElite,
+      name: d.boss ? wave.name : ARENA.enemyNames[d.faction],
       img: foeSprite(d.faction, d.boss),
       x: ARENA.FIELD_W - 140 - Math.floor(i / 3) * 46 - rand(8), y: laneY(i) + rand(14) - 7,
       hp: fighterHp(r) * d.k * hpM, maxHp: fighterHp(r) * d.k * hpM,
@@ -287,27 +292,30 @@ function endBattle(win) {
   battle.shake = Math.max(battle.shake, win ? 6 : 4);
   const enemy = arenaState.enemy;
   if (win) {
-    const reward = Math.round(arenaReward(arenaState.floor, arenaState.room));
+    /* v1.2: СЕРИЯ ПОБЕД — каждая победа подряд усиливает награду (кап ×1.5),
+       поражение и отступление серию обрывают */
+    arenaStreak++;
+    stats.streakMax = Math.max(stats.streakMax || 0, arenaStreak);
+    const streakMult = 1 + Math.min(0.5, 0.05 * (arenaStreak - 1));
+    let reward = Math.round(arenaReward(arenaState.floor, arenaState.room) * streakMult);
+    if (enemy && enemy.isElite) stats.eliteKills = (stats.eliteKills || 0) + 1;
     crystals += reward; runEarned += reward;
     sfx(enemy && enemy.isBoss ? 'boss' : 'win');
     fxFxAt($('arenaPanel'), enemy && enemy.isBoss ? ['#c9a227', '#fff', '#ff6b6b'] : ['#80e060', '#fff'], enemy && enemy.isBoss ? 40 : 18);
     if (enemy && enemy.isBoss) {
       stats.bossKills = (stats.bossKills || 0) + 1;
-      /* ТРОФЕЙ БОССА: бесплатная карта ★3 текущей фракции */
-      const pool = POOL_3.filter(id => CARDS[id].faction === faction);
-      if (pool.length) {
-        const gid = pick(pool);
-        inventory[gid] = (inventory[gid] || 0) + 1;
-        discovered.add(gid);
-        setTimeout(() => toast('👑 Трофей босса: «' + CARDS[gid].name + '» добавлена в коллекцию!'), 400);
-      }
+      /* v1.2: ТРОФЕЙ БОССА — ВЫБОР из трёх наград (вместо фиксированной ★3) */
+      showBossTrophy(reward);
     }
     arenaState.cleared[arenaState.room - 1] = true;
-    arenaState.status = enemy && enemy.isBoss ? '🏆 БОСС ПОВЕРЖЕН! +' + fmt(reward) + ' 💎 + трофей!' : 'Победа! +' + fmt(reward) + ' 💎';
+    arenaState.status = (enemy && enemy.isBoss ? '🏆 БОСС ПОВЕРЖЕН! +' + fmt(reward) + ' 💎' :
+      (enemy && enemy.isElite ? 'Элита разбита! +' : 'Победа! +') + fmt(reward) + ' 💎') +
+      (arenaStreak > 1 ? ' · Серия ×' + streakMult.toFixed(2) : '');
     reviveFighters();
     updateArenaUI(); updateHUD(); renderFighters(); renderCollection(); checkAchievements();
     if (arenaAuto) setTimeout(tryStartAutoBattle, 600);
   } else {
+    arenaStreak = 0;
     arenaState.status = 'Поражение, но армия цела: павшие вернулись. Усильтесь и повторите!';
     sfx('lose');
     reviveFighters();
@@ -323,6 +331,40 @@ function endBattle(win) {
     battle.active = false; battle.over = false; battle.banner = null; battle.last = 0;
     renderBattle();
   }, 2000);
+}
+
+/* v1.2: ВЫБОР ТРОФЕЯ БОССА — три пути силы:
+   добыча (кристаллы ×2 сверху) / реликвия / призыв (15 бесплатных круток) */
+function showBossTrophy(reward) {
+  const bonus = reward * 2;
+  const avail = RELICS.filter(r => !hasRelic(r.id) && r.faction === faction);
+  const relicName = avail.length ? '«' + pick(avail).name + '»' : null;
+  mk('trophyModal',
+    '<h2>👑 ТРОФЕЙ БОССА</h2>' +
+    '<div class="res">Побеждённый владыка предлагает выбор. Возьмите ОДНУ награду:</div>' +
+    '<div class="trophy-list">' +
+    '<div class="trophy-opt" data-t="gold"><b>💰 Добыча</b><small>+' + fmt(bonus) + ' 💎 сверх награды</small></div>' +
+    '<div class="trophy-opt" data-t="relic"><b>⚒ Реликвия</b><small>' + (relicName ? 'Случайная неполученная реликвия фракции' : 'Все реликвии фракции собраны → +' + fmt(reward) + ' 💎') + '</small></div>' +
+    '<div class="trophy-opt" data-t="rolls"><b>✦ Призыв</b><small>15 бесплатных круток гачи</small></div>' +
+    '</div>', 560);
+  document.querySelectorAll('#trophyModal .trophy-opt').forEach(el => {
+    el.onclick = () => {
+      const t = el.dataset.t;
+      close_('trophyModal');
+      if (t === 'gold') {
+        crystals += bonus; runEarned += Math.round(bonus * 0.5);
+        toast('💰 Добыча босса: +' + fmt(bonus) + ' 💎!');
+      } else if (t === 'relic') {
+        if (avail.length) { grantRelic(pick(avail).id, false); fxConfetti(50); }
+        else { crystals += reward; runEarned += Math.round(reward * 0.5); toast('💰 Компенсация: +' + fmt(reward) + ' 💎'); }
+      } else {
+        freeRolls += 15; stats.freeRolls = (stats.freeRolls || 0) + 15;
+        toast('✦ Призыв: +15 БЕСПЛАТНЫХ круток! Кнопка «КРУТКА» — без денег');
+      }
+      updateHUD(); saveRun(); checkAchievements();
+    };
+  });
+  open_('trophyModal');
 }
 
 /* Цикл отрисовки+симуляции: живёт, пока идёт бой (или доигрывает баннер) */
@@ -393,6 +435,7 @@ function arenaRetreat() {
   battle.active = false; battle.over = false; battle.banner = null;
   battle.units = []; battle.floats = []; battle.projs = []; battle.sparks = [];
   arenaState.fighting = false;
+  arenaStreak = 0; /* v1.2: отступление обрывает серию */
   reviveFighters();
   arenaState.status = 'Вы отступили. Отряды восстановлены, волна соберётся заново.';
   updateArenaUI(); renderFighters();

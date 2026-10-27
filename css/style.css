@@ -58,6 +58,8 @@ h1 small { display: block; font-size: 9px; letter-spacing: 2px; color: #8a6a4a; 
 .room-dot.current { background: #d4b050; border-color: #ffe080; animation: pulse 1s infinite; }
 .room-dot.boss { background: #4a1010; border-color: #8b1a1a; }
 .room-dot.boss.cleared { background: #a02020; border-color: #ff4040; }
+.room-dot.elite { background: #3a2a10; border-color: #c9a227; box-shadow: 0 0 4px #c9a22788; }
+.room-dot.elite.cleared { background: #8a6a10; border-color: #ffe080; }
 .room-dot.boss.current { background: #ff2020; border-color: #ff8080; animation: pulse 0.8s infinite; }
 .arena-room-header { display: flex; justify-content: space-between; align-items: center; background: #150d05; border: 1px solid #4a3020; border-radius: 4px; padding: 4px 8px; font-size: 11px; color: #b08040; }
 .arena-enemy-card { background: radial-gradient(circle at 50% 20%, #3a0a0a, #0a0000); border: 2px solid #8b1a1a; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; box-shadow: inset 0 0 15px #000000cc; }
@@ -222,6 +224,23 @@ h1 small { display: block; font-size: 9px; letter-spacing: 2px; color: #8a6a4a; 
 @keyframes ritualPulse { 0%, 100% { box-shadow: inset 0 0 10px #c9a22755; } 50% { box-shadow: inset 0 0 20px #e8c06088; } }
 .cell.dead-spot { outline: 2px dashed #8b3a3a; cursor: not-allowed; }
 .syn-flow.dead { stroke: #7a4040; stroke-dasharray: 2 8; opacity: .45; filter: none; animation: none; }
+
+/* ===== v1.2: ГЛАВНОЕ МЕНЮ — заставка подземного собора ===== */
+#menu { background:
+  linear-gradient(rgba(6,3,1,.72), rgba(6,3,1,.88)),
+  url('../assets/menu_bg.jpg') center 30% / cover no-repeat #0a0503; }
+#menu .modal-card { box-shadow: 0 0 80px #000000ee, 0 0 40px #c9a22733, inset 0 0 30px #000000aa; }
+
+/* ===== v1.2: ВЫБОР ТРОФЕЯ БОССА ===== */
+.trophy-list { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.trophy-opt { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; cursor: pointer;
+  background: linear-gradient(160deg, #3a2414, #1a0f08); border: 2px solid #6a4a2a; border-radius: 8px;
+  transition: all .15s; text-align: left; }
+.trophy-opt:hover { border-color: var(--gold); box-shadow: 0 0 14px #c9a22766; transform: translateY(-1px); }
+.trophy-opt b { color: #ffe080; font-size: 14px; }
+.trophy-opt small { color: #b0a080; font-size: 11px; }
+
+/* ===== v1.2: типографика/панели — унаследованы от v1.0 ===== */
 
 /* ============================================================
    v1.0 «ШЁПОТ ТЬМЫ» — РИТУАЛ ЖИВОЙ + РЕЗОНАНС

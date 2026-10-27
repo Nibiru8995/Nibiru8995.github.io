@@ -42,6 +42,7 @@ let fighters = {};
 let fighterHpState = {};
 let arenaState = { floor: 1, room: 1, enemy: null, fighting: false, status: '', cleared: [false, false, false, false, false], fallen: {} };
 let arenaAuto = false;
+let arenaStreak = 0;         // v1.2: серия побед Арены (награда ×1.05 за победу, кап ×1.5)
 
 /* --- Временный буст Алтаря (Жнец «Жатва», Вехи, Ускорение) --- */
 let altBuff = { mult: 1, until: 0, label: '' };
@@ -78,6 +79,11 @@ let stats = {
   arenaDeaths: 0,
   floorMax: 1,
   bossKills: 0,
+  eliteKills: 0,
+  streakMax: 0,
+  surges: 0,        // всплесков резонанса ритуала (v1.0)
+  predKills: 0,     // убийств хищниками на Алтаре (v1.1)
+  demonBooms: 0,    // взрывов Хаоса (v1.1)
   deleted: 0,
   placed: 0,
   omens: 0,       // собранных Знамений
@@ -104,6 +110,7 @@ function buildRunSave() {
     t: Date.now(), crystals, epoch, faction, grid,
     playableSize, inventory, fighters, fighterHpState,
     arena: { floor: arenaState.floor, room: arenaState.room, cleared: arenaState.cleared, fallen: arenaState.fallen },
+    arenaStreak,
     pity4, pity5, runRolls, runEarned, runTime, sealLv,
     milestoneIdx, freeRolls, relicSlots, relicPity,
     ritualResonance, surgeUntil
@@ -124,6 +131,7 @@ function loadRun() {
     inventory = d.inventory ?? {};
     fighters = d.fighters ?? {}; fighterHpState = d.fighterHpState ?? {};
     if (d.arena) Object.assign(arenaState, d.arena);
+    arenaStreak = d.arenaStreak ?? 0;
     pity4 = d.pity4 ?? 0; pity5 = d.pity5 ?? 0;
     runRolls = d.runRolls ?? 0; runEarned = d.runEarned ?? 0; runTime = d.runTime ?? 0;
     if (d.sealLv) Object.assign(sealLv, d.sealLv);
