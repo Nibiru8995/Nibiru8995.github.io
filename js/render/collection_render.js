@@ -45,6 +45,7 @@ function renderCollection() {
     const card = CARDS[id], count = inventory[id];
     const el = document.createElement('div');
     el.className = 'coll-card star' + card.rarity + ' f-' + card.faction;
+    el.dataset.cid = id; /* якорь для обучающих подсветок */
     el.style.setProperty('--glow', rarityColor(card.rarity));
     el.style.setProperty('--cardBg', rarityBg(card.rarity));
     if (pv(id)) el.classList.add('partner');

@@ -107,12 +107,39 @@ function showDrop(cardId) {
     gamePaused = false;
   };
 }
+/* ---------------- Одиночный дроп: РЕЛИКВИЯ (фидбек 7-8) ---------------- */
+function showDropRelic(relicId) {
+  const r = relicById(relicId); if (!r) return;
+  gamePaused = true;
+  const modalCard = $('dropModalCard'), bannerEl = $('dropRarityBanner'), el = $('dropCard');
+  el.className = 'big-card';
+  el.style.setProperty('--glow', RELIC_RARITY_COLOR(r.rarity));
+  el.style.setProperty('--cardBg', r.rarity === 5 ? '#4a3010' : r.rarity === 4 ? '#3a2040' : '#202a40');
+  el.innerHTML = '<span style="font-size:64px;line-height:1.2;filter:drop-shadow(0 0 12px ' + RELIC_RARITY_COLOR(r.rarity) + ')">' + r.icon + '</span>';
+  $('dropStars').textContent = '★'.repeat(r.rarity) + ' · РЕЛИКВИЯ';
+  $('dropName').textContent = r.name;
+  $('dropEffect').innerHTML = '<span style="color:#8fc87f">✅ ' + r.buff + '</span><br><span style="color:#e08a8a">❌ ' + r.debuff + '</span>' +
+    '<br><small style="color:#a08860">Ставится в слот столбца Алтаря (Эпоха ' + RELIC_SLOT_EPOCH + '+)</small>';
+  $('dropFlavor').textContent = '«' + r.lore + '»';
+  modalCard.classList.remove('rarity4', 'rarity5');
+  playRarityEffect(modalCard, bannerEl, r.rarity === 5 ? 5 : r.rarity === 4 ? 4 : 3);
+  bannerEl.textContent = 'РЕЛИКВИЯ';
+  sfx(r.rarity === 5 ? 'drop5' : r.rarity === 4 ? 'drop4' : 'drop3');
+  if (r.rarity === 5) { const b = $('dropModalCard').getBoundingClientRect(); fxBeams(b.left + b.width / 2, b.top + b.height / 2); fxConfetti(70); }
+  $('dropModal').classList.add('show');
+  pendingCard = null;
+  const done = () => { $('dropModal').classList.remove('show'); gamePaused = false; updateHUD(); };
+  $('placeBtn').onclick = done;
+  $('takeBtn').onclick = done;
+}
+
 $('dropCard').addEventListener('mouseenter', e => { if (pendingCard && CARDS[pendingCard]) showCardTooltip(e, CARDS[pendingCard], CARDS[pendingCard].baseRate); });
 $('dropCard').addEventListener('mousemove', moveTooltip);
 $('dropCard').addEventListener('mouseleave', hideTooltip);
 
-/* ---------------- Мультикрутка ---------------- */
-function showMulti(cardIds, count) {
+/* ---------------- Мультикрутка ----------------
+   Реликвии показываются в общем окне как отдельные элементы (фидбек 7-8) */
+function showMulti(cardIds, count, relicIds) {
   gamePaused = true;
   const rev = $('multiReveal');
   rev.innerHTML = '';
@@ -121,10 +148,12 @@ function showMulti(cardIds, count) {
   let has4 = false, has5 = false;
   const my = cardIds;
   my.forEach(id => { const c = CARDS[id].rarity; if (c === 4) has4 = true; if (c === 5) has5 = true; });
+  const relics = relicIds || [];
+  relics.forEach(id => { const r = relicById(id); if (r.rarity === 4) has4 = true; if (r.rarity === 5) has5 = true; });
 
   const SUMMARY_LIMIT = 60;
   if (my.length > SUMMARY_LIMIT) {
-    /* Сводка для больших круток: группировка по картам */
+    /* Сводка для больших круток: группировка по картам + реликвии отдельно */
     const counts = {};
     my.forEach(id => counts[id] = (counts[id] || 0) + 1);
     const rows = Object.keys(counts).sort((a, b) => CARDS[b].rarity - CARDS[a].rarity || counts[b] - counts[a])
@@ -134,7 +163,12 @@ function showMulti(cardIds, count) {
           '<span class="mr-name">' + c.name + ' <i>' + '★'.repeat(c.rarity) + '</i></span>' +
           '<span class="mr-count">×' + counts[id] + '</span></div>';
       }).join('');
-    rev.innerHTML = '<div class="multi-summary">' + rows + '</div>';
+    const relRows = relics.map(id => {
+      const r = relicById(id);
+      return '<div class="multi-row relic"><span class="mr-art" style="font-size:18px">' + r.icon + '</span>' +
+        '<span class="mr-name">' + r.name + ' <i>' + '★'.repeat(r.rarity) + ' РЕЛИКВИЯ</i></span><span class="mr-count">×1</span></div>';
+    }).join('');
+    rev.innerHTML = '<div class="multi-summary">' + rows + relRows + '</div>';
   } else {
     my.forEach((id, i) => {
       const card = CARDS[id];
@@ -149,11 +183,23 @@ function showMulti(cardIds, count) {
       rev.appendChild(el);
       setTimeout(() => { if (card.rarity === 4) el.classList.add('rare4'); else if (card.rarity === 5) el.classList.add('rare5'); }, Math.min(i * 15, 500));
     });
+    relics.forEach((id, i) => {
+      const r = relicById(id);
+      const el = document.createElement('div');
+      el.className = 'multi-item relic';
+      el.style.setProperty('--glow', RELIC_RARITY_COLOR(r.rarity));
+      el.style.setProperty('--cardBg', r.rarity === 5 ? '#4a3010' : '#3a2040');
+      el.innerHTML = '<span class="multi-art" style="font-size:30px;line-height:52px">' + r.icon + '</span>' +
+        '<span class="multi-name">' + r.name + '</span>';
+      el.title = '✅ ' + r.buff + '\n❌ ' + r.debuff;
+      rev.appendChild(el);
+      setTimeout(() => { if (r.rarity === 4) el.classList.add('rare4'); else if (r.rarity === 5) el.classList.add('rare5'); }, Math.min(i * 60, 500));
+    });
   }
 
   if (has5) playRarityEffect(modalCard, bannerEl, 5);
   else if (has4) playRarityEffect(modalCard, bannerEl, 4);
-  $('multiTitle').textContent = (count || my.length) + ' круток';
+  $('multiTitle').textContent = (count || my.length) + ' круток' + (relics.length ? ' · ⚒ реликвий: ' + relics.length : '');
   $('multiModal').classList.add('show');
   /* «Сразу в бой» имеет смысл только с открытой Ареной (пункт 9 ТЗ) */
   $('multiFight').style.display = epochHasArena(epoch) ? '' : 'none';
@@ -165,6 +211,7 @@ function showMulti(cardIds, count) {
       discovered.add(id);
       if (i < 6) flyCard($('multiModalCard'), 'collection', CARDS[id], CARDS[id].rarity, i * 90);
     });
+    /* реликвии уже выданы в doRolls */
     renderCollection(); gamePaused = false;
   };
   $('multiFight').onclick = () => {

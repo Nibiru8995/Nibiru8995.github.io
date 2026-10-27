@@ -100,9 +100,10 @@ function showCardTooltip(e, card, income, r, c) {
         const pair = findPair(card, CARDS[n.item.cardId]);
         if (!pair) return null;
         /* Эффективный фактор звена считает computeIncome (linkFactors) — единая правда.
-           Звенья под Аурой Власти (Лич) не затухают, поэтому «повтор» не показываем */
+           0 = мёртвое звено (культ вне ритуала), <1 = затухание */
         const lf = incomeCache.linkFactors ? incomeCache.linkFactors[linkKey(r, c, n.r, n.c)] : undefined;
         const factor = lf === undefined ? 1 : lf;
+        if (factor === 0) return '<span class="tt-bad">' + pair.text + ' (с ' + CARDS[n.item.cardId].name + ') — МЕРТВО: вне ритуала</span>';
         return '<span class="tt-good">' + pair.text + ' (с ' + CARDS[n.item.cardId].name + ')' +
           (factor < 1 ? ' <b style="color:#ffd34d">повтор ×' + factor + '</b>' : '') + '</span>';
       }).filter(Boolean);
@@ -117,6 +118,8 @@ function showCardTooltip(e, card, income, r, c) {
   /* Уникальная механика ★4/★5 (SPECIALS в data/cards.js) */
   const sp = SPECIALS[card.id];
   if (sp) mechLine += '<div class="tt-synergy"><div class="tt-synergy-title">✦ Особенность</div><span style="color:#e8c060">' + sp + '</span></div>';
+  /* ФИДБЕК 3+6: культисты — статус ритуала + НАГЛЯДНЫЕ схемы формаций */
+  mechLine += cultistTooltipHTML(card, r, c);
   tooltip.innerHTML =
     '<div class="tt-name">' + cardArtHTML(card, 'tt-art', '') + '<span>' + card.name + '</span></div>' +
     '<div class="tt-stars">' + '★'.repeat(card.rarity) + ' · ' + FACTION_INFO[card.faction].name + '</div>' +
@@ -125,6 +128,57 @@ function showCardTooltip(e, card, income, r, c) {
     '<div class="tt-flavor">«' + card.flavor + '»</div>';
   tooltip.classList.add('show');
   moveTooltip(e);
+}
+
+/* ------- ФИДБЕК 6: графические формации ритуала в тултипе культистов -------
+   Схема — мини-грид: 🔶 алтарь (золотой), фиолетовый — культист,
+   тёмный — пустая клетка. Активная формация подсвечена. */
+function formationDiagram(kind, activeKind) {
+  const cellsDef = {
+    cross:  { size: 3, cult: [[0, 1], [1, 0], [2, 1], [1, 2]], empty: [[0, 0], [0, 2], [2, 0], [2, 2]] },
+    square: { size: 3, cult: [[0, 0], [0, 1], [0, 2], [1, 0], [1, 2], [2, 0], [2, 1], [2, 2]], empty: [] },
+    ring:   { size: 5, cult: [[0,0],[0,1],[0,2],[0,3],[0,4],[1,0],[1,4],[2,0],[2,4],[3,0],[3,4],[4,0],[4,1],[4,2],[4,3],[4,4]], empty: [[1,1],[1,2],[1,3],[2,1],[2,2],[2,3],[3,1],[3,2],[3,3]] },
+    great:  { size: 5, cult: [[0,0],[0,1],[0,2],[0,3],[0,4],[1,0],[1,1],[1,2],[1,3],[1,4],[2,0],[2,4],[3,0],[3,1],[3,2],[3,3],[3,4],[4,0],[4,1],[4,2],[4,3],[4,4]], empty: [] }
+  };
+  const def = cellsDef[kind];
+  const mid = (def.size - 1) / 2;
+  const isC = (rr, cc) => def.cult.some(([a, b]) => a === rr && b === cc);
+  const isE = (rr, cc) => def.empty.some(([a, b]) => a === rr && b === cc);
+  let html = '<div class="rt-diag' + (activeKind === kind ? ' active' : '') + '" style="grid-template-columns:repeat(' + def.size + ',11px)">';
+  for (let rr = 0; rr < def.size; rr++) for (let cc = 0; cc < def.size; cc++) {
+    if (rr === mid && cc === mid) html += '<i class="rt-c rt-altar"></i>';
+    else if (isC(rr, cc)) html += '<i class="rt-c rt-cult"></i>';
+    else if (isE(rr, cc)) html += '<i class="rt-c rt-empty"></i>';
+    else html += '<i class="rt-c"></i>';
+  }
+  return html + '</div>';
+}
+function cultistTooltipHTML(card, r, c) {
+  if (card.faction !== 'cultist') return '';
+  const defs = [
+    { kind: 'cross', label: 'Крест ×2.0', hint: '4 по сторонам, диагонали пусты' },
+    { kind: 'square', label: 'Квадрат ×2.2', hint: 'все 8 соседей' },
+    { kind: 'ring', label: 'Кольцо ×3.0', hint: 'пустой центр, 16 по кругу' },
+    { kind: 'great', label: 'Великий Круг ×4.0', hint: '24 карты вокруг Алтаря' }
+  ];
+  let status = '';
+  if (r !== undefined && c !== undefined && FACTION_INFO[faction].mechanic === 'formation') {
+    if (card.id === 'c4') {
+      const f = INC_CTX.formActive[r + ',' + c];
+      status = '<div class="tt-synergy"><div class="tt-synergy-title">Ритуал</div>' +
+        (f ? '<span style="color:#8fc87f">АКТИВНА ФОРМАЦИЯ: ' + f.label + ' (×' + f.mult.toFixed(1) + ')</span>'
+           : '<span style="color:#e8c060">Формации нет — обложите Алтарь культистами</span>') + '</div>';
+    } else {
+      const inR = INC_CTX.ritual.has(r + ',' + c);
+      status = '<div class="tt-synergy"><div class="tt-synergy-title">Ритуал</div>' +
+        (inR ? '<span style="color:#8fc87f">✔ В РИТУАЛЕ — звенья живы' + (INC_CTX.formCell[r + ',' + c] ? ' · участник формации (+25%)' : '') + '</span>'
+             : '<span style="color:#e08a8a">✖ ВНЕ РИТУАЛА — звенья МЕРТВЫ. Соедините цепочку культистов с Алтарём</span>') + '</div>';
+    }
+  }
+  const activeKind = card.id === 'c4' && r !== undefined && INC_CTX.formActive[r + ',' + c] ? INC_CTX.formActive[r + ',' + c].kind : null;
+  return status + '<div class="tt-synergy"><div class="tt-synergy-title">🔯 Формации ритуала</div>' +
+    '<div class="rt-row">' + defs.map(d => '<div class="rt-item" title="' + d.hint + '">' + formationDiagram(d.kind, activeKind) + '<small>' + d.label + '</small></div>').join('') + '</div>' +
+    '<small style="color:#a08860">🔶 Алтарь · фиолетовый — культист · тёмный — пусто</small></div>';
 }
 function roleText(card) {
   return {

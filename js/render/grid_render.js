@@ -26,8 +26,29 @@ function applyGridMetrics() {
 
 /* Карты, чья механика действует на ОКРУЖЕНИЕ (пункт 4 ТЗ): id -> радиус ауры в клетках.
    Глобальные способности (Жатва u9, Глас Пустоты c11, Великое Око c10, Инквизиция c8)
-   кольца не получают — у них нет радиуса действия. */
+   зоны не получают — у них нет радиуса действия.
+   Фидбек 1: аура рисуется НЕ кольцом вокруг карты, а ПОДСВЕТКОЙ ОБЛАСТИ —
+   каждой клетки, на которую механика реально влияет. */
 const AURA_R = { u8: 1, u10: 2, u11: 2, c4: 1, c9: 2, b8: 1, b9: 2, b10: 1, d8: 1, d9: 1, d10: 2, d11: 1 };
+
+/* Карта зон аур: 'r,c' -> {color, big}. Пересобирается на каждом renderGrid */
+function buildAuraMap() {
+  const map = {};
+  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
+    const it = grid[r][c]; if (!it) continue;
+    const R = AURA_R[it.cardId]; if (!R) continue;
+    const color = FACTION_INFO[CARDS[it.cardId].faction].color;
+    for (let dr = -R; dr <= R; dr++) for (let dc = -R; dc <= R; dc++) {
+      if (Math.max(Math.abs(dr), Math.abs(dc)) > R) continue;
+      const nr = r + dr, nc = c + dc;
+      if (nr < 0 || nr >= GRID_SIZE || nc < 0 || nc >= GRID_SIZE || !grid[nr][nc]) continue;
+      const k = nr + ',' + nc;
+      const prev = map[k];
+      map[k] = { color: prev ? prev.color : color, big: R >= 2 || (prev && prev.big) };
+    }
+  }
+  return map;
+}
 
 function buildGrid() {
   applyGridMetrics();
@@ -41,20 +62,96 @@ function buildGrid() {
   renderGrid();
 }
 
+/* СЛОТЫ РЕЛИКВИЙ у столбцов грида (фидбек 7-8). Открываются на Эпохе 2 */
+function renderColSlots() {
+  const bar = $('colSlots');
+  if (!bar) return;
+  if (epoch < RELIC_SLOT_EPOCH) { bar.style.display = 'none'; return; }
+  bar.style.display = '';
+  bar.style.gridTemplateColumns = gridEl.style.gridTemplateColumns;
+  bar.innerHTML = '';
+  const st = gridStart();
+  for (let dc = 0; dc < playableSize; dc++) {
+    const c = st + dc;
+    const slot = document.createElement('div');
+    const rel = relicAtCol(c);
+    slot.className = 'col-slot' + (rel ? ' filled' : '');
+    slot.dataset.col = c;
+    if (rel) {
+      slot.innerHTML = '<span class="cs-ic">' + rel.icon + '</span>';
+      slot.title = rel.name + '\n✅ ' + rel.buff + '\n❌ ' + rel.debuff + '\n(клик — снять)';
+      slot.style.setProperty('--relicC', RELIC_RARITY_COLOR(rel.rarity));
+    } else {
+      slot.innerHTML = '<span class="cs-plus">+</span>';
+      slot.title = 'Слот реликвии столбца ' + (c + 1) + ' — клик, чтобы вставить реликвию';
+    }
+    slot.onclick = ev => { ev.stopPropagation(); onColSlotClick(c); };
+    bar.appendChild(slot);
+  }
+}
+
+function onColSlotClick(c) {
+  if (epoch < RELIC_SLOT_EPOCH) return;
+  if (relicSlots[c]) {
+    const r = relicById(relicSlots[c]);
+    delete relicSlots[c];
+    computeIncome(); renderGrid(); updateHUD(); saveRun();
+    toast(r.icon + ' «' + r.name + '» снята со столбца ' + (c + 1));
+    return;
+  }
+  const avail = unassignedRelics();
+  if (!avail.length) { toast('Свободных реликвий нет — они добываются из гачи (с Эпохи ' + RELIC_DROP_EPOCH + ')'); return; }
+  mk('relicPick', '<h2>⚒ Реликвия в столбец ' + (c + 1) + '</h2>' +
+    '<div class="res">Бафф и дебафф подействуют на ВСЮ эту колонку Алтаря.</div>' +
+    '<div id="relicPickGrid"></div>' +
+    '<div class="btn-row"><button class="btn btn-take" id="relicPickX">Отмена</button></div>', 560);
+  $('relicPickX').onclick = () => close_('relicPick');
+  $('relicPickGrid').innerHTML = avail.map(id => {
+    const r = relicById(id);
+    return '<div class="relic-pick" data-id="' + id + '" style="border-color:' + RELIC_RARITY_COLOR(r.rarity) + '">' +
+      '<span class="relic-ic">' + r.icon + '</span><span><b>' + r.name + '</b> ' + '★'.repeat(r.rarity) +
+      '<br><small style="color:#8fc87f">✅ ' + r.buff + '</small>' +
+      '<br><small style="color:#e08a8a">❌ ' + r.debuff + '</small></span></div>';
+  }).join('');
+  $('relicPickGrid').querySelectorAll('.relic-pick').forEach(el => {
+    el.onclick = () => {
+      relicSlots[c] = el.dataset.id;
+      close_('relicPick');
+      const r = relicById(el.dataset.id);
+      toast(r.icon + ' «' + r.name + '» встала в столбец ' + (c + 1));
+      sfx('place');
+      computeIncome(); renderGrid(); updateHUD(); saveRun();
+    };
+  });
+  open_('relicPick');
+}
+
 function renderGrid() {
   /* Защита: при смене размера Алтаря клетки пересоздаются автоматически */
   if (gridEl.children.length !== playableSize * playableSize) { buildGrid(); return; }
   const n = playableSize, st = gridStart();
   const cells = gridEl.children;
+  const auraMap = buildAuraMap();
   for (let dr = 0; dr < n; dr++) for (let dc = 0; dc < n; dc++) {
     const r = st + dr, c = st + dc;
     const cell = cells[dr * n + dc];
     const item = grid[r][c];
     cell.innerHTML = ''; cell.className = 'cell playable';
+    cell.dataset.r = r; cell.dataset.c = c;
     cell.onclick = () => onCellClick(r, c);
     if (r === 4 && c === 4) cell.classList.add('center-cell');
-    /* Зона Ауры Власти (Лич ★4): подсветка защищённых клеток (пункты 3-4 ТЗ) */
+    /* Фидбек 1: аура — ПОДСВЕТКА ОБЛАСТИ действия, не кольцо на карте */
+    const az = auraMap[r + ',' + c];
+    if (az) {
+      cell.classList.add('aura-zone');
+      if (az.big) cell.classList.add('r2');
+      cell.style.setProperty('--auraC', az.color);
+    }
+    /* Зона Ауры Власти (Лич ★4): золотая подсветка защищённых клеток */
     if (incomeCache.lichZone && incomeCache.lichZone.indexOf(r + ',' + c) >= 0) cell.classList.add('aura-warded');
+    /* РИТУАЛ культистов (фидбек 3): клетки в ритуале и участники формаций */
+    if (INC_CTX.ritual && INC_CTX.ritual.has(r + ',' + c)) cell.classList.add('ritual-cell');
+    if (INC_CTX.formCell && INC_CTX.formCell[r + ',' + c]) cell.classList.add('ritual-part');
 
     if (moveMode && moveSource && moveSource.r === r && moveSource.c === c) cell.classList.add('move-source');
     else if (moveMode && moveSource && !item) cell.classList.add('move-target');
@@ -76,6 +173,9 @@ function renderGrid() {
       let badges = '<span class="faction-dot" style="background:' + FACTION_INFO[card.faction].color + '"></span>' +
         '<span class="card-name">' + card.name + '</span>' +
         '<span class="income-badge">' + income.toFixed(2) + '</span>';
+      /* РЕЛИКВИИ 2.0: маркер реликвии на карте, стоящей в её столбце */
+      const colRel = relicAtCol(c);
+      if (colRel && epoch >= RELIC_SLOT_EPOCH) badges += '<span class="anchor-badge" style="color:' + RELIC_RARITY_COLOR(colRel.rarity) + '" title="Столбец под реликвией: ' + colRel.name + '">' + colRel.icon + '</span>';
       if (card.id === 'u10' || card.id === 'c4' || card.id === 'b10' || card.id === 'd10') badges += '<span class="anchor-badge">🔱</span>';
       /* Уникальная механика ★4/★5 — золотой значок ✦ */
       if (SPECIALS[card.id]) badges += '<span class="anchor-badge" style="color:#e8c060">✦</span>';
@@ -97,11 +197,13 @@ function renderGrid() {
     }
   }
   drawSynergies();
+  renderColSlots();
   updateGridStats();
   renderOmens();
 }
 
-/* SVG-линии: парные синергии + цепи нежити (координаты — по открытым клеткам) */
+/* SVG-линии: парные синергии + цепи нежити (координаты — по открытым клеткам).
+   Фидбек 1: кольца аур УДАЛЕНЫ — ауры теперь подсвечивают области клеток. */
 function drawSynergies() {
   synergySvg.innerHTML = '';
   const n = playableSize, st = gridStart();
@@ -109,21 +211,6 @@ function drawSynergies() {
   const cellAt = (r, c) => gridEl.children[(r - st) * n + (c - st)];
   const cx = (c) => { const b = cellAt(st, c).getBoundingClientRect(); return b.left - sr.left + b.width / 2; };
   const cy = (r) => { const b = cellAt(r, st).getBoundingClientRect(); return b.top - sr.top + b.height / 2; };
-  /* Кольца аур вокруг карт с окружностной механикой (пункт 4 ТЗ) */
-  for (let r = st; r < st + n; r++) for (let c = st; c < st + n; c++) {
-    const item = grid[r][c]; if (!item) continue;
-    const R = AURA_R[item.cardId];
-    if (!R) continue;
-    const bEl = cellAt(r, c);
-    if (!bEl) continue;
-    const b = bEl.getBoundingClientRect();
-    const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    ring.setAttribute('cx', b.left - sr.left + b.width / 2);
-    ring.setAttribute('cy', b.top - sr.top + b.height / 2);
-    ring.setAttribute('r', b.width / 2 + (R >= 2 ? 11 : 5));
-    ring.setAttribute('class', 'aura-ring' + (R >= 2 ? ' r2' : ''));
-    synergySvg.appendChild(ring);
-  }
   for (let r = st; r < st + n; r++) for (let c = st; c < st + n; c++) {
     const item = grid[r][c]; if (!item) continue;
     const card = CARDS[item.cardId];
@@ -156,8 +243,9 @@ function drawSynergies() {
       const flow = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       flow.setAttribute('x1', x1); flow.setAttribute('y1', y1);
       flow.setAttribute('x2', x2); flow.setAttribute('y2', y2);
-      /* faded — реальное затухание из экономики; warded — звено под Аурой Власти (Лич) */
-      flow.setAttribute('class', 'syn-flow' + (kind === 'mult' ? ' mult' : '') + (lf < 1 ? ' faded' : '') + (warded ? ' warded' : ''));
+      /* faded — реальное затухание из экономики; warded — Аура Власти (Лич);
+         dead — мёртвое звено культистов вне ритуала (фидбек 3) */
+      flow.setAttribute('class', 'syn-flow' + (kind === 'mult' ? ' mult' : '') + (lf === 0 ? ' dead' : lf < 1 ? ' faded' : '') + (warded ? ' warded' : ''));
       synergySvg.appendChild(flow);
     });
   }
@@ -173,6 +261,13 @@ function updateGridStats() {
   if (FACTION_INFO[faction].mechanic === 'chain' && incomeCache.armyBest > 1) {
     const am = Math.min(2, 1 + 0.015 * (incomeCache.armyBest - 1));
     extra += ' · Армия: <b>' + incomeCache.armyBest + '</b> (×' + am.toFixed(2) + ')';
+  }
+  /* Ритуал культистов: размер + активная формация (фидбек 3) */
+  if (FACTION_INFO[faction].mechanic === 'formation') {
+    const inRitual = INC_CTX.ritual ? INC_CTX.ritual.size : 0;
+    let fLabel = '—';
+    for (const k in INC_CTX.formActive) { fLabel = INC_CTX.formActive[k].label + ' ×' + INC_CTX.formActive[k].mult.toFixed(1); break; }
+    extra += ' · Ритуал: <b style="color:' + (inRitual ? '#c9a227' : '#e08a8a') + '">' + inRitual + '</b> · Формация: <b>' + fLabel + '</b>';
   }
   $('gridStats').innerHTML = 'Активных звеньев: <b>' + countLinks() + '</b>' +
     ' · Уникальных пар: <b>' + currentDiversity() + '</b> (+' + Math.round((incomeCache.diversityMult - 1) * 100) + '%)' +

@@ -60,9 +60,10 @@ function updateArenaUI() {
   $('arenaStatus').textContent = arenaState.status;
   $('arenaStatus').className = 'arena-status ' + (arenaState.status.includes('Победа') || arenaState.status.includes('БОСС') ? 'win' : arenaState.status.includes('Поражение') ? 'lose' : '');
   const btn = $('arenaFightBtn'), retBtn = $('arenaRetreatBtn');
-  if (arenaState.fighting) { btn.disabled = true; btn.textContent = '⚔ БОЙ ИДЁТ...'; retBtn.style.display = 'block'; }
+  /* ФИКС «прыжка» арены (фидбек 9): кнопка всегда занимает место, показывается через visibility */
+  if (arenaState.fighting) { btn.disabled = true; btn.textContent = '⚔ БОЙ ИДЁТ...'; retBtn.classList.add('visible'); }
   else {
-    btn.disabled = false; retBtn.style.display = 'none';
+    btn.disabled = false; retBtn.classList.remove('visible');
     if (arenaState.cleared[arenaState.room - 1]) {
       btn.textContent = arenaState.room < ARENA.roomsPerFloor ? '➡ Следующая комната' : '🏆 Новый этаж';
     } else btn.textContent = '⚔ Атаковать';
