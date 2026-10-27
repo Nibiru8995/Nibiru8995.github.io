@@ -36,5 +36,28 @@ const ACHIEVEMENTS = [
   { id: 'omen_50',      name: 'Око Бездны',               desc: 'Собрать 50 Знамений на Алтаре',         check: () => (stats.omens || 0) >= 50 },
   { id: 'mil_3',        name: 'Веха за вехой',            desc: 'Выполнить 3 вехи за один забег',        check: () => milestoneIdx >= 3 },
   { id: 'free_10',      name: 'Бесплатный сыр',           desc: 'Получить 50 бесплатных круток с вех',    check: () => (stats.freeRolls || 0) >= 50 },
-  { id: 'speed_4',      name: 'Скользящее время',         desc: 'Поиграть на ускорении ×4',              check: () => stats.speedUsed >= 1 }
+  { id: 'speed_4',      name: 'Скользящее время',         desc: 'Поиграть на ускорении ×4',              check: () => stats.speedUsed >= 1 },
+
+  /* --- Пакет «Больше ачивок» (пункт 7 ТЗ) --- */
+  { id: 'stack_2',      name: 'Начало стопки',            desc: 'Иметь стак ×2 на Алтаре',                check: () => grid.some(row => row.some(it => it && it.stacks >= 2)) },
+  { id: 'stack_5',      name: 'Небоскрёб',                desc: 'Довести стак до ×5',                     check: () => grid.some(row => row.some(it => it && it.stacks >= 5)) },
+  { id: 'grid_full',    name: 'Квадратный метр',          desc: 'Заполнить весь Алтарь картами',          check: () => cardsOnGrid() >= playableSize * playableSize },
+  { id: 'roll_25k',     name: 'Рука не устала',           desc: 'Сделать 25 000 круток за всё время',     check: () => stats.rolls >= 25000 },
+  { id: 'rich_1b',      name: 'Кристаллий Биллингс',      desc: 'Иметь 1 000 000 000 💎 разом',           check: () => crystals >= 1e9 },
+  { id: 'inc_1k',       name: 'Экономика Бездны',         desc: 'Достичь дохода +1000/сек',               check: () => stats.maxInc >= 1000 },
+  { id: 'inc_10k',      name: 'Вечный двигатель',         desc: 'Достичь дохода +10 000/сек',             check: () => stats.maxInc >= 10000 },
+  { id: 'epoch_7',      name: 'Смена тысячелетий',        desc: 'Начать Эпоху 7',                         check: () => epoch >= 7 },
+  { id: 'epoch_10',     name: 'По ту сторону',            desc: 'Начать Эпоху 10',                        check: () => epoch >= 10 },
+  { id: 'seals_100',    name: 'Тяжёлая корона',           desc: 'Заработать 100 печатей за всё время',    check: () => sealsTotal >= 100 },
+  { id: 'relic_all',    name: 'Полный арсенал',           desc: 'Собрать все Реликвии',                   check: () => RELICS_OWNED.size >= RELICS.length },
+  { id: 'coll_25',      name: 'Знаток могил',             desc: 'Открыть 25 разных карт',                 check: () => discovered.size >= 25 },
+  { id: 'coll_all',     name: 'Архивариус Бездны',        desc: 'Открыть все карты коллекции',            check: () => discovered.size >= Object.keys(CARDS).length },
+  { id: 'omen_100',     name: 'Провидец',                 desc: 'Собрать 100 Знамений на Алтаре',         check: () => (stats.omens || 0) >= 100 },
+  { id: 'mil_all',      name: 'Вершитель вех',            desc: 'Выполнить все 4 вехи за один забег',     check: () => milestoneIdx >= 4 },
+  { id: 'free_100',     name: 'Халявщик Бездны',          desc: 'Получить 100 бесплатных круток с вех',   check: () => (stats.freeRolls || 0) >= 100 },
+  { id: 'floor_20',     name: 'Легенда Арены',            desc: 'Достичь 20 этажа Арены',                 check: () => stats.floorMax >= 20 },
+  { id: 'boss_10',      name: 'Гроза владык',             desc: 'Победить 10 боссов Арены',               check: () => stats.bossKills >= 10 },
+  { id: 'casino_net',   name: 'Дом НЕ всегда в плюсе',    desc: 'Выйти из казино в суммарном плюсе +100 000 💎', check: () => Object.values(stats.g || {}).reduce((s, x) => s + (x.net || 0), 0) >= 100000 },
+  { id: 'syn_20',       name: 'Симфония синергий',        desc: 'Активировать 20 уникальных пар синергий одновременно', check: () => currentDiversity() >= 20 },
+  { id: 'time_10h',     name: 'Бездна смотрит в ответ',   desc: 'Играть 10 часов суммарно',               check: () => gameTime >= 36000 }
 ];

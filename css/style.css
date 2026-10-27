@@ -381,6 +381,15 @@ h1 small { display: block; font-size: 9px; letter-spacing: 2px; color: #8a6a4a; 
 .achv-row:not(.done) { opacity: .65; }
 .achv-row .achv-icon { font-size: 16px; }
 .achv-row small { color: #8a6a4a; }
+/* ===== АНИМАЦИЯ ПОЛУЧЕНИЯ ДОСТИЖЕНИЯ (пункт 7 ТЗ) ===== */
+.achv-pop { position: fixed; top: 90px; left: 50%; transform: translateX(-50%); z-index: 4000; min-width: 320px; max-width: 470px; padding: 14px 24px; text-align: center; background: linear-gradient(160deg, #2a1c06, #4a3010 55%, #2a1c06); border: 2px solid #e8c060; border-radius: 10px; box-shadow: 0 0 30px #c9a227aa, inset 0 0 24px #c9a22744; animation: achvIn .55s cubic-bezier(.2,.9,.3,1.2); overflow: hidden; pointer-events: none; }
+.achv-pop.out { opacity: 0; transform: translateX(-50%) translateY(-24px) scale(.92); transition: all .45s ease-in; }
+.achv-pop-shine { position: absolute; top: -50%; left: -80%; width: 60%; height: 200%; background: linear-gradient(100deg, transparent, #ffffff55, transparent); transform: rotate(18deg); animation: achvShine 1.6s ease-in-out .2s 2; }
+.achv-pop-title { font-size: 11px; letter-spacing: 2px; color: #ffd34d; text-transform: uppercase; margin-bottom: 4px; }
+.achv-pop-name { font-size: 19px; font-weight: bold; color: #fff0c0; text-shadow: 0 0 12px #e8c060; margin-bottom: 4px; }
+.achv-pop-desc { font-size: 12px; color: #c0a878; }
+@keyframes achvIn { 0% { opacity: 0; transform: translateX(-50%) translateY(-90px) scale(.7); } 60% { opacity: 1; transform: translateX(-50%) translateY(8px) scale(1.04); } 100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); } }
+@keyframes achvShine { 0% { left: -80%; } 100% { left: 130%; } }
 .goal { position: relative; background: #150d05; border: 1px solid #3a2414; border-radius: 4px; margin: 3px 0; padding: 4px 8px; font-size: 12px; overflow: hidden; display: flex; justify-content: space-between; }
 .goal i { position: absolute; left: 0; top: 0; bottom: 0; background: #2a5a2a55; z-index: 0; }
 .goal > * { position: relative; z-index: 1; }

@@ -60,6 +60,7 @@ function sfx(name) {
     case 'epoch': [262, 330, 392, 523, 659, 784].forEach((f, i) => sTone(c, { f, d: 0.5, type: 'sawtooth', v: 0.09, t: i * 0.1 })); sNoise(c, { d: 1.2, v: 0.1, freq: 400 }); break;
     case 'relic': [880, 1109, 1319].forEach((f, i) => sTone(c, { f, d: 0.6, type: 'sine', v: 0.1, t: i * 0.12 })); break;
     case 'milestone': sTone(c, { f: 659, d: 0.15, type: 'triangle', v: 0.1 }); sTone(c, { f: 988, d: 0.25, type: 'triangle', v: 0.1, t: 0.12 }); break;
+    case 'achv': [523, 659, 784, 1047].forEach((f, i) => sTone(c, { f, d: 0.3, type: 'triangle', v: 0.11, t: i * 0.11 })); sNoise(c, { d: 0.5, v: 0.04, freq: 2600 }); break;
     case 'omen': sTone(c, { f: 1047, f2: 1568, d: 0.25, v: 0.09 }); break;
     case 'boss': sTone(c, { f: 110, f2: 55, d: 0.5, type: 'sawtooth', v: 0.15 }); sNoise(c, { d: 0.4, v: 0.12, freq: 300 }); break;
   }
