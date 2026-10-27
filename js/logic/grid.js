@@ -11,18 +11,35 @@ function linked(a, b) { return SYNERGY_PAIRS.some(p => pairApplies(a, b, p)); }
 
 /* Подсветка клеток при выборе карты.
    У культистов (фидбек 3) звено живо только в ритуале — подсвечиваем
-   клетки рядом с Алтарём/ритуалом, иначе игрок поставит «в пустоту». */
+   клетки рядом с Алтарём/ритуалом, иначе игрок поставит «в пустоту».
+   У зверей (фидбек 4) синергий нет — подсвечиваем клетки по РАЦИОНУ:
+   хищнику — рядом с добычей, травоядному — рядом с флорой и т.д.
+   У демонов — клетки в «толпе» (рядом 2+ демона), где копятся угли. */
 function hintClass(r, c) {
   if (!placingMode || !pendingCard) return '';
   const p = CARDS[pendingCard]; const it = grid[r][c];
+  const mech = FACTION_INFO[faction].mechanic;
   if (it) {
     if (it.cardId === pendingCard && it.stacks < maxStacks()) return 'stack-hint';
     if (linked(p, CARDS[it.cardId])) return 'syn-hint';
     return '';
   }
   const ns = getNeighbors(r, c);
+  if (mech === 'cycle' && p.faction === 'beast' && p.diet) {
+    /* Рацион: где эта зверюга будет сытa */
+    if (p.diet === 'pred') return ns.some(n => isPrey(CARDS[n.item.cardId])) ? 'good-spot' : '';
+    if (p.diet === 'herb') return ns.some(n => CARDS[n.item.cardId].diet === 'flora') ? 'good-spot' : '';
+    if (p.diet === 'flora') return ns.some(n => isPrey(CARDS[n.item.cardId]) || isPredator(CARDS[n.item.cardId])) ? 'good-spot' : '';
+    if (p.diet === 'scav') return ns.length ? '' : ''; /* падальщику нужен радиус 2 — подсказку не рисуем */
+    return '';
+  }
+  if (mech === 'chaos' && p.faction === 'demon') {
+    /* Толпа: 2+ демона в 8-соседстве — угли будут копиться */
+    const nearDemons = getNeighbors8(r, c).filter(n => CARDS[n.item.cardId].faction === 'demon').length;
+    return nearDemons >= 2 ? 'good-spot' : '';
+  }
   if (!ns.some(n => linked(p, CARDS[n.item.cardId]))) return '';
-  if (FACTION_INFO[faction].mechanic === 'formation' && p.faction === 'cultist') {
+  if (mech === 'formation' && p.faction === 'cultist') {
     /* рядом с ритуалом (в т.ч. с самим Алтарём) — живое звено; иначе звено будет мертво */
     if (INC_CTX.ritual.size === 0) return 'syn-hint'; /* Алтаря на поле нет ещё — не пугаем игрока */
     const nearRitual = ns.some(n => INC_CTX.ritual.has(n.r + ',' + n.c));
@@ -80,7 +97,8 @@ function onCellClick(r, c) {
       if (item.cardId !== pendingCard || item.stacks >= maxStacks()) return;
       item.stacks++; item.maxHp += hp; item.hp += hp;
     } else {
-      grid[r][c] = { cardId: pendingCard, stacks: 1, hp, maxHp: hp, predBuff: 0, mutBuff: 1 };
+      grid[r][c] = { cardId: pendingCard, stacks: 1, hp, maxHp: hp,
+        predBuff: 0, mutBuff: 1, embers: 0, hunger: 1, graze: 0, floraBuff: 0, scavBuff: 0, boomUntil: 0, petrCount: 0 };
     }
     stats.placed++;
     sfx('place');

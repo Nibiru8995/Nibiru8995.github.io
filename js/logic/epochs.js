@@ -53,12 +53,11 @@ function doEpochUp(newFaction) {
   milestoneIdx = 0; freeRolls = 0;
   omens = []; omenTimer = 60; renderOmens();
 
-  /* Стартовый набор фракции: 2 разных ★1 и 1 ★3 (у культистов — гарантированный
-     Ритуальный Алтарь: без него их механика не видна) */
+  /* Стартовый набор фракции (фидбек раунда 3): 2 разных ★1 + гарантированный
+     ключ механики: нежить — Некромант (узел цепей), культисты — Ритуальный Алтарь,
+     звери — готовая цепь Волк+Кабан+Древень, демоны — Кровавый Жрец */
   const startR1 = POOL_1.filter(id => CARDS[id].faction === faction);
-  const startR3 = POOL_3.filter(id => CARDS[id].faction === faction);
-  const alt = faction === 'cultist' ? 'c4' : pick(startR3);
-  const gift = drawDistinct(startR1, 2).concat([alt]);
+  const gift = drawDistinct(startR1, 2).concat(startKitFor(faction));
   gift.forEach(id => { inventory[id] = (inventory[id] || 0) + 1; discovered.add(id); });
 
   computeIncome();

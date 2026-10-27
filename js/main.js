@@ -122,9 +122,7 @@ function startFreshRun() {
   milestoneIdx = 0; freeRolls = 0;
   omens = []; omenTimer = 60;
   const startR1 = POOL_1.filter(id => CARDS[id].faction === faction);
-  const startR3 = POOL_3.filter(id => CARDS[id].faction === faction);
-  const alt = faction === 'cultist' ? 'c4' : pick(startR3);
-  drawDistinct(startR1, 2).concat([alt]).forEach(id => { inventory[id] = (inventory[id] || 0) + 1; discovered.add(id); });
+  drawDistinct(startR1, 2).concat(startKitFor(faction)).forEach(id => { inventory[id] = (inventory[id] || 0) + 1; discovered.add(id); });
   computeIncome();
   gameStarted = true; noSave = false;
   saveRun(); saveMeta();
@@ -187,11 +185,9 @@ function startDebugRun(ep, f, rich, keepSave) {
   altBuff = { mult: 1, until: 0, label: '' };
   milestoneIdx = 0; freeRolls = 0;
   omens = []; omenTimer = 9999;
-  /* Стартовый набор: 2×★1 + ★3 (у культистов — Алтарь) + мешок карт для теста механик */
+  /* Стартовый набор: 2×★1 + ключ механики фракции + мешок карт для теста механик */
   const startR1 = POOL_1.filter(id => CARDS[id].faction === faction);
-  const startR3 = POOL_3.filter(id => CARDS[id].faction === faction);
-  const alt = faction === 'cultist' ? 'c4' : pick(startR3);
-  drawDistinct(startR1, 2).concat([alt]).forEach(id => { inventory[id] = (inventory[id] || 0) + 3; discovered.add(id); });
+  drawDistinct(startR1, 2).concat(startKitFor(faction)).forEach(id => { inventory[id] = (inventory[id] || 0) + 3; discovered.add(id); });
   POOL_1.filter(id => CARDS[id].faction === faction).forEach(id => { inventory[id] = (inventory[id] || 0) + 12; discovered.add(id); });
   POOL_3.filter(id => CARDS[id].faction === faction).forEach(id => { inventory[id] = (inventory[id] || 0) + 5; discovered.add(id); });
   POOL_4.filter(id => CARDS[id].faction === faction).forEach(id => { inventory[id] = (inventory[id] || 0) + 1; discovered.add(id); });

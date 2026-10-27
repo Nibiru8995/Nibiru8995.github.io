@@ -14,7 +14,7 @@
 */
 const EPOCHS = [
   { unlock: 'Алтарь 3×3 + Гача ★1/★3 + фракция «Нежить»',  threshold: 0,             seals: 0 },
-  { unlock: '⚔ Боевая арена',                              threshold: 17000,         seals: 4 },
+  { unlock: '⚔ Колыбель Войны — автобатлер',                threshold: 17000,         seals: 4 },
   { unlock: 'Поле 5×5 + ★4 в пуле гачи',                   threshold: 100000,        seals: 5 },
   { unlock: '🎰 Казино',                                   threshold: 470000,        seals: 6 },
   { unlock: 'Фракция «Культисты»',                         threshold: 2000000,       seals: 7 },
@@ -52,7 +52,7 @@ function epochMaxSize(e) {
 /* Лимит стака карт на клетке (расширяется Печатью Зодчего) */
 function maxStacks() { return 5 + sealLv.arch; }
 
-/* ---- Казино и Боевая арена открываются в РАЗНЫХ Эпохах ----
+/* ---- Казино и Колыбель Войны открываются в РАЗНЫХ Эпохах ----
    Арена — Эпоха 2 (бой), Казино — Эпоха 4 (после Алтаря 5×5 и ★4). */
 const CASINO_EPOCH = 4;
 const ARENA_EPOCH = 2;
