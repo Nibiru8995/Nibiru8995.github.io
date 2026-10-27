@@ -9,7 +9,7 @@
    Состояние боя (battle) — мгновенное, в сохранение не пишется.
    ============================================================ */
 
-let battle = { units: [], floats: [], active: false, t: 0, last: 0 };
+let battle = { units: [], floats: [], projs: [], sparks: [], active: false, t: 0, last: 0, shake: 0, over: false, banner: null };
 
 /* ---------------- Бойцы: состав армии ---------------- */
 function reviveFighters() {
@@ -115,7 +115,8 @@ function laneY(i) { return [96, 160, 224][i % 3]; }
 
 function spawnBattle() {
   const W = ARENA.FIELD_W, H = ARENA.FIELD_H;
-  battle.units = []; battle.floats = []; battle.t = 0;
+  battle.units = []; battle.floats = []; battle.projs = []; battle.sparks = [];
+  battle.t = 0; battle.shake = 0; battle.over = false; battle.banner = null;
   const heroSquads = buildHeroSquads();
   const wave = arenaState.enemy;
   const hm = ARENA.hpMult(arenaState.floor), dm = ARENA.dmgMult(arenaState.floor);
@@ -124,36 +125,78 @@ function spawnBattle() {
     const c = CARDS[s.cardId];
     const r = c.rarity;
     battle.units.push({
-      side: 'hero', cardId: s.cardId, k: s.k, rarity: r,
+      side: 'hero', cardId: s.cardId, k: s.k, rarity: r, boss: false,
       name: c.name, img: CARD_ART_DIR + s.cardId + '.png',
-      x: 46 + Math.floor(i / 3) * 46 + rand(10), y: laneY(i) + rand(14) - 7,
+      /* ФИДБЕК «не затянуто»: армии стартуют БЛИЗКО (марш ~3-5с, а не ~15с) */
+      x: 140 + Math.floor(i / 3) * 46 + rand(8), y: laneY(i) + rand(14) - 7,
       hp: fighterHp(r) * s.k, maxHp: fighterHp(r) * s.k,
       dmg: fighterDmg(r) * s.k, range: r >= 5 ? 100 : r === 4 ? 70 : 34,
-      speed: r >= 4 ? 22 : 34, cd: 0.4 + Math.random() * 0.4,
+      speed: r >= 4 ? 42 : 60, cd: 0.4 + Math.random() * 0.4,
       cdMax: { 1: 1.2, 3: 1.4, 4: 1.7, 5: 2.0 }[r] || 1.4,
-      flash: 0, lunge: 0, dead: false, deadT: 0, bob: Math.random() * 6.28
+      flash: 0, lunge: 0, slash: 0, dead: false, deadT: 0, bob: Math.random() * 6.28
     });
   });
   (wave ? wave.units : []).forEach((d, i) => {
     const r = d.rarity;
     const hpM = d.boss ? bm : hm, dmM = d.boss ? bdm : dm;
     battle.units.push({
-      side: 'foe', rarity: r, k: d.k, name: d.boss ? wave.name : ARENA.enemyNames[d.faction],
+      side: 'foe', rarity: r, k: d.k, boss: !!d.boss, name: d.boss ? wave.name : ARENA.enemyNames[d.faction],
       img: foeSprite(d.faction, d.boss),
-      x: W - 46 - Math.floor(i / 3) * 46 - rand(10), y: laneY(i) + rand(14) - 7,
+      x: ARENA.FIELD_W - 140 - Math.floor(i / 3) * 46 - rand(8), y: laneY(i) + rand(14) - 7,
       hp: fighterHp(r) * d.k * hpM, maxHp: fighterHp(r) * d.k * hpM,
       dmg: fighterDmg(r) * d.k * dmM, range: d.boss ? 100 : r >= 4 ? 70 : 34,
-      speed: r >= 4 ? 22 : 34, cd: 0.6 + Math.random() * 0.4,
+      speed: r >= 4 ? 42 : 60, cd: 0.6 + Math.random() * 0.4,
       cdMax: { 1: 1.2, 3: 1.4, 4: 1.7, 5: 2.0 }[r] || 1.4,
-      flash: 0, lunge: 0, dead: false, deadT: 0, bob: Math.random() * 6.28
+      flash: 0, lunge: 0, slash: 0, dead: false, deadT: 0, bob: Math.random() * 6.28
     });
   });
   battle.active = true;
 }
 
+/* --------------- УРОН, СНАРЯДЫ, ЭФФЕКТЫ УДАРА ---------------
+   ФИДБЕК (раунд 4, «доработай визуал»): стрелки (★4/★5 и боссы)
+   ПАЛЯТ снарядами (болты летят по дуге-трассе), ближний бей —
+   с взмахом (слэш-арка). Попадания сыпят искры, смерти трясут
+   экран и поднимают «душу». Урон считается в одном месте. */
+function applyHit(attacker, tgt, dmgOut) {
+  tgt.hp -= dmgOut;
+  tgt.flash = 1;
+  for (let i = 0; i < 5; i++) {
+    battle.sparks.push({
+      x: tgt.x + rand(18) - 9, y: tgt.y + rand(14) - 7,
+      vx: (Math.random() - 0.5) * 3.2, vy: (Math.random() - 0.5) * 3.2 - 0.6,
+      life: 14 + rand(8), maxLife: 22,
+      color: attacker.side === 'hero' ? '#ffe080' : '#ff9080'
+    });
+  }
+  battle.floats.push({ x: tgt.x + rand(16) - 8, y: tgt.y - 26, text: '-' + fmt(dmgOut), color: attacker.side === 'hero' ? '#ffe080' : '#ff9090', life: 50, maxLife: 50 });
+  if (tgt.hp <= 0) {
+    tgt.hp = 0; tgt.dead = true; tgt.deadT = 0;
+    /* Тряска + «душа» павшего */
+    battle.shake = Math.max(battle.shake, tgt.boss ? 7 : 3);
+    for (let i = 0; i < 10; i++) {
+      battle.sparks.push({
+        x: tgt.x + rand(14) - 7, y: tgt.y,
+        vx: (Math.random() - 0.5) * 1.2, vy: -1.4 - Math.random() * 1.6,
+        life: 26 + rand(14), maxLife: 40,
+        color: tgt.side === 'foe' ? '#a0e0ff' : '#ffd0a0', soul: true
+      });
+    }
+    battle.floats.push({ x: tgt.x, y: tgt.y - 30, text: tgt.side === 'foe' ? 'ПОВЕРЖЕН' : 'ПАЛ', color: tgt.side === 'foe' ? '#a0e080' : '#ff8080', life: 60, maxLife: 60 });
+    if (tgt.side === 'hero') {
+      /* павшие вернутся после боя (reviveFighters) */
+      arenaState.fallen = arenaState.fallen || {};
+      arenaState.fallen[tgt.cardId] = (arenaState.fallen[tgt.cardId] || 0) + tgt.k;
+      stats.arenaDeaths = (stats.arenaDeaths || 0) + tgt.k;
+    }
+  }
+}
+
 /* ---------------- ХОД БОЯ ---------------- */
 function battleStep(dt) {
   battle.t += dt;
+  battle.shake = Math.max(0, battle.shake - dt * 9);
+  if (battle.banner) battle.banner.life = Math.max(0, battle.banner.life - dt / 1.8);
   const ap = altarPower();
   const alive = side => battle.units.filter(u => !u.dead && u.side === side);
   const heroes = alive('hero'), foes = alive('foe');
@@ -161,6 +204,9 @@ function battleStep(dt) {
     if (u.dead) { u.deadT += dt; return; }
     u.flash = Math.max(0, u.flash - dt * 4);
     u.lunge = Math.max(0, u.lunge - dt * 6);
+    u.slash = Math.max(0, (u.slash || 0) - dt * 5);
+    /* Баннер боя: после конца анимации добивания бои не продолжаются */
+    if (battle.over) return;
     const enemies = u.side === 'hero' ? foes : heroes;
     if (!enemies.length) return;
     /* ближайший живой враг */
@@ -179,40 +225,66 @@ function battleStep(dt) {
       u.cd -= dt;
       if (u.cd <= 0) {
         u.cd = u.cdMax * (0.9 + Math.random() * 0.2);
-        u.lunge = 1;
         const dmgOut = Math.max(1, Math.round(u.dmg * (u.side === 'hero' ? ap : 1) * (0.9 + Math.random() * 0.2)));
-        tgt.hp -= dmgOut;
-        tgt.flash = 1;
-        battle.floats.push({ x: tgt.x + rand(16) - 8, y: tgt.y - 26, text: '-' + fmt(dmgOut), color: u.side === 'hero' ? '#ffe080' : '#ff9090', life: 50, maxLife: 50 });
-        if (tgt.hp <= 0) {
-          tgt.hp = 0; tgt.dead = true; tgt.deadT = 0;
-          if (tgt.side === 'hero') {
-            /* павшие вернутся после боя (reviveFighters) */
-            arenaState.fallen = arenaState.fallen || {};
-            arenaState.fallen[tgt.cardId] = (arenaState.fallen[tgt.cardId] || 0) + tgt.k;
-            stats.arenaDeaths = (stats.arenaDeaths || 0) + tgt.k;
-          }
-          battle.floats.push({ x: tgt.x, y: tgt.y - 30, text: tgt.side === 'foe' ? 'ПОВЕРЖЕН' : 'ПАЛ', color: tgt.side === 'foe' ? '#a0e080' : '#ff8080', life: 60, maxLife: 60 });
+        if (u.range >= 70) {
+          /* СТРЕЛОК: болт летит к цели — урон придёт с прилётом */
+          u.lunge = 0.6;
+          battle.projs.push({
+            x: u.x, y: u.y - 10, side: u.side,
+            tgt, speed: 260 + Math.random() * 60,
+            dmg: dmgOut, life: 2.2,
+            color: u.side === 'hero' ? (u.boss ? '#ffcf60' : '#a0d8ff') : (u.boss ? '#ff6040' : '#ff9a60')
+          });
+        } else {
+          /* БЛИЖНИЙ БОЙ: взмах + мгновенный урон */
+          u.lunge = 1; u.slash = 1;
+          applyHit(u, tgt, dmgOut);
         }
       }
     }
   });
+  /* Полёт снарядов */
+  for (let i = battle.projs.length - 1; i >= 0; i--) {
+    const p = battle.projs[i];
+    p.life -= dt;
+    const t2 = p.tgt;
+    const tx = t2.x, ty = t2.y - 10;
+    const dx = tx - p.x, dy = ty - p.y, l = Math.hypot(dx, dy) || 1;
+    const step = p.speed * dt;
+    if (l <= step || p.life <= 0) {
+      if (!t2.dead && p.life > 0 && !battle.over) applyHit({ side: p.side }, t2, p.dmg);
+      battle.projs.splice(i, 1);
+      continue;
+    }
+    p.x += (dx / l) * step; p.y += (dy / l) * step;
+  }
+  /* Искры */
+  for (let i = battle.sparks.length - 1; i >= 0; i--) {
+    const s = battle.sparks[i];
+    s.life -= dt * 60;
+    s.x += s.vx; s.y += s.vy;
+    if (s.soul) s.vy -= dt * 2; else s.vy += dt * 6;
+    if (s.life <= 0) battle.sparks.splice(i, 1);
+  }
   /* всплывающие цифры */
   for (let i = battle.floats.length - 1; i >= 0; i--) {
     const f = battle.floats[i];
     f.life -= dt * 60; f.y -= dt * 26;
     if (f.life <= 0) battle.floats.splice(i, 1);
   }
+  if (battle.over) return;
   /* контроль завершения */
   if (!foes.length) { endBattle(true); return; }
   if (!heroes.length) { endBattle(false); return; }
 }
 
 function endBattle(win) {
-  battle.active = false;
+  if (battle.over) return;
+  battle.over = true;
   arenaState.fighting = false;
-  /* поле очищается чуть позже — дать анимации гибели доиграть */
-  setTimeout(() => { if (!battle.active) { battle.units = []; battle.floats = []; renderBattle(); } }, 1600);
+  /* Баннер «ПОБЕДА / ПОРАЖЕНИЕ» — поле доигрывает анимацию добивания */
+  battle.banner = { text: win ? 'ПОБЕДА' : 'ПОРАЖЕНИЕ', win, life: 1, maxLife: 1 };
+  battle.shake = Math.max(battle.shake, win ? 6 : 4);
   const enemy = arenaState.enemy;
   if (win) {
     const reward = Math.round(arenaReward(arenaState.floor, arenaState.room));
@@ -242,9 +314,18 @@ function endBattle(win) {
     if (arenaAuto) { arenaAuto = false; const chk = $('arenaAutoChk'); if (chk) chk.checked = false; }
     updateArenaUI(); renderFighters();
   }
+  /* Чуть позже поле очищается — дать баннеру и гибели доиграть.
+     ЗАЩИТА: если в это время уже начался НОВЫЙ бой (авторежим) —
+     поле не трогаем. */
+  setTimeout(() => {
+    if (!battle.over) return; /* пошёл новый бой — очистка отменяется */
+    battle.units = []; battle.floats = []; battle.projs = []; battle.sparks = [];
+    battle.active = false; battle.over = false; battle.banner = null; battle.last = 0;
+    renderBattle();
+  }, 2000);
 }
 
-/* Цикл отрисовки+симуляции: живёт, пока идёт бой */
+/* Цикл отрисовки+симуляции: живёт, пока идёт бой (или доигрывает баннер) */
 function battleLoop(now) {
   if (!battle.active) { battle.last = 0; return; }
   if (!battle.last) battle.last = now;
@@ -309,7 +390,8 @@ function arenaFightClick() {
 
 function arenaRetreat() {
   if (!arenaState.fighting) return;
-  battle.active = false;
+  battle.active = false; battle.over = false; battle.banner = null;
+  battle.units = []; battle.floats = []; battle.projs = []; battle.sparks = [];
   arenaState.fighting = false;
   reviveFighters();
   arenaState.status = 'Вы отступили. Отряды восстановлены, волна соберётся заново.';
@@ -318,6 +400,6 @@ function arenaRetreat() {
 
 function initArena() {
   arenaState.enemy = generateWave(arenaState.floor, arenaState.room);
-  battle = { units: [], floats: [], active: false, t: 0, last: 0 };
+  battle = { units: [], floats: [], projs: [], sparks: [], active: false, t: 0, last: 0, shake: 0, over: false, banner: null };
   updateArenaUI();
 }

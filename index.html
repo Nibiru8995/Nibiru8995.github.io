@@ -8,7 +8,7 @@
 </head>
 <body>
 
-<h1>Гача-Гриндер 2<small>Тёмное Наследие</small></h1>
+<h1><span>Гача-Гриндер 2</span><small>Тёмное Наследие</small></h1>
 <div id="topBar">
   <span class="res-chip"><span class="crystal-icon"></span><span id="crystals">2500</span></span>
   <span id="rate">+0/сек</span>
@@ -19,9 +19,9 @@
 <div id="main">
   <div id="arenaCol">
     <div id="arenaPanel">
-      <div class="arena-title">⚔ КОЛЫБЕЛЬ ВОЙНЫ</div>
+      <div class="arena-title">✠ КОЛЫБЕЛЬ ВОЙНЫ</div>
       <div class="arena-floor-row"><span>Этаж <b id="arenaFloorNum">1</b></span><div class="arena-dots" id="roomIndicator"></div></div>
-      <div class="arena-room-header"><span id="arenaRoomText">✖ Комната 1/5</span></div>
+      <div class="arena-room-header"><span id="arenaRoomText">Комната 1 / 5</span></div>
       <div class="arena-enemy-card">
         <canvas id="battleCanvas" width="560" height="320"></canvas>
         <div class="arena-enemy-name" id="arenaMonsterName">Волна приближается</div>
@@ -30,11 +30,11 @@
       <div class="arena-stats"><span>⚔ Атака: <span id="arenaStatAtk" class="hero">0</span></span><span>❤ HP: <span id="arenaStatHp" class="hero">0</span></span><span>⚡ Урон: <span id="arenaStatDmg" class="hero">0</span></span></div>
       <div class="arena-status" id="altarBuff" style="color:#80e0ff"></div>
       <div class="arena-fight-row">
-        <button id="arenaFightBtn" style="flex:1;">⚔ Атаковать</button>
+        <button id="arenaFightBtn" style="flex:1;">⚔ В БОЙ</button>
         <label class="auto-label"><input type="checkbox" id="arenaAutoChk"> Авто</label>
       </div>
-      <button id="arenaRetreatBtn">🏃 Отступить (фарм)</button>
-      <div class="arena-status" id="arenaStatus">Добавьте бойцов и нажмите «Атаковать».</div>
+      <button id="arenaRetreatBtn">↩ Отступить (фарм)</button>
+      <div class="arena-status" id="arenaStatus">Добавьте бойцов и жмите «В БОЙ».</div>
     </div>
     <div id="fightersPanel"><div id="fightersHeader">БОЙЦЫ <span id="fightersTotalDmg">Σ 0</span></div><div id="fightersList"></div></div>
   </div>

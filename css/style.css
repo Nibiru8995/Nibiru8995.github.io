@@ -19,9 +19,21 @@ body {
   padding: 4px; min-height: 100vh;
 }
 body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0; background: radial-gradient(ellipse at 50% 45%, transparent 40%, #00000088 100%); }
+/* АТМОСФЕРА (фидбек «сделай атмосферно»): дрейфующие слои тумана за контентом */
+body::after { content: ''; position: fixed; inset: -12%; pointer-events: none; z-index: 1;
+  background:
+    radial-gradient(ellipse 55% 38% at 18% 28%, rgba(140,80,20,0.09), transparent 70%),
+    radial-gradient(ellipse 48% 34% at 82% 62%, rgba(70,30,100,0.08), transparent 70%),
+    radial-gradient(ellipse 40% 30% at 55% 90%, rgba(120,60,10,0.07), transparent 70%);
+  animation: fogDrift 26s ease-in-out infinite alternate; }
+@keyframes fogDrift { from { transform: translate3d(-2.5%, -1.5%, 0) scale(1); opacity: .85; } to { transform: translate3d(2.5%, 2%, 0) scale(1.07); opacity: 1; } }
 
-h1 { font-size: 14px; letter-spacing: 3px; text-transform: uppercase; color: var(--accent2); text-align: center; line-height: 1; margin-bottom: 2px; position: relative; z-index: 2; }
-h1 small { display: block; font-size: 9px; letter-spacing: 2px; color: #8a6a4a; margin-top: 2px; }
+h1 { font-size: 14px; letter-spacing: 3px; text-transform: uppercase; color: #e8c060; text-align: center; line-height: 1; margin-bottom: 2px; position: relative; z-index: 2; text-shadow: 0 0 12px #c9a22766, 0 2px 2px #000; }
+h1 > span { display: inline-flex; align-items: center; gap: 10px; }
+h1 > span::before, h1 > span::after { content: ''; width: 46px; height: 1px; }
+h1 > span::before { background: linear-gradient(90deg, transparent, #c9a22799); }
+h1 > span::after { background: linear-gradient(90deg, #c9a22799, transparent); }
+h1 small { display: block; font-size: 9px; letter-spacing: 2px; color: #8a6a4a; margin-top: 2px; text-shadow: none; }
 #topBar { display: flex; gap: 12px; align-items: center; justify-content: center; padding: 4px 18px; margin-bottom: 4px; background: linear-gradient(#2a1a0f, #1a0f08); border: 1px solid var(--border2); border-radius: 6px; box-shadow: inset 0 1px 0 #6a4a2a, 0 2px 4px #00000088; font-size: 15px; font-weight: bold; flex-shrink: 0; position: relative; z-index: 2; flex-wrap: wrap; }
 .crystal-icon { display: inline-block; width: 14px; height: 14px; background: linear-gradient(135deg,#d4b060, #806020); clip-path: polygon(50% 0%, 100% 38%, 75% 100%, 25% 100%, 0% 38%); margin-right: 4px; vertical-align: middle; box-shadow: 0 0 4px #c9a22788; }
 .res-chip { display: inline-flex; align-items: center; gap: 3px; font-size: 13px; }
@@ -34,7 +46,10 @@ h1 small { display: block; font-size: 9px; letter-spacing: 2px; color: #8a6a4a; 
 /* ===== АРЕНА И БОЙЦЫ ===== */
 #arenaCol { width: 300px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; max-height: 100%; filter: brightness(0.92); overflow: hidden; }
 #arenaPanel { background: linear-gradient(#2a1a0f, #150d05); border: 2px solid var(--border2); border-radius: 8px; padding: 10px; box-shadow: inset 0 0 12px #00000088; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;}
-.arena-title { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: #d4b050; text-align: center; font-weight: bold; padding-bottom: 4px; }
+.arena-title { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: #d4b050; text-align: center; font-weight: bold; padding-bottom: 4px; text-shadow: 0 0 10px #c9a22755; }
+#arenaPanel { position: relative; }
+#arenaPanel::before { content: ''; position: absolute; inset: 4px; border: 1px solid #c9a22726; border-radius: 6px; pointer-events: none; z-index: 0; }
+#arenaPanel > * { position: relative; z-index: 1; }
 .arena-floor-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #d4c0a0; background: #1a0a0a; padding: 4px 8px; border-radius: 4px; border: 1px solid #4a2020; }
 .arena-floor-row b { color: #ffe080; }
 .arena-dots { display: flex; gap: 3px; }
@@ -117,8 +132,11 @@ h1 small { display: block; font-size: 9px; letter-spacing: 2px; color: #8a6a4a; 
 .epoch-big-btn { flex: 1; min-height: 56px; font-size: 15px; font-weight: bold; letter-spacing: 2px; color: #ffe080; background: linear-gradient(to bottom, #6a4a18 0%, #3a2410 100%); border: 2px solid var(--gold); border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: inset 0 2px 0 #b08040, 0 0 14px #c9a22744, 0 4px 6px #000000aa; text-transform: uppercase; font-family: 'Georgia', serif; padding: 6px 8px; transition: all .15s; }
 .epoch-big-btn:hover { background: linear-gradient(to bottom, #8a5a20 0%, #4a3014 100%); box-shadow: inset 0 2px 0 #b08040, 0 0 20px #c9a22788; transform: translateY(-1px); }
 .epoch-big-btn:active { transform: translateY(2px); }
-.epoch-big-btn.notready { opacity: .82; filter: saturate(.7); }
+.epoch-big-btn.notready { opacity: .86; filter: saturate(.8);
+  /* Прогресс порога — заливка фона золотом слева направо (--pct ставит hud.js) */
+  background: linear-gradient(90deg, #6a4a18 0%, #7a5a1e var(--pct, 0%), #241608 calc(var(--pct, 0%) + 2%), #3a2410 100%); }
 .epoch-big-btn .cost { font-size: 12px; color: #d4b050; margin-top: 3px; font-weight: normal; letter-spacing: 0; }
+.epoch-big-btn .ep-name { font-size: 10px; letter-spacing: 1px; color: #d4b050; font-weight: normal; text-transform: none; opacity: .95; }
 #rollBar { display: flex; flex-wrap: wrap; gap: 6px; align-self: stretch; justify-content: center; align-items: stretch; margin-top: 2px; }
 .roll-btn { flex: 1 1 96px; min-width: 90px; min-height: 46px; font-size: 12px; font-weight: bold; letter-spacing: 1px; color: #f0e0c0; background: linear-gradient(to bottom, #5a3a20 0%, #2a1a0f 100%); border: 1px solid var(--border2); border-radius: 6px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: inset 0 2px 0 #8a5a2a, 0 4px 6px #000000aa; text-transform: uppercase; font-family: 'Georgia', serif; padding: 5px 6px; transition: all .1s; }
 .roll-btn:hover:not(:disabled) { background: linear-gradient(to bottom, #7a4a28 0%, #3a2414 100%); transform: translateY(-1px); }
@@ -406,8 +424,19 @@ h1 small { display: block; font-size: 9px; letter-spacing: 2px; color: #8a6a4a; 
 .goal > * { position: relative; z-index: 1; }
 .goal em { font-style: normal; color: #ffd34d; }
 
-#toast { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); background: #3a1010; border: 2px solid #c9a227; color: #ffe080; padding: 8px 18px; border-radius: 8px; z-index: 2000; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .25s; max-width: 90vw; text-align: center; }
+#toast { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); background: linear-gradient(#3a1414, #1a0808); border: 2px solid #c9a227; color: #ffe080; padding: 8px 18px; border-radius: 8px; z-index: 2000; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .25s; max-width: 90vw; text-align: center; box-shadow: 0 0 24px #c9a22744, 0 4px 10px #000000cc; }
 #toast.show { opacity: 1; }
+
+/* Стилизованные скроллбары (тёмный вайб во всех окнах) */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #0d0704; }
+::-webkit-scrollbar-thumb { background: linear-gradient(#6a4a2a, #3a2414); border-radius: 5px; border: 1px solid #8a5a2a; }
+::-webkit-scrollbar-thumb:hover { background: linear-gradient(#8a5a2a, #4a3018); }
+
+/* Игровые модалки (кроме казино) — золотая окантовка изнутри */
+#epochModal .modal-card, #epochWarn .modal-card, #factionModal .modal-card, #relicsModal .modal-card,
+#relicPick .modal-card, #achvModal .modal-card, #dbgModal .modal-card, #dlg .modal-card, #dropModal .modal-card, #multiModal .modal-card {
+  box-shadow: 0 0 50px #000000cc, inset 0 0 0 1px #c9a22730, inset 0 0 40px #000000aa; }
 #tutPanel { display: none; position: fixed; top: 8px; left: 50%; transform: translateX(-50%); width: min(520px, 94vw); z-index: 300; background: linear-gradient(#3a2414,#1a0f08); border: 2px solid #60ff90; border-radius: 10px; padding: 10px 14px; font-size: 13px; line-height: 1.45; box-shadow: 0 0 24px #000; }
 #tutPanel.show { display: block; }
 #tutBtns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; align-items: center; }
