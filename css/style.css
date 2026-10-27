@@ -185,6 +185,7 @@ h1 small { display: block; font-size: 9px; letter-spacing: 2px; color: #8a6a4a; 
 .syn-flow { stroke: #eaffc0; stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 5 18; opacity: 1; filter: drop-shadow(0 0 5px #b0ff60); animation: synFlow 1.4s linear infinite; }
 .syn-flow.mult { stroke: #fff2a0; filter: drop-shadow(0 0 6px #ffe060); animation-duration: 1.1s; }
 .syn-flow.faded { opacity: .3; }
+.syn-flow.warded { stroke: #ffd34d; filter: drop-shadow(0 0 6px #e8c060); opacity: 1; animation-duration: 1s; }
 @keyframes synFlow { from { stroke-dashoffset: 46; } to { stroke-dashoffset: 0; } }
 /* ===== ЭФФЕКТ ПЕРЕЛЁТА КАРТЫ (пункт 12 ТЗ) ===== */
 .fly-card { position: fixed; z-index: 3000; border-radius: 8px; border: 2px solid var(--glow); background: radial-gradient(circle, var(--cardBg, #2a1a0f), #0a0503); display: flex; align-items: center; justify-content: center; font-size: 26px; pointer-events: none; box-shadow: 0 0 24px var(--glow); transition: transform .65s cubic-bezier(.3,.7,.3,1), opacity .65s; will-change: transform, opacity; }

@@ -125,11 +125,14 @@ function drawSynergies() {
       base.setAttribute('x2', x2); base.setAttribute('y2', y2);
       base.setAttribute('class', kind === 'mult' ? 'base-mult' : 'base-good');
       synergySvg.appendChild(base);
-      const usage = incomeCache.pairUsage[SYNERGY_PAIRS.indexOf(pair)] || 1;
+      const lk = linkKey(r, c, nb.r, nb.c);
+      const lf = incomeCache.linkFactors && incomeCache.linkFactors[lk] !== undefined ? incomeCache.linkFactors[lk] : 1;
+      const warded = !!(incomeCache.linkWarded && incomeCache.linkWarded[lk]);
       const flow = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       flow.setAttribute('x1', x1); flow.setAttribute('y1', y1);
       flow.setAttribute('x2', x2); flow.setAttribute('y2', y2);
-      flow.setAttribute('class', 'syn-flow' + (kind === 'mult' ? ' mult' : '') + (usage > 1 ? ' faded' : ''));
+      /* faded — реальное затухание из экономики; warded — звено под Аурой Власти (Лич) */
+      flow.setAttribute('class', 'syn-flow' + (kind === 'mult' ? ' mult' : '') + (lf < 1 ? ' faded' : '') + (warded ? ' warded' : ''));
       synergySvg.appendChild(flow);
     });
   }

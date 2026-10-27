@@ -50,6 +50,12 @@ function cardsOnGrid() {
   return n;
 }
 
+/* Канонический ключ звена между двумя соседними клетками (порядок аргументов не важен).
+   Используется экономикой и рендером — единая правда о затухании звеньев. */
+function linkKey(r1, c1, r2, c2) {
+  return (r1 < r2 || (r1 === r2 && c1 < c2)) ? (r1 + ',' + c1 + '|' + r2 + ',' + c2) : (r2 + ',' + c2 + '|' + r1 + ',' + c1);
+}
+
 /* ---------------- ФОРМАЦИИ (общая механика) ---------------- */
 function formation(r, c) {
   const it = grid[r][c]; if (!it) return 1;
@@ -148,8 +154,11 @@ function factionMult(r, c, card, item) {
 
 /* ---------------- РАСЧЁТ ДОХОДА (одним проходом) ---------------- */
 function computeIncome() {
-  const usage = {};           // pairIndex -> число активаций
+  const usage = {};           // pairIndex -> число НЕзащищённых активаций (слоты затухания)
+  const pairSeen = {};        // пары хотя бы с одним звеном (для Хора — независимо от аур)
   const cellActs = {};        // 'r,c' -> [{pair, factor}]
+  const linkFactors = {};     // linkKey -> эффективный множитель затухания (тултип, линии)
+  const linkWarded = {};      // linkKey -> 1, если звено под Аурой Власти (Лич)
 
   /* Спец-флаги ★4/★5: Лич (снятие затухания), Голос Пустоты, Глаз Бездны */
   let hasLich = false, hasVoice = false, hasEye = false;
@@ -174,19 +183,28 @@ function computeIncome() {
       const pair = findPair(CARDS[it.cardId], CARDS[grid[nr][nc].cardId]);
       if (!pair) continue;
       const idx = SYNERGY_PAIRS.indexOf(pair);
+      pairSeen[idx] = 1;
+      const key = r + ',' + c, key2 = nr + ',' + nc;
+      const lk = linkKey(r, c, nr, nc);
+      /* «Лич» (★4): звенья рядом с ним НЕ затухают (×1.0) и НЕ расходуют
+         слоты затухания пары — аура реально снимает штраф за множественные связи */
+      if (hasLich && (lichAdj.has(key) || lichAdj.has(key2))) {
+        (cellActs[key] = cellActs[key] || []).push({ pair, factor: 1 });
+        (cellActs[key2] = cellActs[key2] || []).push({ pair, factor: 1 });
+        linkFactors[lk] = 1; linkWarded[lk] = 1;
+        continue;
+      }
       usage[idx] = (usage[idx] || 0) + 1;
       let factor = SYN_DR[Math.min(usage[idx] - 1, SYN_DR.length - 1)];
-      const key = r + ',' + c, key2 = nr + ',' + nc;
-      /* «Лич» (★4): звенья рядом с ним НЕ затухают */
-      if (hasLich && (lichAdj.has(key) || lichAdj.has(key2))) factor = 1;
       /* «Голос Пустоты» (★5): затухание у культистов не ниже ×0.5 */
-      else if (hasVoice && CARDS[it.cardId].faction === 'cultist' && CARDS[grid[nr][nc].cardId].faction === 'cultist')
+      if (hasVoice && CARDS[it.cardId].faction === 'cultist' && CARDS[grid[nr][nc].cardId].faction === 'cultist')
         factor = Math.max(0.5, factor);
       (cellActs[key] = cellActs[key] || []).push({ pair, factor });
       (cellActs[key2] = cellActs[key2] || []).push({ pair, factor });
+      linkFactors[lk] = factor;
     }
   }
-  const uniquePairs = Object.keys(usage).length;
+  const uniquePairs = Object.keys(pairSeen).length;
   /* «Глаз Бездны» (★5): Хор вдвое сильнее; «Око Культиста» (реликвия): +2% за пару */
   const divBonus = (DIVERSITY_BONUS + (hasRelic('eye') ? 0.02 : 0)) * (hasEye ? 2 : 1);
   const divCap = DIVERSITY_CAP * (hasEye ? 2 : 1);
@@ -248,7 +266,8 @@ function computeIncome() {
   total *= 1 + (hasRelic('candle') ? 0.10 : 0);
   /* «Жнец Душ» (★4): периодический буст «Жатва» на весь доход */
   total *= activeAltBuff().mult;
-  incomeCache = { total, uniquePairs, perCell, pairUsage: usage, diversityMult, armyBest, armyMultOf: INC_CTX.armyMult };
+  incomeCache = { total, uniquePairs, perCell, pairUsage: usage, diversityMult, armyBest, armyMultOf: INC_CTX.armyMult,
+    linkFactors, linkWarded, lichZone: Array.from(lichAdj) };
   return total;
 }
 

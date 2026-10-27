@@ -99,8 +99,10 @@ function showCardTooltip(e, card, income, r, c) {
       .map(n => {
         const pair = findPair(card, CARDS[n.item.cardId]);
         if (!pair) return null;
-        const usage = incomeCache.pairUsage[SYNERGY_PAIRS.indexOf(pair)] || 1;
-        const factor = SYN_DR[Math.min(usage - 1, SYN_DR.length - 1)];
+        /* Эффективный фактор звена считает computeIncome (linkFactors) — единая правда.
+           Звенья под Аурой Власти (Лич) не затухают, поэтому «повтор» не показываем */
+        const lf = incomeCache.linkFactors ? incomeCache.linkFactors[linkKey(r, c, n.r, n.c)] : undefined;
+        const factor = lf === undefined ? 1 : lf;
         return '<span class="tt-good">' + pair.text + ' (с ' + CARDS[n.item.cardId].name + ')' +
           (factor < 1 ? ' <b style="color:#ffd34d">повтор ×' + factor + '</b>' : '') + '</span>';
       }).filter(Boolean);
