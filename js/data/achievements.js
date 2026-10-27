@@ -34,7 +34,7 @@ const ACHIEVEMENTS = [
   { id: 'relic_5',      name: 'Коллекционер древностей',  desc: 'Собрать 5 Реликвий',                    check: () => RELICS_OWNED.size >= 5 },
   { id: 'omen_10',      name: 'Ловец знамений',           desc: 'Собрать 10 Знамений на Алтаре',         check: () => (stats.omens || 0) >= 10 },
   { id: 'omen_50',      name: 'Око Бездны',               desc: 'Собрать 50 Знамений на Алтаре',         check: () => (stats.omens || 0) >= 50 },
-  { id: 'mil_3',        name: 'Веха за вехой',            desc: 'Выполнить все 3 вехи за один забег',    check: () => milestoneIdx >= 3 },
-  { id: 'free_10',      name: 'Бесплатный сыр',           desc: 'Получить 10 бесплатных круток с вех',    check: () => (stats.freeRolls || 0) >= 10 },
+  { id: 'mil_3',        name: 'Веха за вехой',            desc: 'Выполнить 3 вехи за один забег',        check: () => milestoneIdx >= 3 },
+  { id: 'free_10',      name: 'Бесплатный сыр',           desc: 'Получить 50 бесплатных круток с вех',    check: () => (stats.freeRolls || 0) >= 50 },
   { id: 'speed_4',      name: 'Скользящее время',         desc: 'Поиграть на ускорении ×4',              check: () => stats.speedUsed >= 1 }
 ];
