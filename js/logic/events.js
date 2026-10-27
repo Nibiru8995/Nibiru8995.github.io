@@ -43,8 +43,8 @@ function spawnOmen() {
   const type = Math.random() < 0.6 ? 'vein' : 'haste';
   omens.push({ r, c, type, until: gameTime + 18 });
   renderOmens();
-  sfx('omen');
   toast('✨ <b>Знамение</b> на Алтаре! Жми, пока не погасло');
+  /* v1.0: Знамения БОЛЬШЕ НЕ озвучиваются (фидбек: меньше звуков) — только вспышка */
   if (!guideSeen.omen) { guideQueue.push('omen'); guideQueueRun(); }
 }
 

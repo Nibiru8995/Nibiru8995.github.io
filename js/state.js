@@ -46,6 +46,12 @@ let arenaAuto = false;
 /* --- Временный буст Алтаря (Жнец «Жатва», Вехи, Ускорение) --- */
 let altBuff = { mult: 1, until: 0, label: '' };
 
+/* --- РЕЗОНАНС РИТУАЛА (v1.0): живая шкала культистов ---
+   Пока стоит формация — шкала полнеет; на 100% — ВСПЛЕСК ×1.5 на 20с.
+   Без формации резонанс медленно тает. Побуждает беречь ритуал. */
+let ritualResonance = 0;      // 0..100
+let surgeUntil = 0;           // gameTime конца всплеска
+
 /* --- Вехи забега + бесплатные крутки (logic/milestones.js) --- */
 let milestoneIdx = 0, freeRolls = 0;
 
@@ -99,7 +105,8 @@ function buildRunSave() {
     playableSize, inventory, fighters, fighterHpState,
     arena: { floor: arenaState.floor, room: arenaState.room, cleared: arenaState.cleared, fallen: arenaState.fallen },
     pity4, pity5, runRolls, runEarned, runTime, sealLv,
-    milestoneIdx, freeRolls, relicSlots, relicPity
+    milestoneIdx, freeRolls, relicSlots, relicPity,
+    ritualResonance, surgeUntil
   };
 }
 function saveRun() {
@@ -121,6 +128,7 @@ function loadRun() {
     runRolls = d.runRolls ?? 0; runEarned = d.runEarned ?? 0; runTime = d.runTime ?? 0;
     if (d.sealLv) Object.assign(sealLv, d.sealLv);
     milestoneIdx = d.milestoneIdx ?? 0; freeRolls = d.freeRolls ?? 0;
+    ritualResonance = d.ritualResonance ?? 0; surgeUntil = d.surgeUntil ?? 0;
     /* РЕЛИКВИИ 2.0: расстановка по столбцам (только валидные реликвии/колонки) */
     relicSlots = {};
     if (d.relicSlots) for (const k in d.relicSlots) {

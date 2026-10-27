@@ -53,6 +53,7 @@ function doEpochUp(newFaction) {
   arenaAuto = false; const chk = $('arenaAutoChk'); if (chk) chk.checked = false;
   pity4 = 0; pity5 = 0; runRolls = 0; runEarned = 0; runTime = 0;
   altBuff = { mult: 1, until: 0, label: '' };
+  ritualResonance = 0; surgeUntil = 0;
   milestoneIdx = 0; freeRolls = 0;
   omens = []; omenTimer = 60; renderOmens();
 

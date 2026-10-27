@@ -40,7 +40,7 @@ function pumpAchvQueue() {
   const b = d.getBoundingClientRect();
   fxBeams(b.left + b.width / 2, b.top + b.height / 2, ['#ffffff', '#e8c060', '#c9a227']);
   fxConfetti(60);
-  sfx('achv');
+  sfx('milestone'); /* v1.0: отдельный «achv» убран — общая мягкая награда */
   setTimeout(() => {
     d.classList.add('out');
     setTimeout(() => { d.remove(); achvShowing = false; pumpAchvQueue(); }, 450);

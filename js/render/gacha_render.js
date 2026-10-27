@@ -79,7 +79,7 @@ function showDrop(cardId) {
   modalCard.classList.remove('rarity4', 'rarity5');
   playRarityEffect(modalCard, bannerEl, card.rarity);
   /* Звук + canvas-FX по редкости */
-  sfx(card.rarity === 5 ? 'drop5' : card.rarity === 4 ? 'drop4' : 'drop3');
+  sfx('drop', card.rarity);
   if (card.rarity === 5) { const b = $('dropModalCard').getBoundingClientRect(); fxBeams(b.left + b.width / 2, b.top + b.height / 2); fxConfetti(70); }
   else if (card.rarity === 4) fxFxAt($('dropModalCard'), ['#a070b0', '#e8c060', '#fff'], 26);
   else fxFxAt($('dropModalCard'), ['#7080a0', '#fff'], 12);
@@ -124,7 +124,7 @@ function showDropRelic(relicId) {
   modalCard.classList.remove('rarity4', 'rarity5');
   playRarityEffect(modalCard, bannerEl, r.rarity === 5 ? 5 : r.rarity === 4 ? 4 : 3);
   bannerEl.textContent = 'РЕЛИКВИЯ';
-  sfx(r.rarity === 5 ? 'drop5' : r.rarity === 4 ? 'drop4' : 'drop3');
+  sfx('drop', r.rarity);
   if (r.rarity === 5) { const b = $('dropModalCard').getBoundingClientRect(); fxBeams(b.left + b.width / 2, b.top + b.height / 2); fxConfetti(70); }
   $('dropModal').classList.add('show');
   pendingCard = null;

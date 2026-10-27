@@ -159,6 +159,7 @@ function formationDiagram(kind, activeKind) {
   const cellsDef = {
     cross:  { size: 3, cult: [[0, 1], [1, 0], [2, 1], [1, 2]], empty: [[0, 0], [0, 2], [2, 0], [2, 2]] },
     square: { size: 3, cult: [[0, 0], [0, 1], [0, 2], [1, 0], [1, 2], [2, 0], [2, 1], [2, 2]], empty: [] },
+    diamond:{ size: 5, cult: [[0, 2], [2, 0], [2, 4], [4, 2]], empty: [[1, 1], [1, 2], [1, 3], [2, 1], [2, 3], [3, 1], [3, 2], [3, 3]] },
     ring:   { size: 5, cult: [[0,0],[0,1],[0,2],[0,3],[0,4],[1,0],[1,4],[2,0],[2,4],[3,0],[3,4],[4,0],[4,1],[4,2],[4,3],[4,4]], empty: [[1,1],[1,2],[1,3],[2,1],[2,2],[2,3],[3,1],[3,2],[3,3]] },
     great:  { size: 5, cult: [[0,0],[0,1],[0,2],[0,3],[0,4],[1,0],[1,1],[1,2],[1,3],[1,4],[2,0],[2,4],[3,0],[3,1],[3,2],[3,3],[3,4],[4,0],[4,1],[4,2],[4,3],[4,4]], empty: [] }
   };
@@ -180,6 +181,7 @@ function cultistTooltipHTML(card, r, c) {
   const defs = [
     { kind: 'cross', label: 'Крест ×2.0', hint: '4 по сторонам, диагонали пусты' },
     { kind: 'square', label: 'Квадрат ×2.2', hint: 'все 8 соседей' },
+    { kind: 'diamond', label: 'Ромб ×2.35', hint: '4 вершины ромба (дистанция 2), внутренние клетки пусты' },
     { kind: 'ring', label: 'Кольцо ×3.0', hint: 'пустой центр, 16 по кругу' },
     { kind: 'great', label: 'Великий Круг ×4.0', hint: '24 карты вокруг Алтаря' }
   ];
@@ -206,7 +208,8 @@ function cultistTooltipHTML(card, r, c) {
   const activeKind = card.id === 'c4' && r !== undefined && INC_CTX.formActive[r + ',' + c] ? INC_CTX.formActive[r + ',' + c].kind : null;
   return status + '<div class="tt-synergy"><div class="tt-synergy-title">🔯 Формации ритуала</div>' +
     '<div class="rt-row">' + defs.map(d => '<div class="rt-item" title="' + d.hint + '">' + formationDiagram(d.kind, activeKind) + '<small>' + d.label + '</small></div>').join('') + '</div>' +
-    '<small style="color:#a08860">🔶 Алтарь · фиолетовый — культист · тёмный — пусто · КЛЮЧЕВЫЕ КАРТЫ (★3 Кровавый Маг, ★4 Жрец/Инквизитор, ★5 Око/Голос) в формации усиливают её множитель</small></div>';
+    '<small style="color:#a08860">🔶 Алтарь · фиолетовый — культист · тёмный — пусто · КЛЮЧЕВЫЕ КАРТЫ (★3 Кровавый Маг, ★4 Жрец/Инквизитор, ★5 Око/Голос) в формации усиливают её множитель</small>' +
+    '<div class="tt-synergy"><div class="tt-synergy-title">Резонанс</div>Пока стоит хотя бы одна формация — шкала резонанса растёт (полная за 75с). На 100% — ВСПЛЕСК: доход ×1.5 на 20с. Разрушите формацию — резонанс тает.</div></div>';
 }
 function roleText(card) {
   return {

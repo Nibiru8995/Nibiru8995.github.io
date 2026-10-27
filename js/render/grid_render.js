@@ -155,9 +155,12 @@ function renderGrid() {
     /* ФИДБЕК 1 (раунд 3): ЯРКАЯ золотая зона Ауры Власти — видно на любых клетках,
        что соседние с Личем попадают под эффект (первые 2 звена без затухания) */
     if (incomeCache.lichZone && incomeCache.lichZone.indexOf(r + ',' + c) >= 0) cell.classList.add('aura-warded');
-    /* РИТУАЛ культистов (фидбек 3): клетки в ритуале и участники формаций */
+    /* РИТУАЛ культистов (фидбек 3): клетки в ритуале и участники формаций.
+       v1.0: живой визуал — мёртвые культисты тускнеют, активный Алтарь
+       получает вращающееся кольцо рун, всплеск резонанса — золото. */
     if (INC_CTX.ritual && INC_CTX.ritual.has(r + ',' + c)) cell.classList.add('ritual-cell');
     if (INC_CTX.formCell && INC_CTX.formCell[r + ',' + c]) cell.classList.add('ritual-part');
+    if (surgeUntil > gameTime && INC_CTX.ritual && INC_CTX.ritual.has(r + ',' + c)) cell.classList.add('ritual-surge');
 
     if (moveMode && moveSource && moveSource.r === r && moveSource.c === c) cell.classList.add('move-source');
     else if (moveMode && moveSource && !item) cell.classList.add('move-target');
@@ -207,6 +210,12 @@ function renderGrid() {
       cardEl.innerHTML = (damaged ? '<div class="hp-bar" style="width:' + hpPct + '%;background:' + hpColor + ';color:' + hpColor + ';"></div>' : '') +
         cardArtHTML(card, 'card-art', 'glyph') + badges;
       if (formation(r, c) > 1) cardEl.classList.add('in-formation');
+      /* v1.0: состояние культиста в ритуале — живое/мёртвое, Алтарь в формации */
+      if (FACTION_INFO[faction].mechanic === 'formation' && card.faction === 'cultist') {
+        const k = r + ',' + c;
+        if (card.id === 'c4' && INC_CTX.formActive[k]) cardEl.classList.add('altar-active');
+        else if (!INC_CTX.ritual.has(k) && !INC_CTX.formCell[k] && !INC_CTX.ritualOuter.has(k)) cardEl.classList.add('cult-dead');
+      }
       cardEl.addEventListener('mouseenter', e => showCardTooltip(e, card, income, r, c));
       cardEl.addEventListener('mousemove', moveTooltip);
       cardEl.addEventListener('mouseleave', hideTooltip);
@@ -279,7 +288,7 @@ function updateGridStats() {
     const am = Math.min(2, 1 + 0.015 * (incomeCache.armyBest - 1));
     extra += ' · Армия: <b>' + incomeCache.armyBest + '</b> (×' + am.toFixed(2) + ')';
   }
-  /* Ритуал культистов: размер + активная формация (фидбек 3) */
+  /* Ритуал культистов: размер + активная формация (фидбек 3) + РЕЗОНАНС (v1.0) */
   if (FACTION_INFO[faction].mechanic === 'formation') {
     const inRitual = INC_CTX.ritual ? INC_CTX.ritual.size : 0;
     let fLabel = '—';
@@ -288,7 +297,11 @@ function updateGridStats() {
       fLabel = f.label + ' ×' + f.formMult.toFixed(2) + (f.keyBonus > 0 ? ' (ключи +' + f.keyBonus.toFixed(2) + ')' : '');
       break;
     }
-    extra += ' · Ритуал: <b style="color:' + (inRitual ? '#c9a227' : '#e08a8a') + '">' + inRitual + '</b> · Формация: <b>' + fLabel + '</b>';
+    const rpct = Math.floor(ritualResonance);
+    const surgeLeft = Math.max(0, Math.ceil(surgeUntil - gameTime));
+    extra += ' · Ритуал: <b style="color:' + (inRitual ? '#c9a227' : '#e08a8a') + '">' + inRitual + '</b> · Формация: <b>' + fLabel + '</b>' +
+      ' · Резонанс: <span class="res-bar"><i style="width:' + rpct + '%"></i></span> <b>' + rpct + '%</b>' +
+      (surgeLeft ? ' · <b style="color:#ffe080">ВСПЛЕСК ×1.5 (' + surgeLeft + 'с)</b>' : '');
   }
   $('gridStats').innerHTML = 'Активных звеньев: <b>' + countLinks() + '</b>' +
     ' · Уникальных пар: <b>' + currentDiversity() + '</b> (+' + Math.round((incomeCache.diversityMult - 1) * 100) + '%)' +

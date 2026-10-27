@@ -119,6 +119,7 @@ function startFreshRun() {
   pity4 = 0; pity5 = 0; runRolls = 0; runEarned = 0; runTime = 0;
   relicSlots = {}; relicPity = 0;
   altBuff = { mult: 1, until: 0, label: '' };
+  ritualResonance = 0; surgeUntil = 0;
   milestoneIdx = 0; freeRolls = 0;
   omens = []; omenTimer = 60;
   const startR1 = POOL_1.filter(id => CARDS[id].faction === faction);
@@ -183,6 +184,7 @@ function startDebugRun(ep, f, rich, keepSave) {
   pity4 = 0; pity5 = 0; runRolls = 0; runEarned = 0; runTime = 0;
   relicSlots = {}; relicPity = 0;
   altBuff = { mult: 1, until: 0, label: '' };
+  ritualResonance = 0; surgeUntil = 0;
   milestoneIdx = 0; freeRolls = 0;
   omens = []; omenTimer = 9999;
   /* Стартовый набор: 2×★1 + ключ механики фракции + мешок карт для теста механик */

@@ -28,7 +28,47 @@ function tickFactionMechanics(dt) {
   } else if (mech === 'chain') {
     harvTimer += dt;
     if (harvTimer >= 30) { harvTimer = 0; harvesterTick(); }
+  } else if (mech === 'formation') {
+    /* v1.0: РЕЗОНАНС РИТУАЛА — живая шкала культистов */
+    ritualResonanceTick(dt);
   }
+}
+
+/* ---------------- КУЛЬТИСТЫ: РЕЗОНАНС РИТУАЛА (v1.0) ----------------
+   Пока на поле стоит хотя бы одна формация Алтаря — шкала резонанса
+   полнеет (полная за 75 игровых секунд). На 100% — ВСПЛЕСК:
+   весь доход ×1.5 на 20 секунд, золотая волна по ритуалу.
+   Разрушил формацию — резонанс тает (~40с от полноты). Это делает
+   ритуал ЖИВОЙ системой поддержания, а не статичной геометрией. */
+const RESONANCE_FILL_TIME = 75;   /* игровых секунд до полного резонанса */
+const RESONANCE_DECAY_RATE = 2.5; /* %/сек таяния без формации */
+const SURGE_TIME = 20;            /* секунд всплеска ×1.5 */
+function ritualResonanceTick(dt) {
+  const hasForm = Object.keys(INC_CTX.formActive).length > 0;
+  if (hasForm) {
+    const before = ritualResonance;
+    ritualResonance = Math.min(100, ritualResonance + dt * (100 / RESONANCE_FILL_TIME));
+    if (before < 100 && ritualResonance >= 100) ritualSurge();
+  } else if (ritualResonance > 0 && surgeUntil <= gameTime) {
+    ritualResonance = Math.max(0, ritualResonance - dt * RESONANCE_DECAY_RATE);
+  }
+}
+function ritualSurge() {
+  surgeUntil = gameTime + SURGE_TIME;
+  ritualResonance = 0;
+  /* Шоу: золотая волна по всем клеткам ритуала + текст над Алтарём */
+  let altarKey = null;
+  INC_CTX.ritual.forEach(k => {
+    if (!altarKey) altarKey = k;
+    const [r, c] = k.split(',').map(Number);
+    fxAtCell(r, c, ['#e8c060', '#fff8d0', '#c9a227'], 5, 'wave');
+  });
+  if (altarKey) {
+    const [ar, ac] = altarKey.split(',').map(Number);
+    fxFloatFromCell(ar, ac, 'РЕЗОНАНС ×1.5', '#ffe080', 20);
+  }
+  toast('🔯 <b>РЕЗОНАНС РИТУАЛА:</b> весь доход ×1.5 на ' + SURGE_TIME + ' секунд!');
+  updateHUD();
 }
 
 /* ---------------- НЕЖИТЬ: Жнец Душ (★4) — «Жатва» ---------------- */

@@ -138,7 +138,9 @@ function buildRitualContext() {
     });
   });
   /* Формации вокруг каждого Алтаря (клетки вне поля ломают узор).
-     КЛЮЧЕВЫЕ КАРТЫ в клетках формации усиливают её множитель. */
+     КЛЮЧЕВЫЕ КАРТЫ в клетках формации усиливают её множитель.
+     v1.0: новая формация «Ромб» — 4 культиста на вершинах (дистанция 2),
+     внутренние 8 клеток пусты: ×2.35. */
   altars.forEach(([ar, ac]) => {
     const orth = [[-1, 0], [1, 0], [0, -1], [0, 1]].map(([dr, dc]) => [ar + dr, ac + dc]);
     const diag = [[-1, -1], [-1, 1], [1, -1], [1, 1]].map(([dr, dc]) => [ar + dr, ac + dc]);
@@ -146,12 +148,15 @@ function buildRitualContext() {
     const r2 = [];
     for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++)
       if (Math.max(Math.abs(dr), Math.abs(dc)) === 2) r2.push([ar + dr, ac + dc]);
+    const dia = [[ar - 2, ac], [ar + 2, ac], [ar, ac - 2], [ar, ac + 2]];
     const b1 = r1.every(([r, c]) => inB(r, c));
+    const diaB = dia.every(([r, c]) => inB(r, c));
     const allCult = list => list.every(([r, c]) => inB(r, c) && isCult(r, c));
     const allEmpty = list => list.every(([r, c]) => inB(r, c) && !grid[r][c]);
     let found = null;
     if (allCult(r2) && allCult(r1)) found = { kind: 'great', mult: 4.0, label: 'Великий Круг', cells: r2.concat(r1) };
     else if (b1 && allCult(r2) && allEmpty(r1)) found = { kind: 'ring', mult: 3.0, label: 'Кольцо', cells: r2 };
+    else if (diaB && allCult(dia) && allEmpty(r1)) found = { kind: 'diamond', mult: 2.35, label: 'Ромб', cells: dia };
     else if (allCult(r1)) found = { kind: 'square', mult: 2.2, label: 'Квадрат', cells: r1 };
     else if (allCult(orth) && allEmpty(diag)) found = { kind: 'cross', mult: 2.0, label: 'Крест', cells: orth };
     if (!found) return;
@@ -423,6 +428,8 @@ function computeIncome() {
   total *= diversityMult * sealMult;
   /* «Жнец Душ» (★4): периодический буст «Жатва» на весь доход */
   total *= activeAltBuff().mult;
+  /* v1.0: РЕЗОНАНС РИТУАЛА — всплеск ×1.5 (см. faction_mechanics.js) */
+  if (surgeUntil > gameTime) total *= 1.5;
   incomeCache = { total, uniquePairs, perCell, pairUsage: usage, diversityMult, armyBest, armyMultOf: INC_CTX.armyMult,
     linkFactors, linkWarded, lichZone: Array.from(lichAdj) };
   return total;
