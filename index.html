@@ -19,12 +19,12 @@
 <div id="main">
   <div id="arenaCol">
     <div id="arenaPanel">
-      <div class="arena-title">⚔ Боевая арена</div>
+      <div class="arena-title">⚔ КОЛЫБЕЛЬ ВОЙНЫ</div>
       <div class="arena-floor-row"><span>Этаж <b id="arenaFloorNum">1</b></span><div class="arena-dots" id="roomIndicator"></div></div>
       <div class="arena-room-header"><span id="arenaRoomText">✖ Комната 1/5</span></div>
       <div class="arena-enemy-card">
-        <div class="arena-enemy-icon" id="arenaMonsterIcon">💀</div>
-        <div class="arena-enemy-name" id="arenaMonsterName">Неизвестный враг</div>
+        <canvas id="battleCanvas" width="560" height="320"></canvas>
+        <div class="arena-enemy-name" id="arenaMonsterName">Волна приближается</div>
         <div class="arena-bar-wrap"><div class="arena-bar" id="arenaEnemyBar" style="width:100%;"></div><div class="arena-hp-text" id="arenaEnemyHp">— / —</div></div>
       </div>
       <div class="arena-stats"><span>⚔ Атака: <span id="arenaStatAtk" class="hero">0</span></span><span>❤ HP: <span id="arenaStatHp" class="hero">0</span></span><span>⚡ Урон: <span id="arenaStatDmg" class="hero">0</span></span></div>

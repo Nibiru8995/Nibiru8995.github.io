@@ -1,12 +1,17 @@
 'use strict';
 /* ============================================================
-   ЛОГИКА: АРЕНА (logic/arena.js)
-   Арена ВЫГОДНА: награды ×1.5/этаж (data/arena.js), боссы дают
-   ТРОФЕЙ (карту ★3), а павшие бойцы ВСЕГДА возвращаются после
-   боя — карты больше не теряются навсегда.
+   ЛОГИКА: АРЕНА «КОЛЫБЕЛЬ ВОЙНЫ» — АВТОБАТЛЕР (logic/arena.js)
+   ФИДБЕК 10 (раунд 3): вместо кликера — живой бой. Отряды игрока
+   (из карт-бойцов) маршируют вправо, волны врагов — влево; юниты
+   сами выбирают цели, бьют с откатами, терпят потери. Всё анимировано
+   (canvas, render/arena_render.js). Павшие бойцы, как и раньше,
+   ВСЕГДА возвращаются после боя — карты не теряются.
+   Состояние боя (battle) — мгновенное, в сохранение не пишется.
    ============================================================ */
 
-/* Вернуть павших в бой и восстановить HP (победа/поражение/отступ) */
+let battle = { units: [], floats: [], active: false, t: 0, last: 0 };
+
+/* ---------------- Бойцы: состав армии ---------------- */
 function reviveFighters() {
   Object.keys(arenaState.fallen || {}).forEach(id => {
     const n = arenaState.fallen[id];
@@ -16,34 +21,54 @@ function reviveFighters() {
   Object.keys(fighters).forEach(id => { fighterHpState[id] = fighterHp(CARDS[id].rarity) * fighters[id]; });
 }
 
-function arenaDmg() {
+/* Статистика ростера для панели (не сам бой) */
+function calcTotalDamage() {
   let d = 0;
-  for (const id in fighters) {
-    const c = CARDS[id];
-    const n = Math.ceil((fighterHpState[id] || 0) / fighterHp(c.rarity));
-    d += fighterDmg(c.rarity) * n;
-  }
+  for (const id in fighters) d += fighterDmg(CARDS[id].rarity) * fighters[id];
   return Math.round(d * altarPower());
 }
-function calcTotalDamage() { return arenaDmg(); }
 function calcTotalHp() {
   let hp = 0;
   Object.keys(fighters).forEach(id => { hp += fighterHpState[id] || 0; });
   return hp;
 }
 
-function generateArenaEnemy(floor, room) {
+/* ---------------- ВОЛНА ВРАГОВ ---------------- */
+function generateWave(floor, room) {
   const isBoss = room === ARENA.roomsPerFloor;
-  const f = FACTION_KEYS[(floor * 2 + room + (isBoss ? 1 : 0)) % 4];
-  const hp = arenaEnemyHp(floor, room);
-  const name = isBoss ? '👑 ' + ARENA.bossNames[(floor - 1) % ARENA.bossNames.length]
-    : ARENA.enemyNames[f];
-  return { hp, maxHp: hp, faction: f, name, glyph: isBoss ? '👑' : ARENA.enemyGlyphs[f], isBoss };
+  const f = waveFaction(floor, room);
+  const defs = [];
+  if (isBoss) {
+    defs.push({ rarity: 5, k: 1, faction: f, boss: true });
+    for (let i = 0; i < ARENA.bossEscort; i++) {
+      const r = Math.random() < 0.5 ? 3 : 1;
+      defs.push({ rarity: r, k: 1 + rand(2), faction: f, boss: false });
+    }
+  } else {
+    const n = ARENA.count(floor, room);
+    const w = ARENA.tierW(floor);
+    /* отряды врага растут с этажом: f1 — по 1 копии, f2 — до 2, f3+ — до 3 */
+    const kMax = Math.min(3, Math.max(1, floor));
+    for (let i = 0; i < n; i++) {
+      const t = +weightedPick(w);
+      defs.push({ rarity: t, k: 1 + rand(kMax), faction: f, boss: false });
+    }
+  }
+  const name = isBoss ? ARENA.bossNames[(floor - 1) % ARENA.bossNames.length]
+    : 'Волна «' + ARENA.enemyNames[f] + '» · ' + defs.length + ' отрядов';
+  return { name, faction: f, isBoss, units: defs, floor, room };
 }
 
+function waveMaxHp(wave) {
+  const hm = ARENA.hpMult(wave.floor);
+  const bm = 1 + 0.35 * wave.floor;
+  return wave.units.reduce((s, u) => s + fighterHp(u.rarity) * u.k * (u.boss ? bm : hm), 0);
+}
+
+/* ---------------- НАБОР БОЙЦОВ ---------------- */
 function addFighter(cardId, cnt = 1) {
-  /* Арена закрыта до своей Эпохи (пункты 2 и 9 ТЗ) — бойцов не набираем */
-  if (!epochHasArena(epoch)) { toast('⚔ Арена откроется в Эпохе ' + ARENA_EPOCH); return; }
+  /* Арена закрыта до своей Эпохи — бойцов не набираем */
+  if (!epochHasArena(epoch)) { toast('⚔ Колыбель Войны откроется в Эпохе ' + ARENA_EPOCH); return; }
   const have = inventory[cardId] || 0;
   cnt = Math.min(cnt, have);
   if (cnt <= 0) return;
@@ -55,7 +80,6 @@ function addFighter(cardId, cnt = 1) {
   fighters[cardId] = (fighters[cardId] || 0) + cnt;
   fighterHpState[cardId] = (fighterHpState[cardId] || 0) + fighterHp(CARDS[cardId].rarity) * cnt;
   renderFighters(); renderCollection(); renderGrid(); updateArenaUI(); updateBanner();
-  if (arenaAuto) setTimeout(tryStartAutoBattle, 200);
 }
 
 function bulkFight(mode) {
@@ -68,18 +92,183 @@ function bulkFight(mode) {
   toast(n ? 'В бой отправлено: ' + n : 'Нечего отправлять');
 }
 
+/* ---------------- ПОСТРОЕНИЕ ОТРЯДОВ ИГРОКА ----------------
+   Каждая карта → отряды по ≤3 копии (HP/урон умножаются), макс 8 отрядов.
+   Остаток сверх лимита «сливается» в последний отряд (знаменосец). */
+function buildHeroSquads() {
+  const ids = Object.keys(fighters).sort((a, b) => CARDS[b].rarity - CARDS[a].rarity);
+  const squads = [];
+  ids.forEach(id => {
+    let left = fighters[id];
+    while (left > 0 && squads.length < ARENA.heroSquadsMax) {
+      const k = Math.min(ARENA.squadSize, left);
+      squads.push({ cardId: id, k });
+      left -= k;
+    }
+    if (left > 0 && squads.length) squads[squads.length - 1].k += left; /* остаток в знаменосца */
+  });
+  return squads;
+}
+
+/* ---------------- СПАВН БОЯ ---------------- */
+function laneY(i) { return [96, 160, 224][i % 3]; }
+
+function spawnBattle() {
+  const W = ARENA.FIELD_W, H = ARENA.FIELD_H;
+  battle.units = []; battle.floats = []; battle.t = 0;
+  const heroSquads = buildHeroSquads();
+  const wave = arenaState.enemy;
+  const hm = ARENA.hpMult(arenaState.floor), dm = ARENA.dmgMult(arenaState.floor);
+  const bm = 1 + 0.35 * arenaState.floor, bdm = 0.5 + 0.1 * arenaState.floor;
+  heroSquads.forEach((s, i) => {
+    const c = CARDS[s.cardId];
+    const r = c.rarity;
+    battle.units.push({
+      side: 'hero', cardId: s.cardId, k: s.k, rarity: r,
+      name: c.name, img: CARD_ART_DIR + s.cardId + '.png',
+      x: 46 + Math.floor(i / 3) * 46 + rand(10), y: laneY(i) + rand(14) - 7,
+      hp: fighterHp(r) * s.k, maxHp: fighterHp(r) * s.k,
+      dmg: fighterDmg(r) * s.k, range: r >= 5 ? 100 : r === 4 ? 70 : 34,
+      speed: r >= 4 ? 22 : 34, cd: 0.4 + Math.random() * 0.4,
+      cdMax: { 1: 1.2, 3: 1.4, 4: 1.7, 5: 2.0 }[r] || 1.4,
+      flash: 0, lunge: 0, dead: false, deadT: 0, bob: Math.random() * 6.28
+    });
+  });
+  (wave ? wave.units : []).forEach((d, i) => {
+    const r = d.rarity;
+    const hpM = d.boss ? bm : hm, dmM = d.boss ? bdm : dm;
+    battle.units.push({
+      side: 'foe', rarity: r, k: d.k, name: d.boss ? wave.name : ARENA.enemyNames[d.faction],
+      img: foeSprite(d.faction, d.boss),
+      x: W - 46 - Math.floor(i / 3) * 46 - rand(10), y: laneY(i) + rand(14) - 7,
+      hp: fighterHp(r) * d.k * hpM, maxHp: fighterHp(r) * d.k * hpM,
+      dmg: fighterDmg(r) * d.k * dmM, range: d.boss ? 100 : r >= 4 ? 70 : 34,
+      speed: r >= 4 ? 22 : 34, cd: 0.6 + Math.random() * 0.4,
+      cdMax: { 1: 1.2, 3: 1.4, 4: 1.7, 5: 2.0 }[r] || 1.4,
+      flash: 0, lunge: 0, dead: false, deadT: 0, bob: Math.random() * 6.28
+    });
+  });
+  battle.active = true;
+}
+
+/* ---------------- ХОД БОЯ ---------------- */
+function battleStep(dt) {
+  battle.t += dt;
+  const ap = altarPower();
+  const alive = side => battle.units.filter(u => !u.dead && u.side === side);
+  const heroes = alive('hero'), foes = alive('foe');
+  battle.units.forEach(u => {
+    if (u.dead) { u.deadT += dt; return; }
+    u.flash = Math.max(0, u.flash - dt * 4);
+    u.lunge = Math.max(0, u.lunge - dt * 6);
+    const enemies = u.side === 'hero' ? foes : heroes;
+    if (!enemies.length) return;
+    /* ближайший живой враг */
+    let tgt = null, best = 1e9;
+    enemies.forEach(e => {
+      const d = Math.hypot(e.x - u.x, e.y - u.y);
+      if (d < best) { best = d; tgt = e; }
+    });
+    if (!tgt) return;
+    if (best > u.range * 0.92) {
+      /* маршируем к цели */
+      const dx = tgt.x - u.x, dy = tgt.y - u.y, l = Math.hypot(dx, dy) || 1;
+      u.x += (dx / l) * u.speed * dt;
+      u.y += (dy / l) * u.speed * dt;
+    } else {
+      u.cd -= dt;
+      if (u.cd <= 0) {
+        u.cd = u.cdMax * (0.9 + Math.random() * 0.2);
+        u.lunge = 1;
+        const dmgOut = Math.max(1, Math.round(u.dmg * (u.side === 'hero' ? ap : 1) * (0.9 + Math.random() * 0.2)));
+        tgt.hp -= dmgOut;
+        tgt.flash = 1;
+        battle.floats.push({ x: tgt.x + rand(16) - 8, y: tgt.y - 26, text: '-' + fmt(dmgOut), color: u.side === 'hero' ? '#ffe080' : '#ff9090', life: 50, maxLife: 50 });
+        if (tgt.hp <= 0) {
+          tgt.hp = 0; tgt.dead = true; tgt.deadT = 0;
+          if (tgt.side === 'hero') {
+            /* павшие вернутся после боя (reviveFighters) */
+            arenaState.fallen = arenaState.fallen || {};
+            arenaState.fallen[tgt.cardId] = (arenaState.fallen[tgt.cardId] || 0) + tgt.k;
+            stats.arenaDeaths = (stats.arenaDeaths || 0) + tgt.k;
+          }
+          battle.floats.push({ x: tgt.x, y: tgt.y - 30, text: tgt.side === 'foe' ? 'ПОВЕРЖЕН' : 'ПАЛ', color: tgt.side === 'foe' ? '#a0e080' : '#ff8080', life: 60, maxLife: 60 });
+        }
+      }
+    }
+  });
+  /* всплывающие цифры */
+  for (let i = battle.floats.length - 1; i >= 0; i--) {
+    const f = battle.floats[i];
+    f.life -= dt * 60; f.y -= dt * 26;
+    if (f.life <= 0) battle.floats.splice(i, 1);
+  }
+  /* контроль завершения */
+  if (!foes.length) { endBattle(true); return; }
+  if (!heroes.length) { endBattle(false); return; }
+}
+
+function endBattle(win) {
+  battle.active = false;
+  arenaState.fighting = false;
+  /* поле очищается чуть позже — дать анимации гибели доиграть */
+  setTimeout(() => { if (!battle.active) { battle.units = []; battle.floats = []; renderBattle(); } }, 1600);
+  const enemy = arenaState.enemy;
+  if (win) {
+    const reward = Math.round(arenaReward(arenaState.floor, arenaState.room));
+    crystals += reward; runEarned += reward;
+    sfx(enemy && enemy.isBoss ? 'boss' : 'win');
+    fxFxAt($('arenaPanel'), enemy && enemy.isBoss ? ['#c9a227', '#fff', '#ff6b6b'] : ['#80e060', '#fff'], enemy && enemy.isBoss ? 40 : 18);
+    if (enemy && enemy.isBoss) {
+      stats.bossKills = (stats.bossKills || 0) + 1;
+      /* ТРОФЕЙ БОССА: бесплатная карта ★3 текущей фракции */
+      const pool = POOL_3.filter(id => CARDS[id].faction === faction);
+      if (pool.length) {
+        const gid = pick(pool);
+        inventory[gid] = (inventory[gid] || 0) + 1;
+        discovered.add(gid);
+        setTimeout(() => toast('👑 Трофей босса: «' + CARDS[gid].name + '» добавлена в коллекцию!'), 400);
+      }
+    }
+    arenaState.cleared[arenaState.room - 1] = true;
+    arenaState.status = enemy && enemy.isBoss ? '🏆 БОСС ПОВЕРЖЕН! +' + fmt(reward) + ' 💎 + трофей!' : 'Победа! +' + fmt(reward) + ' 💎';
+    reviveFighters();
+    updateArenaUI(); updateHUD(); renderFighters(); renderCollection(); checkAchievements();
+    if (arenaAuto) setTimeout(tryStartAutoBattle, 600);
+  } else {
+    arenaState.status = 'Поражение, но армия цела: павшие вернулись. Усильтесь и повторите!';
+    sfx('lose');
+    reviveFighters();
+    if (arenaAuto) { arenaAuto = false; const chk = $('arenaAutoChk'); if (chk) chk.checked = false; }
+    updateArenaUI(); renderFighters();
+  }
+}
+
+/* Цикл отрисовки+симуляции: живёт, пока идёт бой */
+function battleLoop(now) {
+  if (!battle.active) { battle.last = 0; return; }
+  if (!battle.last) battle.last = now;
+  let dt = Math.min((now - battle.last) / 1000, 0.05) * speedMult;
+  battle.last = now;
+  if (gamePaused) dt = 0;
+  if (dt > 0) battleStep(dt);
+  renderBattle();
+  requestAnimationFrame(battleLoop);
+}
+
+/* ---------------- СТАРТ БОЯ / ПРОДВИЖЕНИЕ ---------------- */
 function advanceArenaRoom() {
   if (arenaState.room < ARENA.roomsPerFloor) {
     arenaState.room++;
-    arenaState.status = 'Комната ' + arenaState.room + ': приготовьтесь.';
+    arenaState.status = 'Комната ' + arenaState.room + ': волна на подходе.';
   } else {
     arenaState.floor++;
     stats.floorMax = Math.max(stats.floorMax, arenaState.floor);
     arenaState.room = 1;
     arenaState.cleared = Array(ARENA.roomsPerFloor).fill(false);
-    arenaState.status = 'Этаж ' + arenaState.floor + '. Новые противники!';
+    arenaState.status = 'Этаж ' + arenaState.floor + '. Новые волны!';
   }
-  arenaState.enemy = generateArenaEnemy(arenaState.floor, arenaState.room);
+  arenaState.enemy = generateWave(arenaState.floor, arenaState.room);
   updateArenaUI();
 }
 
@@ -90,9 +279,18 @@ function tryStartAutoBattle() {
     return;
   }
   if (arenaState.cleared[arenaState.room - 1]) { advanceArenaRoom(); setTimeout(tryStartAutoBattle, 400); return; }
-  if (!arenaState.enemy) arenaState.enemy = generateArenaEnemy(arenaState.floor, arenaState.room);
-  arenaState.fighting = true; arenaState.status = 'Бой начался!';
-  updateArenaUI(); runArenaCombat();
+  if (!arenaState.enemy) arenaState.enemy = generateWave(arenaState.floor, arenaState.room);
+  startBattle();
+}
+
+function startBattle() {
+  if (!arenaState.enemy) arenaState.enemy = generateWave(arenaState.floor, arenaState.room);
+  arenaState.fighting = true;
+  arenaState.status = 'Отряды выдвинулись!';
+  updateArenaUI();
+  spawnBattle();
+  renderBattle();
+  requestAnimationFrame(battleLoop);
 }
 
 function arenaFightClick() {
@@ -102,103 +300,24 @@ function arenaFightClick() {
     if (arenaAuto) setTimeout(tryStartAutoBattle, 400);
     return;
   }
-  if (calcTotalHp() <= 0) {
-    arenaState.status = 'Нет живых бойцов! Добавьте карты в список.';
+  if (Object.keys(fighters).length === 0) {
+    arenaState.status = 'Нет бойцов! Добавьте карты в список.';
     updateArenaUI(); return;
   }
-  if (!arenaState.enemy) arenaState.enemy = generateArenaEnemy(arenaState.floor, arenaState.room);
-  arenaState.fighting = true; arenaState.status = 'Бой начался!';
-  updateArenaUI(); runArenaCombat();
+  startBattle();
 }
 
 function arenaRetreat() {
   if (!arenaState.fighting) return;
+  battle.active = false;
   arenaState.fighting = false;
   reviveFighters();
-  arenaState.status = 'Вы отступили. Враг сохранил HP, бойцы полностью восстановлены.';
+  arenaState.status = 'Вы отступили. Отряды восстановлены, волна соберётся заново.';
   updateArenaUI(); renderFighters();
 }
 
-function runArenaCombat() {
-  const enemy = arenaState.enemy;
-  if (!enemy) { arenaState.fighting = false; updateArenaUI(); return; }
-  const enemyDmg = Math.max(10, Math.round(enemy.maxHp * 0.015));
-  let heroCd = 0.5, enemyCd = 1.0, last = performance.now();
-
-  function tick(now) {
-    if (!arenaState.fighting) return;
-    const dt = Math.min((now - last) / 1000, 0.2); last = now;
-    if (!gamePaused) {
-      heroCd -= dt; enemyCd -= dt;
-      if (heroCd <= 0) {
-        enemy.hp -= arenaDmg();
-        const ic = $('arenaMonsterIcon');
-        if (ic) { ic.style.transform = 'scale(1.25)'; setTimeout(() => { ic.style.transform = ''; }, 90); }
-        heroCd = 0.7; updateArenaUI();
-      }
-      if (enemyCd <= 0 && enemy.hp > 0) {
-        const aliveIds = Object.keys(fighters).filter(id => (fighterHpState[id] || 0) > 0);
-        if (aliveIds.length > 0) {
-          const targetId = pick(aliveIds);
-          stats.arenaDeaths = stats.arenaDeaths || 0;
-          fighterHpState[targetId] = Math.max(0, (fighterHpState[targetId] || 0) - enemyDmg);
-          const per = fighterHp(CARDS[targetId].rarity);
-          const u = Math.ceil(fighterHpState[targetId] / per);
-          if (u < fighters[targetId]) {
-            const lost = fighters[targetId] - u;
-            /* Павшие юниты вернутся после боя (reviveFighters) — карты не теряются */
-            arenaState.fallen = arenaState.fallen || {};
-            arenaState.fallen[targetId] = (arenaState.fallen[targetId] || 0) + lost;
-            arenaState.status = CARDS[targetId].name + ': выбыло ' + lost + ' (вернутся после боя)';
-            stats.arenaDeaths += lost;
-            fighters[targetId] = u;
-          }
-          if (u <= 0) { delete fighters[targetId]; delete fighterHpState[targetId]; }
-          renderFighters();
-        }
-        enemyCd = 1.2; updateArenaUI();
-      }
-      if (enemy.hp <= 0) {
-        arenaState.fighting = false; enemy.hp = 0;
-        const reward = Math.round(arenaReward(arenaState.floor, arenaState.room));
-        crystals += reward; runEarned += reward;
-        sfx(enemy.isBoss ? 'boss' : 'win');
-        fxFxAt($('arenaPanel'), enemy.isBoss ? ['#c9a227', '#fff', '#ff6b6b'] : ['#80e060', '#fff'], enemy.isBoss ? 40 : 18);
-        if (enemy.isBoss) {
-          stats.bossKills++;
-          /* ТРОФЕЙ БОССА: бесплатная карта ★3 текущей фракции */
-          const pool = POOL_3.filter(id => CARDS[id].faction === faction);
-          if (pool.length) {
-            const gid = pick(pool);
-            inventory[gid] = (inventory[gid] || 0) + 1;
-            discovered.add(gid);
-            setTimeout(() => toast('👑 Трофей босса: «' + CARDS[gid].name + '» добавлена в коллекцию!'), 400);
-          }
-        }
-        arenaState.cleared[arenaState.room - 1] = true;
-        arenaState.status = enemy.isBoss ? '🏆 БОСС ПОВЕРЖЕН! +' + fmt(reward) + ' 💎 + трофей!' : 'Победа! +' + fmt(reward) + ' 💎';
-        reviveFighters();
-        updateArenaUI(); updateHUD(); renderFighters(); renderCollection(); checkAchievements();
-        if (arenaAuto) setTimeout(tryStartAutoBattle, 600);
-        return;
-      }
-      if (calcTotalHp() <= 0) {
-        arenaState.fighting = false;
-        arenaState.status = 'Поражение, но армия цела: бойцы восстановлены. Усильтесь и повторите!';
-        sfx('lose');
-        enemy.hp = enemy.maxHp;
-        reviveFighters();
-        if (arenaAuto) { arenaAuto = false; const chk = $('arenaAutoChk'); if (chk) chk.checked = false; }
-        updateArenaUI(); renderFighters();
-        return;
-      }
-    }
-    requestAnimationFrame(tick);
-  }
-  requestAnimationFrame(tick);
-}
-
 function initArena() {
-  arenaState.enemy = generateArenaEnemy(arenaState.floor, arenaState.room);
+  arenaState.enemy = generateWave(arenaState.floor, arenaState.room);
+  battle = { units: [], floats: [], active: false, t: 0, last: 0 };
   updateArenaUI();
 }
