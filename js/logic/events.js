@@ -3,9 +3,9 @@
    ЛОГИКА: ЗНАМЕНИЯ (logic/events.js)
    Активный слой для Алтаря: раз в ~1.5-2.5 минуты на случайной
    клетке вспыхивает Знамение (18 игровых секунд):
-   - 💠 Жила Бездны — мгновенно +90 сек дохода (идёт в порог Эпохи);
-   - ⏱ Ускорение — весь доход ×3 на 30 игровых секунд;
-   - 🔮 Реликварий — случайная неполученная Реликвия.
+   - 💠 Жила Бездны — мгновенно +45 сек дохода (половина — в порог Эпохи);
+   - ⏱ Ускорение — доход ×3..×6 (растёт с Эпохой) на 30-60 сек;
+   - 🔮 Реликварий — случайная неполученная Реликвия (или крупная компенсация).
    Спавн отключён в обучении (noSave). Сбор: клик по иконке.
    ============================================================ */
 
@@ -59,19 +59,26 @@ function collectOmen(o) {
   const colors = { vein: ['#80e0ff', '#e8c060', '#fff'], haste: ['#80e060', '#fff', '#e8c060'], relic: ['#c9a227', '#e8c060', '#fff'] }[o.type];
   fxAtCell(o.r, o.c, colors, 26, 'wave');
   if (o.type === 'vein') {
-    const gain = Math.max(500, Math.round(calculateIncome() * 90));
-    crystals += gain; runEarned += gain;
+    /* Ребаланс (пункт 6 ТЗ): было +90 сек дохода И ВЕСЬ объём в порог Эпохи (двойная польза).
+       Теперь +45 сек дохода, и только половина уходит в прогресс Эпохи. */
+    const gain = Math.max(400, Math.round(calculateIncome() * 45));
+    crystals += gain; runEarned += Math.round(gain * 0.5);
     fxAtCell(o.r, o.c, colors, 0);
     fxFloatFromCell(o.r, o.c, '+' + fmtShort(gain) + ' 💎', '#80e0ff');
     sfx('win');
   } else if (o.type === 'haste') {
-    altBuff = { mult: 3, until: gameTime + 30, label: '⏱ УСКОРЕНИЕ ×3' };
-    fxFloatFromCell(o.r, o.c, '×3 НА 30с', '#80e060');
+    /* Ребаланс (пункт 6 ТЗ): было плоское ×3 на 30с — к поздним Эпохам незаметно.
+       Теперь множитель и длительность растут с Эпохой: ×3..×6, 30..60 сек. */
+    const mult = Math.min(6, 3 + Math.floor((epoch - 1) / 3));
+    const dur = Math.min(60, 30 + epoch * 3);
+    altBuff = { mult, until: gameTime + dur, label: '⏱ УСКОРЕНИЕ ×' + mult };
+    fxFloatFromCell(o.r, o.c, '×' + mult + ' НА ' + dur + 'с', '#80e060');
     sfx('relic');
   } else {
     if (!grantRandomRelic()) {
-      const gain = Math.max(2000, Math.round(calculateIncome() * 240));
-      crystals += gain; runEarned += gain;
+      /* Все реликвии собраны: компенсация поднята (было ×240, минимум 2000) */
+      const gain = Math.max(3000, Math.round(calculateIncome() * 300));
+      crystals += gain; runEarned += Math.round(gain * 0.5);
       fxFloatFromCell(o.r, o.c, '+' + fmtShort(gain) + ' 💎', '#e8c060');
     } else fxFloatFromCell(o.r, o.c, 'РЕЛИКВИЯ!', '#c9a227', 22);
   }
@@ -95,7 +102,7 @@ function renderOmens() {
   if (!layer) return;
   layer.innerHTML = '';
   const n = playableSize, st = gridStart();
-  const meta = { vein: ['💠', 'Жила Бездны'], haste: ['⏱', 'Ускорение ×3'], relic: ['🔮', 'Реликварий'] };
+  const meta = { vein: ['💠', 'Жила Бездны'], haste: ['⏱', 'Ускорение'], relic: ['🔮', 'Реликварий'] };
   omens.forEach(o => {
     const cell = gridEl.children[(o.r - st) * n + (o.c - st)];
     if (!cell) return;
