@@ -2,7 +2,7 @@
 /* ============================================================
    FX (render/fx.js) — canvas-слой частиц ПОВЕРХ интерфейса.
    Всплески при установке карт, конфетти Эпох, лучи ★5-дропа,
-   всплывающие цифры наград, тлеющие угольки в меню.
+   всплывающие цифры наград.
    Требует реальный canvas (в тестовой песочнице отключается сам).
    Настройка: fxOn (мета).
    ============================================================ */
@@ -78,18 +78,7 @@ function fxBeams(x, y, colors) {
   }
   fxBurst(x, y, colors, 30, 4, 60);
 }
-/* Угольки в главном меню */
-function fxMenuEmbers() {
-  if (!fxOK()) return;
-  const W = fxCanvas.width, H = fxCanvas.height;
-  for (let i = 0; i < 2; i++) {
-    fxParts.push({
-      x: Math.random() * W, y: H + 8, vx: (Math.random() - 0.5) * 0.7, vy: -(0.5 + Math.random() * 1.1),
-      g: -0.004, life: 240, maxLife: 240, s: 1.5 + Math.random() * 2.5,
-      col: Math.random() < 0.7 ? '#ff8c3a' : '#e8c060'
-    });
-  }
-}
+/* Угольки в главном меню — УДАЛЕНЫ (пожелание клиента: убрать летящие снизу частицы) */
 
 /* Центр DOM-элемента → всплеск */
 function fxFxAt(el, colors, n) {
@@ -109,14 +98,9 @@ function fxAtCell(r, c, colors, n, kind) {
   else fxBurst(x, y, colors || ['#e8c060', '#c9a227', '#fff'], n, kind === 'big' ? 5 : 3.2);
 }
 
-let fxLastEmber = 0;
 function fxLoop(now) {
   if (fxCtx) {
     fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
-    /* угольки в меню */
-    if (document.getElementById('menu') && document.getElementById('menu').classList.contains('show')) {
-      if (now - fxLastEmber > 90) { fxMenuEmbers(); fxLastEmber = now; }
-    }
     for (let i = fxParts.length - 1; i >= 0; i--) {
       const p = fxParts[i];
       p.life--;
