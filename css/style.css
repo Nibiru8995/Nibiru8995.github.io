@@ -591,3 +591,38 @@ h1 small { display: block; font-size: 9px; letter-spacing: 2px; color: #8a6a4a; 
 #dbgFactions .faction-card h3 { font-size: 13px; margin: 0 0 2px; }
 #dbgFactions .faction-card small { color: #a08860; }
 #dbgFactions .dbg-f { transition: box-shadow .15s; }
+
+/* ============================================================
+   ФИДБЕК-РАУНД 3: ауры, угли, реликвии-спрайты, автобатлер
+   ============================================================ */
+/* ФИДБЕК 1: ЯРКАЯ зона Ауры Власти (Лич) — видно на любых клетках,
+   включая пустые: золотая пульсация + ромб-щит */
+.cell.aura-warded { border-color: #e8c060; }
+.cell.aura-warded::before { content: ''; position: absolute; inset: 2px; border-radius: 4px; pointer-events: none;
+  background: radial-gradient(circle, #e8c06022 0%, transparent 70%), repeating-linear-gradient(45deg, #e8c06011 0 6px, transparent 6px 12px);
+  animation: lichPulse 1.6s ease-in-out infinite; }
+@keyframes lichPulse { 0%, 100% { box-shadow: inset 0 0 10px #e8c06066; } 50% { box-shadow: inset 0 0 20px #e8c060bb; } }
+
+/* ДЕМОНЫ: угли Хаоса на карте */
+.card .ember-badge { position: absolute; bottom: 12px; right: 1px; font-size: 7px; letter-spacing: -1px;
+  color: #ff9030; text-shadow: 0 0 4px #ff5010, 0 1px 2px #000; line-height: 1; }
+
+/* РЕЛИКВИИ 3.0: спрайты вместо эмодзи */
+.col-slot .cs-ic { width: 24px; height: 24px; object-fit: cover; border-radius: 4px; image-rendering: pixelated;
+  filter: drop-shadow(0 0 4px var(--relicC, #c9a227)); }
+.relic-pick { display: flex; gap: 8px; align-items: center; }
+.relic-pick-img { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid #3a2414; image-rendering: pixelated; }
+.relic-card { display: flex; gap: 10px; align-items: flex-start; }
+.relic-card-img { width: 52px; height: 52px; object-fit: cover; border-radius: 6px; border: 1px solid #3a2414; image-rendering: pixelated; flex: 0 0 auto; }
+.relic-card.locked .relic-card-img { filter: grayscale(1) brightness(0.5); }
+.relic-inline-art { width: 16px; height: 16px; object-fit: cover; border-radius: 3px; vertical-align: -3px; image-rendering: pixelated; }
+.anchor-badge.relic-mini .relic-mini-img { width: 11px; height: 11px; border-radius: 2px; object-fit: cover; image-rendering: pixelated; vertical-align: -2px; }
+
+/* АВТОБАТЛЕР: поле боя */
+#battleCanvas { width: 100%; height: auto; display: block; border-radius: 6px;
+  border: 1px solid #4a2020; background: #0d0704; image-rendering: auto;
+  box-shadow: inset 0 0 18px #000000cc; }
+.arena-enemy-card { padding: 6px; gap: 4px; }
+
+/* Знамения: спрайты вместо эмодзи */
+.omen .omen-img { width: 26px; height: 26px; object-fit: cover; border-radius: 4px; image-rendering: pixelated; filter: drop-shadow(0 0 4px #fff8); }
