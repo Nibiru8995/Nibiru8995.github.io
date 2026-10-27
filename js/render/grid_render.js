@@ -24,6 +24,11 @@ function applyGridMetrics() {
   gridEl.style.gridTemplateRows = 'repeat(' + n + ', var(--cell-size))';
 }
 
+/* Карты, чья механика действует на ОКРУЖЕНИЕ (пункт 4 ТЗ): id -> радиус ауры в клетках.
+   Глобальные способности (Жатва u9, Глас Пустоты c11, Великое Око c10, Инквизиция c8)
+   кольца не получают — у них нет радиуса действия. */
+const AURA_R = { u8: 1, u10: 2, u11: 2, c4: 1, c9: 2, b8: 1, b9: 2, b10: 1, d8: 1, d9: 1, d10: 2, d11: 1 };
+
 function buildGrid() {
   applyGridMetrics();
   gridEl.innerHTML = '';
@@ -48,6 +53,8 @@ function renderGrid() {
     cell.innerHTML = ''; cell.className = 'cell playable';
     cell.onclick = () => onCellClick(r, c);
     if (r === 4 && c === 4) cell.classList.add('center-cell');
+    /* Зона Ауры Власти (Лич ★4): подсветка защищённых клеток (пункты 3-4 ТЗ) */
+    if (incomeCache.lichZone && incomeCache.lichZone.indexOf(r + ',' + c) >= 0) cell.classList.add('aura-warded');
 
     if (moveMode && moveSource && moveSource.r === r && moveSource.c === c) cell.classList.add('move-source');
     else if (moveMode && moveSource && !item) cell.classList.add('move-target');
@@ -99,6 +106,21 @@ function drawSynergies() {
   const cellAt = (r, c) => gridEl.children[(r - st) * n + (c - st)];
   const cx = (c) => { const b = cellAt(st, c).getBoundingClientRect(); return b.left - sr.left + b.width / 2; };
   const cy = (r) => { const b = cellAt(r, st).getBoundingClientRect(); return b.top - sr.top + b.height / 2; };
+  /* Кольца аур вокруг карт с окружностной механикой (пункт 4 ТЗ) */
+  for (let r = st; r < st + n; r++) for (let c = st; c < st + n; c++) {
+    const item = grid[r][c]; if (!item) continue;
+    const R = AURA_R[item.cardId];
+    if (!R) continue;
+    const bEl = cellAt(r, c);
+    if (!bEl) continue;
+    const b = bEl.getBoundingClientRect();
+    const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    ring.setAttribute('cx', b.left - sr.left + b.width / 2);
+    ring.setAttribute('cy', b.top - sr.top + b.height / 2);
+    ring.setAttribute('r', b.width / 2 + (R >= 2 ? 11 : 5));
+    ring.setAttribute('class', 'aura-ring' + (R >= 2 ? ' r2' : ''));
+    synergySvg.appendChild(ring);
+  }
   for (let r = st; r < st + n; r++) for (let c = st; c < st + n; c++) {
     const item = grid[r][c]; if (!item) continue;
     const card = CARDS[item.cardId];
