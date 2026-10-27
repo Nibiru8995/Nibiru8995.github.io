@@ -55,6 +55,7 @@ function buyAltarUpgrade() {
   renderCollection(); updateHUD();
   renderEpochMenu();
   toast('🧱 Алтарь расширен до ' + n + '×' + n + '!');
+  guideMarkSeen('altar'); /* фича освоена — подсказка больше не нужна */
   checkAchievements();
 }
 
@@ -90,6 +91,7 @@ function doEpochUp(newFaction) {
   renderCollection(); renderFighters(); initArena(); updateHUD(); updateBanner(); updateEpochUI();
   toast('⚜ ' + FACTION_INFO[faction].epochTitle + ': +' + gain + ' 🔱');
   checkAchievements();
+  queueFeatureGuides(); /* онбординг: новая фракция/фичи этой Эпохи */
 }
 
 /* Магазин печатей */

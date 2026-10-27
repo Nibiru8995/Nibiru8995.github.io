@@ -118,8 +118,6 @@ h1 small { display: block; font-size: 9px; letter-spacing: 2px; color: #8a6a4a; 
 .epoch-big-btn:active { transform: translateY(2px); }
 .epoch-big-btn.notready { opacity: .82; filter: saturate(.7); }
 .epoch-big-btn .cost { font-size: 12px; color: #d4b050; margin-top: 3px; font-weight: normal; letter-spacing: 0; }
-.epoch-info-btn { width: 56px; min-height: 56px; flex-shrink: 0; font-size: 24px; font-weight: bold; color: #ffe080; background: linear-gradient(to bottom, #4a3410, #2a1a0f); border: 2px solid var(--border2); border-radius: 8px; cursor: pointer; font-family: 'Georgia', serif; box-shadow: inset 0 2px 0 #8a5a2a, 0 4px 6px #000000aa; transition: all .15s; }
-.epoch-info-btn:hover { border-color: var(--gold); box-shadow: inset 0 2px 0 #8a5a2a, 0 0 14px #c9a22766; transform: translateY(-1px); }
 #rollBar { display: flex; flex-wrap: wrap; gap: 6px; align-self: stretch; justify-content: center; align-items: stretch; margin-top: 2px; }
 .roll-btn { flex: 1 1 96px; min-width: 90px; min-height: 46px; font-size: 12px; font-weight: bold; letter-spacing: 1px; color: #f0e0c0; background: linear-gradient(to bottom, #5a3a20 0%, #2a1a0f 100%); border: 1px solid var(--border2); border-radius: 6px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: inset 0 2px 0 #8a5a2a, 0 4px 6px #000000aa; text-transform: uppercase; font-family: 'Georgia', serif; padding: 5px 6px; transition: all .1s; }
 .roll-btn:hover:not(:disabled) { background: linear-gradient(to bottom, #7a4a28 0%, #3a2414 100%); transform: translateY(-1px); }
@@ -388,6 +386,13 @@ h1 small { display: block; font-size: 9px; letter-spacing: 2px; color: #8a6a4a; 
 #tutStep { flex: 1; font-size: 11px; color: #8a6a4a; }
 .tut-hl { outline: 3px solid #60ff90 !important; outline-offset: 3px; animation: tutP 1s infinite; border-radius: 6px; }
 @keyframes tutP { 50% { outline-color: #fff; } }
+
+/* ===== ОНБОРДИНГ НОВЫХ ФИЧ (logic/guide.js) ===== */
+#guidePanel { display: none; position: fixed; top: 8px; left: 50%; transform: translateX(-50%); width: min(540px, 94vw); z-index: 295; background: linear-gradient(#3a2c10,#1a1206); border: 2px solid #c9a227; border-radius: 10px; padding: 10px 14px; font-size: 13px; line-height: 1.45; box-shadow: 0 0 24px #000, 0 0 12px #c9a22744; }
+#guidePanel.show { display: block; }
+#guideBtns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; align-items: center; }
+#guideStepLbl { flex: 1; font-size: 11px; color: #a08a5a; }
+.guide-hl { outline: 3px solid #ffd34d !important; outline-offset: 3px; animation: tutP 1s infinite; border-radius: 6px; position: relative; z-index: 5; }
 
 /* ===== АДАПТИВНОСТЬ ===== */
 @media (max-height: 800px) {

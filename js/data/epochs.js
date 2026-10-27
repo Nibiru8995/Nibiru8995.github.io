@@ -13,8 +13,8 @@
 */
 const EPOCHS = [
   { unlock: 'Алтарь 3×3 + Гача ★1/★3 + фракция «Нежить»',  threshold: 0,             seals: 0 },
-  { unlock: '🎰 Казино + ⚔ Боевая арена',                  threshold: 25000,         seals: 4 },
-  { unlock: 'Расширение Алтаря → 5×5',                     threshold: 150000,        seals: 5 },
+  { unlock: '⚔ Боевая арена',                              threshold: 25000,         seals: 4 },
+  { unlock: '🎰 Казино + расширение Алтаря → 5×5',          threshold: 150000,        seals: 5 },
   { unlock: 'Новая механика: ★4 в пуле гачи',              threshold: 700000,        seals: 6 },
   { unlock: 'Фракция «Культисты»',                         threshold: 3000000,       seals: 7 },
   { unlock: 'Расширение Алтаря → 7×7',                     threshold: 15000000,      seals: 8 },
@@ -51,8 +51,9 @@ function epochMaxSize(e) {
 /* Стоимость расширения Алтаря до следующего размера */
 const ALTAR_COST = { 5: 25000, 7: 2000000, 9: 200000000 };
 
-/* ---- Казино и Боевая арена открываются в Эпохе 2 (пункты 2 и 9 ТЗ) ---- */
-const CASINO_EPOCH = 2;
+/* ---- Казино и Боевая арена открываются в РАЗНЫХ Эпохах ----
+   Арена — Эпоха 2 (бой), Казино — Эпоха 3 (развлечения после 5×5). */
+const CASINO_EPOCH = 3;
 const ARENA_EPOCH = 2;
 function epochHasCasino(e) { return e >= CASINO_EPOCH; }
 function epochHasArena(e) { return e >= ARENA_EPOCH; }

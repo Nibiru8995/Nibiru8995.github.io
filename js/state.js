@@ -70,6 +70,9 @@ let stats = {
 /* --- Достижения --- */
 let achDone = {};
 
+/* --- Онбординг фич/фракций (вечный): какие подсказки уже показаны --- */
+let guideSeen = {};
+
 /* --- Прочее --- */
 let collectionFilter = 'all', rarityFilter = 'all';
 let busy = 0; // активный раунд казино (блокирует выход)
@@ -121,7 +124,7 @@ function loadRun() {
 }
 
 function buildMetaSave() {
-  return { seals, sealsTotal, maxEpoch, disc: [...discovered], achDone, stats, totalTime: gameTime };
+  return { seals, sealsTotal, maxEpoch, disc: [...discovered], achDone, stats, totalTime: gameTime, guide: guideSeen };
 }
 function saveMeta() {
   try { localStorage.setItem(SAVE_META, JSON.stringify(buildMetaSave())); } catch (e) { }
@@ -133,6 +136,7 @@ function loadMeta() {
     seals = d.seals ?? 0; sealsTotal = d.sealsTotal ?? 0; maxEpoch = d.maxEpoch ?? 1;
     discovered = new Set(d.disc || []); achDone = d.achDone || {};
     if (d.stats) stats = Object.assign(stats, d.stats);
+    guideSeen = d.guide || {};
     gameTime = d.totalTime ?? 0;
   } catch (e) { }
 }
