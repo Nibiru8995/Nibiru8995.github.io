@@ -1,0 +1,119 @@
+'use strict';
+/* ============================================================
+   РЕНДЕР: HUD (render/hud.js)
+   Верхняя панель, кнопки круток (под Алтарём), большая кнопка
+   Эпохи (над Алтарём), скрытие заблокированных фич (пункт 9 ТЗ),
+   баннер режимов, тултип карт.
+   ============================================================ */
+
+/* Скрытие недоступных фич: до разблокировки их ВООБЩЕ НЕ ВИДНО (пункт 9 ТЗ) */
+function applyFeatureLocks() {
+  const arenaOn = epochHasArena(epoch);
+  const casinoOn = epochHasCasino(epoch);
+  const arenaCol = $('arenaCol');
+  if (arenaCol) arenaCol.style.display = arenaOn ? '' : 'none';
+  ['bulkDup', 'bulk1', 'bulkAll'].forEach(id => { const b = $(id); if (b) b.style.display = arenaOn ? '' : 'none'; });
+  const cb = $('casinoBtn');
+  if (cb) cb.style.display = casinoOn ? '' : 'none';
+}
+
+function updateHUD() {
+  $('crystals').textContent = fmt(crystals);
+  $('sealsTop').textContent = fmt(seals);
+  $('rate').textContent = '+' + calculateIncome().toFixed(2) + '/сек';
+  applyFeatureLocks();
+
+  /* Pity — гарантия до старшей ДОСТУПНОЙ редкости (показ у кнопок круток) */
+  const unlocked = unlockedRarities();
+  let pity = 'Гарантия: ';
+  if (unlocked.includes(5)) pity += 'до ★4: ' + Math.max(0, 10 - pity4) + ' · до ★5: ' + Math.max(0, 80 - pity5);
+  else if (unlocked.includes(4)) pity += 'до ★4: ' + Math.max(0, 10 - pity4);
+  else pity += 'до ★3: ' + Math.max(0, 10 - pity4);
+  $('pity').textContent = pity;
+
+  const rc = rollCost();
+  [1, 10, 100, 1000].forEach(n => {
+    const el = $('roll' + n);
+    el.disabled = crystals < n * rc;
+    const cost = el.querySelector('.cost');
+    if (cost) cost.textContent = fmt(n * rc);
+  });
+  $('rollAll').disabled = crystals < rc;
+  $('rollAll').querySelector('.cost').textContent = 'макс. круток';
+
+  /* Большая кнопка ЭПОХИ над Алтарём: всегда кликабельна —
+     порог достигнут → начать новую, нет → открыть Меню Эпохи */
+  const p = epochProgress();
+  const upBtn = $('epochUpBtn');
+  const label = $('epochBtnLabel');
+  if (label) label.textContent = '⚜ ЭПОХА ' + epoch;
+  if (canEpochUp()) {
+    upBtn.disabled = false;
+    upBtn.classList.remove('notready');
+    upBtn.classList.add('ready');
+    upBtn.querySelector('.cost').textContent = '⚔ НАЧАТЬ ЭПОХУ ' + (epoch + 1) + ' → +' + epochSealsGain(epoch) + ' 🔱';
+  } else {
+    upBtn.disabled = false;
+    upBtn.classList.remove('ready');
+    upBtn.classList.add('notready');
+    upBtn.querySelector('.cost').textContent = fmtShort(p.earned) + ' / ' + fmtShort(p.threshold) + ' 💎 · ' + Math.floor(p.pct * 100) + '%';
+  }
+  const achvBtnCost = $('achvBtn') && $('achvBtn').querySelector('.cost');
+  if (achvBtnCost) achvBtnCost.textContent = achvCount() + ' / ' + ACHIEVEMENTS.length;
+}
+
+function updateBanner() {
+  const b = $('selectionBanner');
+  if (placingMode && pendingCard) {
+    b.innerHTML = 'Выбрана карта: <b>' + CARDS[pendingCard].name + '</b>. Кликните по подсвеченной клетке. ПКМ/Esc — отмена.';
+    b.classList.add('show');
+  } else if (deleteMode) {
+    b.innerHTML = 'Режим удаления. Кликните по карте — она будет удалена навсегда. Esc — отмена.';
+    b.classList.add('show');
+  } else if (moveMode) {
+    b.innerHTML = moveSource ? 'Перемещение: кликните по свободной подсвеченной клетке. Esc — отмена.' : 'Перемещение: кликните по карте на поле. Esc — отмена.';
+    b.classList.add('show');
+  } else b.classList.remove('show');
+}
+
+/* Тултип карты на гриде / в коллекции */
+function showCardTooltip(e, card, income, r, c) {
+  let linksHtml = '';
+  if (r !== undefined && c !== undefined) {
+    const partners = getNeighbors(r, c)
+      .filter(n => linked(card, CARDS[n.item.cardId]))
+      .map(n => {
+        const pair = findPair(card, CARDS[n.item.cardId]);
+        if (!pair) return null;
+        const usage = incomeCache.pairUsage[SYNERGY_PAIRS.indexOf(pair)] || 1;
+        const factor = SYN_DR[Math.min(usage - 1, SYN_DR.length - 1)];
+        return '<span class="tt-good">' + pair.text + ' (с ' + CARDS[n.item.cardId].name + ')' +
+          (factor < 1 ? ' <b style="color:#ffd34d">повтор ×' + factor + '</b>' : '') + '</span>';
+      }).filter(Boolean);
+    linksHtml = '<div class="tt-synergy"><div class="tt-synergy-title">Активные звенья</div>' +
+      (partners.length ? partners.join('<br>') : '<span style="color:#8a6a4a;">Нет активных звеньев с соседями.</span>') + '</div>';
+  } else {
+    const ps = pairsForCard(card);
+    if (ps.length) linksHtml = '<div class="tt-synergy"><div class="tt-synergy-title">Возможные звенья</div>' +
+      ps.map(p => '<span class="tt-good">' + p.text + '</span>').join('<br>') + '</div>';
+  }
+  let mechLine = '<div class="tt-synergy"><div class="tt-synergy-title">Роль</div>' + roleText(card) + '</div>';
+  tooltip.innerHTML =
+    '<div class="tt-name">' + cardArtHTML(card, 'tt-art', '') + '<span>' + card.name + '</span></div>' +
+    '<div class="tt-stars">' + '★'.repeat(card.rarity) + ' · ' + FACTION_INFO[card.faction].name + '</div>' +
+    '<div class="tt-income">Прирост: +' + (income !== undefined ? income.toFixed(2) : card.baseRate.toFixed(2)) + '/сек</div>' +
+    mechLine + linksHtml +
+    '<div class="tt-flavor">«' + card.flavor + '»</div>';
+  tooltip.classList.add('show');
+  moveTooltip(e);
+}
+function roleText(card) {
+  return {
+    builder: '🧱 Строительный блок — основа композиции',
+    amplifier: '📡 Усилитель — усиливает партнёров синергиями',
+    anchor: '🔱 Якорь — сердце фракционной механики',
+    healer: '💚 Поддержка — лечит и стабилизирует',
+    burst: '💥 Взрывной — крупный доход в правильной связке',
+    predator: '🦁 Хищник — поедает соседних зверей, получает бафф'
+  }[card.role] || '—';
+}

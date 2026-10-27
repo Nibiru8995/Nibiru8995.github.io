@@ -4,362 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Гача-Гриндер 2: Тёмное Наследие</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
-  :root {
-    --bg: #1a0f08; --bg2: #0d0704;
-    --border: #4a3020; --border2: #6a4a2a;
-    --accent2: #b08040; --gold: #c9a227;
-    --ink: #e0d0b0;
-    --cell-size: min(6vh, 58px, calc((100vw - 70px) / 9.6));
-    --f-undead: #9a9a9a; --f-beast: #3aa03a; --f-demon: #c03030; --f-cultist: #c9a227;
-  }
-  html, body { min-height: 100%; overflow-x: hidden; width: 100%; }
-  body {
-    background: radial-gradient(ellipse at 50% 40%, #2a1a0f 0%, #1a0f08 50%, #0d0704 100%),
-                repeating-linear-gradient(90deg, #00000000 0px, #00000000 2px, #00000010 2px, #00000010 4px);
-    color: var(--ink); font-family: 'Georgia', 'Times New Roman', serif;
-    display: flex; flex-direction: column; align-items: center;
-    padding: 4px; min-height: 100vh;
-  }
-  body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0; background: radial-gradient(ellipse at 50% 45%, transparent 40%, #00000088 100%); }
-  
-  h1 { font-size: 14px; letter-spacing: 3px; text-transform: uppercase; color: var(--accent2); text-align: center; line-height: 1; margin-bottom: 2px; position: relative; z-index: 2;}
-  h1 small { display: block; font-size: 9px; letter-spacing: 2px; color: #8a6a4a; margin-top: 2px; }
-  #topBar { display: flex; gap: 12px; align-items: center; justify-content: center; padding: 4px 18px; margin-bottom: 4px; background: linear-gradient(#2a1a0f, #1a0f08); border: 1px solid var(--border2); border-radius: 6px; box-shadow: inset 0 1px 0 #6a4a2a, 0 2px 4px #00000088; font-size: 15px; font-weight: bold; flex-shrink: 0; position: relative; z-index: 2; }
-  .crystal-icon { display: inline-block; width: 14px; height: 14px; background: linear-gradient(135deg,#d4b060, #806020); clip-path: polygon(50% 0%, 100% 38%, 75% 100%, 25% 100%, 0% 38%); margin-right: 4px; vertical-align: middle; box-shadow: 0 0 4px #c9a22788; }
-  #rate { color: #c9a227; font-size: 13px; }
-
-  #main { display: flex; gap: 16px; flex: 1; min-height: 0; width: 100%; max-width: 1450px; justify-content: center; align-items: stretch; margin-top: 4px; padding: 0 10px; position: relative; z-index: 2; }
-
-  /* ===== АРЕНА И БОЙЦЫ ===== */
-  #arenaCol { width: 300px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; max-height: 100%; filter: brightness(0.92); overflow: hidden; }
-  #arenaPanel { background: linear-gradient(#2a1a0f, #150d05); border: 2px solid var(--border2); border-radius: 8px; padding: 10px; box-shadow: inset 0 0 12px #00000088; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;}
-  .arena-title { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: #d4b050; text-align: center; font-weight: bold; padding-bottom: 4px; }
-  .arena-floor-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #d4c0a0; background: #1a0a0a; padding: 4px 8px; border-radius: 4px; border: 1px solid #4a2020; }
-  .arena-floor-row b { color: #ffe080; }
-  .arena-dots { display: flex; gap: 3px; }
-  .room-dot { width: 10px; height: 10px; border-radius: 50%; background: #3a2414; border: 1px solid #5a3a20; }
-  .room-dot.cleared { background: #40a040; border-color: #60d060; box-shadow: 0 0 4px #40d040; }
-  .room-dot.current { background: #d4b050; border-color: #ffe080; animation: pulse 1s infinite; }
-  .room-dot.boss { background: #4a1010; border-color: #8b1a1a; }
-  .room-dot.boss.cleared { background: #a02020; border-color: #ff4040; }
-  .room-dot.boss.current { background: #ff2020; border-color: #ff8080; animation: pulse 0.8s infinite; }
-  .arena-room-header { display: flex; justify-content: space-between; align-items: center; background: #150d05; border: 1px solid #4a3020; border-radius: 4px; padding: 4px 8px; font-size: 11px; color: #b08040; }
-  .arena-enemy-card { background: radial-gradient(circle at 50% 20%, #3a0a0a, #0a0000); border: 2px solid #8b1a1a; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; box-shadow: inset 0 0 15px #000000cc; }
-  .arena-enemy-icon { font-size: 42px; line-height: 1; filter: drop-shadow(0 0 10px #ff2020); }
-  .arena-enemy-name { font-size: 13px; font-weight: bold; color: #ffaaaa; text-shadow: 0 0 5px #000; }
-  .arena-bar-wrap { width: 100%; height: 14px; background: #1a0a0a; border: 1px solid #5a2020; border-radius: 7px; overflow: hidden; position: relative; }
-  .arena-bar { height: 100%; transition: width .2s; background: linear-gradient(90deg, #ff2020, #ff6040); }
-  .arena-hp-text { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; font-weight: bold; text-shadow: 0 0 3px #000, 0 0 2px #000; }
-  .arena-stats { display: flex; justify-content: space-around; font-size: 11px; font-weight: bold; background: #150505; border: 1px solid #3a1a1a; border-radius: 4px; padding: 6px; }
-  .arena-stats span { color: #ff8080; }
-  .arena-stats .hero { color: #a0e080; }
-  #arenaFightBtn { width: 100%; padding: 10px; font-size: 14px; font-weight: bold; background: linear-gradient(#5a2020, #2a0a0a); border: 2px solid #8b1a1a; border-radius: 6px; color: #ffaaaa; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; font-family: 'Georgia', serif; transition: all .15s; }
-  #arenaFightBtn:hover:not(:disabled) { background: linear-gradient(#8b1a1a, #4a1010); color: #fff; box-shadow: 0 0 12px #ff202088; }
-  #arenaFightBtn:disabled { opacity: .4; cursor: not-allowed; filter: grayscale(1); }
-  #arenaRetreatBtn { width: 100%; padding: 8px; font-size: 12px; font-weight: bold; background: linear-gradient(#3a2414, #1a0f08); border: 1px solid #6a4a2a; border-radius: 6px; color: #d4c0a0; cursor: pointer; font-family: 'Georgia', serif; display: none; }
-  #arenaRetreatBtn:hover { background: #4a3020; border-color: #8a5a2a; color: #fff; }
-  .arena-status { font-size: 10px; text-align: center; color: #8a6a4a; min-height: 14px; }
-  .arena-status.win { color: #a0e080; }
-  .arena-status.lose { color: #ff8080; }
-  .arena-fight-row { display: flex; gap: 6px; align-items: center; }
-  .auto-label { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #d4c0a0; cursor: pointer; white-space: nowrap; }
-  .auto-label input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--gold); cursor: pointer; }
-
-  /* БОЙЦЫ (Исправлено: скроллер и фиксированная высота) */
-  #fightersPanel { background: linear-gradient(#2a1a0f, #150d05); border: 2px solid var(--border2); border-radius: 8px; padding: 8px; box-shadow: inset 0 0 12px #00000088; display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 0; overflow: hidden; }
-  #fightersHeader { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent2); text-align: center; font-weight: bold; border-bottom: 1px solid var(--border); padding-bottom: 4px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;}
-  #fightersHeader span { color: var(--gold); font-size: 10px; }
-  #fightersList { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; background: #0a0503; border-radius: 5px; padding: 4px; }
-  .fighter-row { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 4px; background: linear-gradient(#241608, #150d05); border: 1px solid #3a2414; font-size: 10px; cursor: default; transition: all .12s; position: relative; overflow: hidden; flex-shrink: 0; }
-  .fighter-row:hover { border-color: var(--accent2); background: #2a1a0e; }
-  .fighter-row .f-hp-bar { position: absolute; bottom: 0; left: 0; height: 2px; background: #40d040; transition: width .2s; }
-  .fighter-row .f-icon { font-size: 16px; line-height: 1; width: 22px; text-align: center; }
-  .fighter-row .f-name { flex: 1; color: #e0d0b0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .fighter-row .f-count { color: #ffe080; font-weight: bold; width: 24px; text-align: center; }
-  .fighter-row .f-dmg { color: #ff8080; font-weight: bold; width: 46px; text-align: right; }
-  .fighter-empty { font-size: 10px; color: #6a4a2a; text-align: center; padding: 14px 6px; font-style: italic; line-height: 1.4; }
-  #fightersList::-webkit-scrollbar { width: 8px; }
-  #fightersList::-webkit-scrollbar-track { background: #0a0503; border-radius: 4px; }
-  #fightersList::-webkit-scrollbar-thumb { background: linear-gradient(#6a4a2a, #3a2414); border-radius: 4px; border: 1px solid #8a5a2a; }
-
-  /* ===== ПРАВАЯ КОЛОНКА ===== */
-  #rightCol { width: 160px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; filter: brightness(0.92); }
-  #casinoBtn { width: 100%; min-height: 56px; font-size: 14px; font-weight: bold; letter-spacing: 2px; color: #1a0a00; background: linear-gradient(160deg, #ffe080 0%, #d4b050 25%, #c9a227 50%, #a08020 75%, #ffe080 100%); border: 2px solid #fff2a0; border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 0 12px #c9a227, 0 0 24px #c9a22766, inset 0 2px 0 #fff2a0, inset 0 -2px 4px #6a4a10; text-transform: uppercase; font-family: 'Georgia', serif; padding: 8px 4px; animation: casinoGlow 1.8s ease-in-out infinite; position: relative; overflow: hidden; flex-shrink: 0;}
-  @keyframes casinoGlow { 0%,100% { box-shadow: 0 0 10px #c9a227, 0 0 20px #c9a22744, inset 0 2px 0 #fff2a0; filter: brightness(1); } 50% { box-shadow: 0 0 20px #ffe080, 0 0 40px #c9a22788, inset 0 2px 0 #fff2a0; filter: brightness(1.15); } }
-  #casinoBtn::before { content: ''; position: absolute; top: 0; left: -100%; width: 60%; height: 100%; background: linear-gradient(90deg, transparent, #ffffff88, transparent); animation: casinoShine 2.6s linear infinite; }
-  @keyframes casinoShine { 0% { left: -100%; } 60%,100% { left: 140%; } }
-  #casinoBtn .casino-icon { font-size: 18px; line-height: 1; }
-  #casinoBtn:hover { filter: brightness(1.25); transform: translateY(-1px); }
-  #casinoBtn:active { transform: translateY(2px); }
-  .action-btn { width: 100%; min-height: 56px; font-size: 12px; font-weight: bold; letter-spacing: 1px; color: #f0e0c0; background: linear-gradient(to bottom, #5a3a20 0%, #2a1a0f 100%); border: 1px solid var(--border2); border-radius: 6px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: inset 0 2px 0 #8a5a2a, 0 4px 6px #000000aa; transition: all .1s; text-transform: uppercase; font-family: 'Georgia', serif; padding: 8px 4px; flex-shrink: 0;}
-  .action-btn:hover:not(:disabled) { background: linear-gradient(to bottom, #7a4a28 0%, #3a2414 100%); transform: translateY(-1px); }
-  .action-btn:active:not(:disabled) { transform: translateY(2px); }
-  .action-btn:disabled { opacity: .4; cursor: not-allowed; filter: grayscale(1); }
-  .action-btn .cost { font-size: 11px; color: #d4b050; margin-top: 2px; font-weight: normal; }
-  .move-tool-btn, .delete-tool-btn, .settings-btn { width: 100%; min-height: 56px; background: linear-gradient(#4a2020, #2a0a0a); border: 2px solid #8b1a1a; color: #ffaaaa; font-size: 12px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: all .2s; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: 'Georgia', serif; text-transform: uppercase; box-shadow: inset 0 2px 0 #8a5a2a; gap: 4px; flex-shrink: 0;}
-  .move-tool-btn { background: linear-gradient(#1a3a4a, #0a1a2a); border-color: #2a7a9a; color: #aaddff; }
-  .move-tool-btn:hover { background: #1a4a5a; border-color: #60c0ff; }
-  .move-tool-btn.active { background: #2a7a9a; color: #fff; box-shadow: 0 0 15px #60c0ff; }
-  .delete-tool-btn:hover { background: #6a2020; border-color: #ff4040; }
-  .delete-tool-btn.active { background: #8b1a1a; color: #fff; box-shadow: 0 0 15px #ff2020; }
-  .settings-btn { background: linear-gradient(#2a2a2a, #0a0a0a); border-color: #555; color: #ccc; }
-  .settings-btn:hover { background: #444; border-color: #888; }
-  .icon { font-size: 20px; }
-
-  /* ===== ГРИД ===== */
-  #centerCol { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; position: relative; max-height: 100%; justify-content: center; }
-  .grid-title { font-size: 16px; letter-spacing: 5px; text-transform: uppercase; color: #ffe080; text-shadow: 0 0 12px #c9a227, 0 0 24px #c9a22788; margin-bottom: 2px; font-weight: bold; text-align: center; position: relative; z-index: 3; }
-  .grid-stats { font-size: 11px; color: #d4c0a0; margin-bottom: 6px; text-align: center; background: linear-gradient(#2a1a0f, #150d05); border: 1px solid var(--border2); border-radius: 4px; padding: 3px 12px; position: relative; z-index: 3; box-shadow: inset 0 0 8px #00000088; }
-  .grid-stats b { color: var(--gold); }
-  #gridAltar { position: relative; padding: 14px; background: radial-gradient(ellipse at 50% 50%, #3a2414 0%, #1a0f08 60%, #0a0503 100%), repeating-linear-gradient(45deg, #00000000 0px, #00000000 10px, #00000022 10px, #00000022 12px); border-radius: 14px; box-shadow: 0 0 40px #c9a22744, inset 0 0 30px #000000cc; }
-  #gridAltar::before { content: ''; position: absolute; inset: -6px; border: 1px solid #c9a22766; border-radius: 18px; pointer-events: none; animation: altarPulse 4s ease-in-out infinite; }
-  @keyframes altarPulse { 0%,100% { box-shadow: 0 0 10px #c9a22744, inset 0 0 10px #c9a22722; } 50% { box-shadow: 0 0 30px #c9a22788, inset 0 0 20px #c9a22744; } }
-  #gridWrap { position: relative; padding: 8px; background: linear-gradient(#3a2414, #1a0f08); border: 3px solid #c9a227; border-radius: 10px; box-shadow: inset 0 0 20px #00000088, 0 0 0 1px #000, 0 0 0 4px #2a1a0f, 0 0 0 5px #c9a22788, 0 0 20px #c9a22766, 0 4px 12px #000000aa; clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px)); }
-  #gridWrap::before, #gridWrap::after { content: ''; position: absolute; width: 18px; height: 18px; border: 2px solid #ffe080; pointer-events: none; z-index: 3; }
-  #gridWrap::before { top: 4px; left: 4px; border-right: none; border-bottom: none; }
-  #gridWrap::after { bottom: 4px; right: 4px; border-left: none; border-top: none; }
-  .corner-tl, .corner-tr, .corner-bl, .corner-br { position: absolute; width: 22px; height: 22px; pointer-events: none; z-index: 3; }
-  .corner-tl { top: -3px; left: -3px; border-top: 3px solid #ffe080; border-left: 3px solid #ffe080; }
-  .corner-tr { top: -3px; right: -3px; border-top: 3px solid #ffe080; border-right: 3px solid #ffe080; }
-  .corner-bl { bottom: -3px; left: -3px; border-bottom: 3px solid #ffe080; border-left: 3px solid #ffe080; }
-  .corner-br { bottom: -3px; right: -3px; border-bottom: 3px solid #ffe080; border-right: 3px solid #ffe080; }
-  #grid { display: grid; grid-template-columns: repeat(9, var(--cell-size)); grid-template-rows: repeat(9, var(--cell-size)); gap: 3px; background: #0a0503; padding: 4px; border-radius: 6px; box-shadow: inset 0 0 15px #000000cc; }
-  .cell { width: var(--cell-size); height: var(--cell-size); background: linear-gradient(145deg, #241608 0%, #150d05 100%); border-radius: 4px; border: 1px solid #3a2414; box-shadow: inset 0 0 8px #00000088, inset 0 1px 0 #4a302088; display: flex; align-items: center; justify-content: center; position: relative; transition: all .18s; }
-  .cell.center-cell { box-shadow: inset 0 0 10px #c9a22766, 0 0 8px #c9a22744; border: 1px solid #c9a227; }
-  .cell.playable { background: linear-gradient(145deg, #2a1a0e, #1a0f08); border-color: #4a3020; cursor: pointer; }
-  .cell.playable:hover { background: linear-gradient(145deg, #3a2414, #1a0f08); border-color: #c9a227; transform: translateY(-2px); box-shadow: inset 0 0 12px #000000cc, 0 0 12px #c9a22766, 0 4px 8px #000000aa; z-index: 2; }
-  .cell.place-target { outline: 2px dashed var(--gold); box-shadow: inset 0 0 14px #c9a22766, 0 0 8px #c9a22788; cursor: cell; animation: pulse 1.2s infinite; }
-  .cell.move-source { outline: 2px solid #60c0ff; box-shadow: inset 0 0 14px #60c0ff66, 0 0 10px #60c0ff; animation: pulse 1.2s infinite; }
-  .cell.move-target { outline: 2px dashed #60c0ff; box-shadow: inset 0 0 14px #60c0ff66, 0 0 8px #60c0ff88; cursor: cell; animation: pulse 1.2s infinite; }
-  @keyframes pulse { 0%,100% { outline-color: #c9a227; } 50% { outline-color: #ffe080; } }
-  .cell.buy-cell { background: transparent; border: 2px dashed #5a3a20; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; opacity: 0.6; transition: all .2s; }
-  .cell.buy-cell:hover { background: #3a2414; border-color: var(--gold); opacity: 1; }
-  .cell.buy-cell::after { content: '+'; font-size: 24px; color: #6a4a2a; font-weight: bold; line-height: 1; }
-  .cell.buy-cell:hover::after { color: var(--gold); }
-  .cell.buy-cell .buy-cost { font-size: 9px; color: var(--gold); margin-top: 2px; }
-  .card { width: 100%; height: 100%; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; box-shadow: inset 0 0 10px #000000cc, 0 0 8px var(--glow); border: 1px solid var(--glow); background: radial-gradient(circle at 40% 30%, var(--cardBg, #2a1a0f), #0a0503); cursor: pointer; transition: transform .15s; padding: 1px; overflow: hidden; }
-  .card:hover { transform: scale(1.05); z-index: 10; }
-  .card.has-anti { border: 2px solid #ff3030 !important; animation: antiPulse 1.4s infinite; }
-  @keyframes antiPulse { 0%,100% { box-shadow: inset 0 0 10px #000000cc, 0 0 8px #ff2020; } 50% { box-shadow: inset 0 0 10px #000000cc, 0 0 18px #ff5050; } }
-  .star1 { --glow: #6a5a4a; --cardBg: #3a2a20; }
-  .star3 { --glow: #7080a0; --cardBg: #202a40; }
-  .star4 { --glow: #a070b0; --cardBg: #3a2040; }
-  .star5 { --glow: #d4b050; --cardBg: #4a3010; }
-  .card.f-undead  { border-color: var(--f-undead) !important; box-shadow: inset 0 0 10px #000000cc, 0 0 8px var(--glow), 0 0 0 1px var(--f-undead); }
-  .card.f-beast   { border-color: var(--f-beast) !important; box-shadow: inset 0 0 10px #000000cc, 0 0 8px var(--glow), 0 0 0 1px var(--f-beast); }
-  .card.f-demon   { border-color: var(--f-demon) !important; box-shadow: inset 0 0 10px #000000cc, 0 0 8px var(--glow), 0 0 0 1px var(--f-demon); }
-  .card.f-cultist { border-color: var(--f-cultist) !important; box-shadow: inset 0 0 10px #000000cc, 0 0 8px var(--glow), 0 0 0 1px var(--f-cultist); }
-  .card::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: transparent; }
-  .card.f-undead::after  { background: var(--f-undead); }
-  .card.f-beast::after   { background: var(--f-beast); }
-  .card.f-demon::after   { background: var(--f-demon); }
-  .card.f-cultist::after { background: var(--f-cultist); }
-  .card .glyph { font-size: 20px; line-height: 1; }
-  .card .card-name { font-size: 8px; color: #f0e0c0; text-align: center; line-height: 1; margin-top: 1px; text-shadow: 0 0 3px #000; }
-  .card .income-badge { position: absolute; bottom: 4px; left: 1px; font-size: 8px; font-weight: bold; color: #a0e080; background: #0a0503dd; border-radius: 2px; padding: 0 2px; line-height: 1; border: 1px solid #3a5a2a; }
-  .card .anti-badge { position: absolute; bottom: 4px; right: 1px; font-size: 8px; font-weight: bold; color: #ff6060; background: #2a0000dd; border-radius: 2px; padding: 0 2px; line-height: 1; border: 1px solid #8b1a1a; }
-  .card .stack-badge { position: absolute; top: -1px; left: 1px; font-size: 9px; color: #ffe080; text-shadow: 0 0 4px #000; }
-  .card .faction-dot { position: absolute; top: 2px; right: 2px; width: 7px; height: 7px; border-radius: 50%; border: 1px solid #000000aa; }
-  .card .hp-bar { position: absolute; top: 0; left: 0; height: 4px; transition: width .2s; box-shadow: 0 0 4px currentColor; }
-  .card .hp-text { position: absolute; top: 6px; right: 2px; font-size: 7px; font-weight: bold; color: #fff; text-shadow: 0 0 3px #000, 0 0 2px #000; line-height: 1; }
-  .enemy-card { width: 100%; height: 100%; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; box-shadow: inset 0 0 10px #000, 0 0 10px #ff2020; border: 1px solid #ff4040; background: radial-gradient(circle at 40% 30%, #400, #0a0000); padding: 1px; }
-  .enemy-card .glyph { font-size: 20px; color: #ff8080; }
-  .enemy-card .card-name { font-size: 7px; color: #ffaaaa; line-height: 1; }
-  .enemy-card .hp-bar { position: absolute; top: 0; left: 0; height: 4px; background: #ff2020; transition: width .2s; box-shadow: 0 0 4px #ff2020; }
-  .enemy-card .hp-text { position: absolute; top: 6px; right: 2px; font-size: 7px; color: #ffb0b0; font-weight: bold; text-shadow: 0 0 3px #000; line-height: 1; }
-  #synergySvg { position: absolute; top: 8px; left: 8px; width: calc(100% - 16px); height: calc(100% - 16px); pointer-events: none; z-index: 4; overflow: visible; }
-  #synergySvg line.base-good { stroke: #80e060; stroke-width: 2.5; opacity: 0.85; filter: drop-shadow(0 0 4px #80e06088); }
-  #synergySvg line.base-mult { stroke: #ffd050; stroke-width: 3; opacity: 0.9; filter: drop-shadow(0 0 5px #ffd050aa); }
-  #synergySvg line.syn-bad { stroke: #ff2020; stroke-width: 4; stroke-dasharray: 6 4; opacity: 0.95; filter: drop-shadow(0 0 6px #ff2020); }
-  #synergySvg text.syn-icon { font-size: 14px; fill: #ff4040; text-anchor: middle; dominant-baseline: middle; filter: drop-shadow(0 0 3px #ff0000); }
-  .syn-flow { stroke: #eaffc0; stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 5 18; opacity: 1; filter: drop-shadow(0 0 5px #b0ff60); animation: synFlow 1.4s linear infinite; }
-  .syn-flow.mult { stroke: #fff2a0; filter: drop-shadow(0 0 6px #ffe060); animation-duration: 1.1s; }
-  .syn-flow.reverse { animation-direction: reverse; }
-  @keyframes synFlow { from { stroke-dashoffset: 46; } to { stroke-dashoffset: 0; } }
-  #memo { width: 100%; text-align: center; font-size: 10px; color: #8a6a4a; padding: 6px 4px; border-top: 1px solid var(--border); line-height: 1.5; }
-  #memo b { color: var(--gold); }
-  #memo .counter-row { color: #d4c0a0; }
-  #memo .syn-row { color: #a0c080; }
-  #memo .anti-row { color: #ff8080; }
-
-  /* ===== КОЛЛЕКЦИЯ ===== */
-  #collection { width: 100%; max-width: 1450px; height: 190px; min-height: 190px; max-height: 190px; display: flex; flex-direction: column; gap: 4px; background: linear-gradient(#2a1a0f, #150d05); border: 2px solid var(--border2); border-radius: 8px; padding: 6px; box-shadow: inset 0 0 12px #00000088; flex-shrink: 0; margin-top: 8px; overflow: hidden; position: relative; z-index: 2; }
-  #collectionHeader { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--accent2); padding: 2px 4px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-  #collectionTabs { display: flex; gap: 6px; }
-  .coll-tab { padding: 4px 12px; font-size: 11px; cursor: pointer; background: #150d05; border: 1px solid var(--border); color: #8a6a4a; border-radius: 4px; text-transform: uppercase; font-weight: bold; transition: all .15s; }
-  .coll-tab:hover { border-color: var(--accent2); color: #c9a227; }
-  .coll-tab.active { background: #3a2414; color: #d4b050; border-color: var(--accent2); box-shadow: inset 0 0 8px #00000088, 0 0 6px #c9a22744; }
-  #collectGrid { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; overflow-y: auto; overflow-x: hidden; flex: 1; min-height: 0; background: #0a0503; border-radius: 5px; align-content: flex-start; }
-  .coll-card { width: 44px; height: 44px; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; cursor: pointer; border: 1px solid var(--glow); background: radial-gradient(circle, var(--cardBg, #2a1a0f), #0a0503); transition: transform .1s; overflow: hidden; padding: 1px; flex-shrink: 0; }
-  .coll-card:hover { transform: scale(1.1); z-index: 20; }
-  .coll-card.selected { outline: 2px solid var(--gold); box-shadow: 0 0 14px var(--gold); transform: scale(1.12); }
-  .coll-card .coll-glyph { font-size: 18px; line-height: 1; }
-  .coll-card.undiscovered { background: #0a0503; border-color: #1f130a; }
-  .coll-card.undiscovered .coll-glyph { font-size: 14px; color: #2a1a0f; }
-  .coll-card .count { position: absolute; top: 1px; right: 3px; font-size: 10px; color: #ffe080; line-height: 1; }
-  .coll-card .faction-dot { position: absolute; bottom: 1px; right: 1px; width: 6px; height: 6px; border-radius: 50%; border: 1px solid #000000aa; }
-  .coll-card.empty-stack { opacity: 0.5; }
-  #collectGrid::-webkit-scrollbar { width: 10px; }
-  #collectGrid::-webkit-scrollbar-track { background: #0a0503; border-radius: 5px; border: 1px solid #2a1a0f; box-shadow: inset 0 0 6px #000000cc; }
-  #collectGrid::-webkit-scrollbar-thumb { background: linear-gradient(#6a4a2a, #3a2414); border-radius: 5px; border: 1px solid #8a5a2a; box-shadow: inset 0 1px 0 #b08040, 0 0 4px #00000088; }
-  #collectGrid::-webkit-scrollbar-thumb:hover { background: linear-gradient(#8a5a2a, #4a3020); border-color: var(--gold); }
-  #collectGrid { scrollbar-width: thin; scrollbar-color: #6a4a2a #0a0503; }
-
-  #tooltip { position: fixed; pointer-events: none; z-index: 1000; background: linear-gradient(#2a1a0f, #150d05); border: 2px solid var(--border2); border-radius: 6px; padding: 10px 12px; max-width: 320px; display: none; font-size: 11px; line-height: 1.4; color: var(--ink); }
-  #tooltip.show { display: block; }
-  #tooltip .tt-name { font-size: 15px; font-weight: bold; color: #f0d8a0; margin-bottom: 2px; text-align: center; }
-  #tooltip .tt-stars { color: var(--gold); font-size: 13px; margin-bottom: 6px; text-align: center; }
-  #tooltip .tt-income { color: #a0e080; font-size: 13px; font-weight: bold; margin-bottom: 8px; text-align: center; }
-  #tooltip .tt-synergy { color: #b0d0e0; font-size: 11px; margin-bottom: 6px; text-align: left; }
-  #tooltip .tt-synergy-title { color: var(--gold); font-size: 10px; text-transform: uppercase; margin-bottom: 2px; font-weight: bold;}
-  #tooltip .tt-good { color: #a0e080; }
-  #tooltip .tt-bad { color: #ff8080; font-weight: bold; }
-  #tooltip .tt-flavor { font-style: italic; color: #8a6a4a; font-size: 11px; border-top: 1px solid #3a2414; padding-top: 6px; margin-top: 6px; text-align: left; }
-
-  .modal { position: fixed; inset: 0; background: radial-gradient(circle at 50% 50%, #2a1a0faa, #000000ee); display: flex; align-items: center; justify-content: center; z-index: 100; opacity: 0; pointer-events: none; transition: opacity .3s; }
-  .modal.show { opacity: 1; pointer-events: auto; }
-  .modal-card { background: linear-gradient(160deg, #3a2414, #1a0f08); border: 3px solid var(--border2); border-radius: 12px; padding: 20px 24px; display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 380px; width: 90%; position: relative; overflow: hidden; }
-  .modal-card.rarity4 { border-color: #a070b0; box-shadow: 0 0 40px #a070b088, inset 0 0 30px #a070b033; }
-  .modal-card.rarity5 { border-color: #d4b050; box-shadow: 0 0 60px #d4b050cc, inset 0 0 40px #d4b05044; }
-  .rarity-banner { font-size: 13px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; padding: 4px 14px; border-radius: 4px; opacity: 0; transform: scale(0.8); pointer-events: none; }
-  .rarity-banner.show { animation: bannerPop 1.6s ease-out forwards; }
-  .rarity-banner.r4 { color: #e0b0ff; background: #2a1030; border: 1px solid #a070b0; text-shadow: 0 0 8px #a070b0; }
-  .rarity-banner.r5 { color: #ffe080; background: #3a2a08; border: 1px solid #d4b050; text-shadow: 0 0 10px #d4b050; }
-  @keyframes bannerPop { 0% { opacity: 0; transform: scale(0.6); } 20% { opacity: 1; transform: scale(1.1); } 35% { transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: scale(1); } }
-  .big-card { width: 90px; height: 90px; font-size: 48px; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 2px solid var(--glow); box-shadow: 0 0 30px var(--glow); background: radial-gradient(circle, var(--cardBg, #2a1a0f), #0a0503); position: relative; }
-  .big-card.pop4 { animation: popRare 0.9s ease-out; }
-  .big-card.pop5 { animation: popLegend 1.3s ease-out; }
-  @keyframes popRare { 0% { transform: scale(0.3) rotate(-8deg); opacity: 0; } 40% { transform: scale(1.15) rotate(3deg); opacity: 1; } 70% { transform: scale(0.95) rotate(-1deg); } 100% { transform: scale(1) rotate(0); } }
-  @keyframes popLegend { 0% { transform: scale(0.2) rotate(-15deg); opacity: 0; filter: brightness(2); } 30% { transform: scale(1.25) rotate(6deg); opacity: 1; filter: brightness(1.6); } 50% { transform: scale(0.98) rotate(-3deg); filter: brightness(1.2); } 70% { transform: scale(1.05) rotate(1deg); } 100% { transform: scale(1) rotate(0); filter: brightness(1); } }
-  .spark { position: absolute; width: 6px; height: 6px; border-radius: 50%; pointer-events: none; opacity: 0; }
-  .spark.r4 { background: #e0b0ff; box-shadow: 0 0 8px #a070b0; }
-  .spark.r5 { background: #ffe080; box-shadow: 0 0 10px #d4b050; }
-  .spark.go { animation: sparkFly 1s ease-out forwards; }
-  @keyframes sparkFly { 0% { opacity: 1; transform: translate(0,0) scale(1); } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.2); } }
-  .modal-card h2 { font-size: 17px; color: #f0d8a0; text-align: center; }
-  .modal-card .stars-big { color: var(--gold); font-size: 15px; letter-spacing: 3px; }
-  .modal-card .desc { font-size: 11px; color: #b0d0e0; text-align: center; line-height: 1.4; }
-  .modal-card .flavor { font-size: 10px; color: #8a6a4a; font-style: italic; text-align: center; line-height: 1.3; }
-  .btn { padding: 9px 16px; border: none; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; transition: transform .1s; font-family: 'Georgia', serif; }
-  .btn:active { transform: scale(.96); }
-  .btn-row { display: flex; gap: 8px; width: 100%; justify-content: center; }
-  .btn-take { flex: 1; max-width: 200px; background: linear-gradient(#5a3a20, #3a2410); border: 1px solid var(--border2); color: #f0e0c0; box-shadow: inset 0 2px 0 #8a5a2a; }
-  .btn-take:hover { background: linear-gradient(#7a4a28, #4a3020); border-color: var(--gold); }
-  .multi-reveal { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 100%; max-height: 400px; overflow-y: auto; padding: 4px; }
-  .multi-item { width: 58px; height: 58px; border: 2px solid var(--glow); border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 24px; background: radial-gradient(circle, var(--cardBg, #2a1a0f), #0a0503); position: relative; cursor: pointer; }
-  .multi-name { font-size: 8px; color: #f0e0c0; text-align: center; margin-top: 2px; }
-  #selectionBanner { position: fixed; bottom: 200px; left: 50%; transform: translateX(-50%); background: linear-gradient(#4a3020, #2a1a0f); border: 2px solid var(--gold); border-radius: 8px; padding: 6px 14px; font-size: 12px; color: #f0e0c0; z-index: 50; display: none; box-shadow: 0 0 14px #c9a22788; }
-  #selectionBanner.show { display: block; }
-  #selectionBanner b { color: var(--gold); }
-  #settingsModal .modal-card { max-width: 440px; align-items: stretch; }
-  .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--ink); }
-  .setting-row label { flex: 1; cursor: pointer; display: flex; align-items: center; gap: 8px; }
-  .setting-row input[type="number"] { width: 60px; padding: 4px; background: #0a0503; border: 1px solid var(--border2); color: var(--gold); border-radius: 4px; text-align: center; font-weight: bold; font-family: 'Georgia', serif; }
-  .setting-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--gold); cursor: pointer; }
-
-  /* ===== КАЗИНО ===== */
-  #casinoModal .modal-card { max-width: 720px; width: 98%; background: linear-gradient(160deg, #2a1a0f, #0d0704); border: 4px solid var(--gold); box-shadow: 0 0 80px #c9a22788, inset 0 0 40px #000000cc; padding: 12px; }
-  #casinoModal h2 { color: #ffe080; letter-spacing: 4px; text-shadow: 0 0 15px #c9a227; font-size: 24px; margin-bottom: 4px; }
-  .slot-machine-container { position: relative; padding: 20px; background: linear-gradient(#3a1a1a, #1a0a0a); border: 4px solid #d4b050; border-radius: 16px; box-shadow: inset 0 0 40px #000, 0 0 40px #c9a22744; display: flex; flex-direction: column; gap: 12px; align-items: center; }
-  .slot-machine-container::before, .slot-machine-container::after { content: ''; position: absolute; top: 0; bottom: 0; width: 14px; background: repeating-linear-gradient(0deg, #ffe080 0px, #ffe080 10px, #4a1a1a 10px, #4a1a1a 20px); box-shadow: inset 0 0 10px #ffd700, 0 0 15px #ffd700; animation: bulbsFlash 0.8s infinite alternate; }
-  .slot-machine-container::before { left: -10px; border-radius: 6px 0 0 6px; }
-  .slot-machine-container::after { right: -10px; border-radius: 0 6px 6px 0; }
-  @keyframes bulbsFlash { 0% { opacity: 0.6; } 100% { opacity: 1; } }
-  .slot-grid { display: grid; grid-template-columns: repeat(5, 72px); grid-template-rows: repeat(3, 72px); gap: 8px; background: #0a0503; padding: 10px; border-radius: 10px; border: 3px solid #6a4a10; box-shadow: inset 0 0 30px #000, 0 0 20px #00000088; position: relative; }
-  .slot-cell { width: 72px; height: 72px; border-radius: 8px; background: radial-gradient(circle, #fff8e0, #c9a227); border: 2px solid #8a6a10; display: flex; align-items: center; justify-content: center; font-size: 44px; line-height: 1; box-shadow: inset 0 0 12px #00000066; overflow: hidden; position: relative; transition: box-shadow 0.2s; will-change: transform; }
-  .slot-cell.win { animation: winPulse 0.5s infinite; z-index: 10; }
-  @keyframes winPulse { 0%, 100% { box-shadow: inset 0 0 12px #00000066, 0 0 18px #ffe080; transform: scale(1); } 50% { box-shadow: inset 0 0 12px #00000066, 0 0 35px #ffd700, 0 0 15px #fff; transform: scale(1.06); border-color: #ffe080; } }
-  .paylines-svg { position: absolute; top: 10px; left: 10px; width: 400px; height: 232px; pointer-events: none; z-index: 5; overflow: visible; }
-  .paylines-svg polyline { stroke-width: 4; stroke-dasharray: 10 6; opacity: 0; transition: opacity 0.3s; fill: none; }
-  .paylines-svg polyline.active { opacity: 0.9; animation: lineDash 0.5s linear infinite; filter: drop-shadow(0 0 8px currentColor); }
-  @keyframes lineDash { 0% { stroke-dashoffset: 16; } 100% { stroke-dashoffset: 0; } }
-  .slot-bet-panel { width: 100%; display: flex; flex-direction: column; gap: 8px; align-items: center; background: #2a0a0a; padding: 12px; border-radius: 10px; border: 2px solid #6a4a10; }
-  .slot-bet-label { font-size: 18px; color: #d4c0a0; letter-spacing: 2px; }
-  .slot-bet-label b { color: var(--gold); font-size: 24px; text-shadow: 0 0 12px #c9a227; }
-  .slot-bet-btns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-  .slot-bet-btns button { padding: 10px 16px; font-size: 14px; font-weight: bold; background: linear-gradient(#4a3020, #2a1a0f); border: 2px solid var(--border2); color: #d4b050; border-radius: 8px; cursor: pointer; font-family: 'Georgia', serif; transition: all .1s; }
-  .slot-bet-btns button:hover { background: #5a4020; border-color: var(--gold); color: #ffe080; transform: translateY(-1px); }
-  .slot-bet-btns button:disabled { opacity: .4; cursor: not-allowed; }
-  #slotLeverBtn { width: 100%; padding: 22px; font-size: 24px; font-weight: bold; letter-spacing: 5px; background: linear-gradient(160deg, #ff4040, #8b1a1a 40%, #4a0a0a 70%, #ff4040); border: 4px solid #ff8080; border-radius: 14px; color: #fff; cursor: pointer; text-transform: uppercase; font-family: 'Georgia', serif; text-shadow: 0 0 18px #ff2020; box-shadow: 0 0 35px #ff202088, inset 0 4px 0 #ff8080; transition: all .15s; }
-  #slotLeverBtn:hover:not(:disabled) { filter: brightness(1.3); transform: translateY(-3px); box-shadow: 0 0 60px #ff4040cc, inset 0 4px 0 #ff8080; }
-  #slotLeverBtn:active:not(:disabled) { transform: translateY(2px); }
-  #slotLeverBtn:disabled { opacity: .5; cursor: not-allowed; filter: grayscale(1); }
-  #slotResult { font-size: 20px; font-weight: bold; text-align: center; min-height: 34px; letter-spacing: 1px; color: #d4c0a0; }
-  #slotResult.win { color: #a0ff80; text-shadow: 0 0 18px #40ff40; animation: resultPop 0.6s ease-out; }
-  #slotResult.lose { color: #ff8080; text-shadow: 0 0 12px #ff2020; }
-  #slotResult.jackpot { color: #ffe080; text-shadow: 0 0 30px #ffd700, 0 0 60px #ffd700; animation: jackpotGlow 0.4s infinite; }
-  @keyframes resultPop { 0% { transform: scale(0.8); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
-  @keyframes jackpotGlow { 0%,100% { filter: brightness(1); } 50% { filter: brightness(2); } }
-  .slot-close { margin-top: 4px; padding: 12px 24px; font-size: 16px; background: linear-gradient(#5a3a20, #3a2410); border: 2px solid var(--border2); color: #f0e0c0; box-shadow: inset 0 2px 0 #8a5a2a; border-radius: 8px; cursor: pointer; font-family: 'Georgia', serif; font-weight: bold; }
-  .slot-close:hover { background: linear-gradient(#7a4a28, #4a3020); border-color: var(--gold); }
-  
-  @media (max-height: 800px) {
-    :root { --cell-size: min(5vh, 50px, calc((100vw - 70px) / 9.6)); }
-    .grid-title { font-size: 14px; letter-spacing: 3px;}
-    #collection { height: 150px; min-height: 150px; max-height: 150px; }
-  }
-  @media (max-width: 1300px) { #main { max-width: 100%; gap: 12px; } #arenaCol { width: 280px; } }
-
-#rightCol{overflow-y:auto}
-.action-btn,.move-tool-btn,.delete-tool-btn,.settings-btn{min-height:44px!important}
-#toast{position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#3a1010;border:2px solid #c9a227;color:#ffe080;padding:8px 18px;border-radius:8px;z-index:2000;font-size:13px;opacity:0;pointer-events:none;transition:opacity .25s}
-#toast.show{opacity:1}
-#pity{font-size:11px;color:#b08040;font-weight:normal}
-.arena-enemy-icon{transition:transform .08s}
-.fighter-row{cursor:pointer}.fighter-row:hover::after{content:'↩';position:absolute;right:4px;color:#ffe080}
-@media (max-width:1100px){#main{flex-wrap:wrap;overflow:visible}#arenaCol,#rightCol,#centerCol{width:100%;max-width:560px}#arenaCol{max-height:none}#fightersList{max-height:160px}
-#rightCol{flex-direction:row;flex-wrap:wrap}#rightCol>button{width:calc(50% - 4px)}#collection{max-width:100%}}
-
-#main{align-items:flex-start!important}
-#arenaCol{max-height:none!important;overflow:visible!important}
-#fightersPanel{flex:none!important;overflow:hidden}
-#fightersList{height:230px;flex:none!important}
-#collection{height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important}
-#collectGrid{max-height:176px;flex:none!important}
-#collectionHeader{flex-wrap:wrap;gap:6px}
-#cardActions{font-size:12px;padding:4px 8px;background:#150d05;border:1px solid #3a2414;border-radius:4px;min-height:30px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.act-hint{color:#8a6a4a;font-size:11px}
-#cardActions button,.mini,#rarityFilter{padding:3px 8px;font-size:11px;font-weight:bold;background:linear-gradient(#5a3a20,#2a1a0f);border:1px solid var(--border2);color:#f0e0c0;border-radius:4px;cursor:pointer;font-family:Georgia,serif}
-#cardActions button:hover,.mini:hover{border-color:var(--gold);color:#ffe080}
-.btn:disabled{opacity:.4;cursor:not-allowed}
-.coll-card{width:48px;height:48px}
-.coll-card.partner{outline:2px solid #80e060;box-shadow:0 0 12px #80e060}
-.cell.syn-hint{outline:2px solid #80e060;box-shadow:0 0 12px #80e060}
-.cell.good-spot{background:#1d3a14!important;border-color:#80e060!important;cursor:cell}
-.cell.bad-spot{background:#3a1010!important;border-color:#ff4040!important;cursor:cell}
-.cell.stack-hint{outline:2px dashed #ffe080}
-#tutPanel{display:none;position:fixed;top:8px;left:50%;transform:translateX(-50%);width:min(520px,94vw);z-index:300;background:linear-gradient(#3a2414,#1a0f08);border:2px solid #60ff90;border-radius:10px;padding:10px 14px;font-size:13px;line-height:1.45;box-shadow:0 0 24px #000}
-#tutPanel.show{display:block}
-#tutBtns{display:flex;gap:8px;justify-content:flex-end;margin-top:8px;align-items:center}
-#tutStep{flex:1;font-size:11px;color:#8a6a4a}
-.tut-hl{outline:3px solid #60ff90!important;outline-offset:3px;animation:tutP 1s infinite;border-radius:6px}
-@keyframes tutP{50%{outline-color:#fff}}
-
-.art{width:64%;height:64%;object-fit:contain;pointer-events:none}
-.income-badge.up{color:#8f8!important}.income-badge.down{color:#f88!important}
-.cell.best-spot{outline:2px solid #ffd34d;box-shadow:0 0 14px #ffd34d;animation:bp 1s infinite;cursor:cell}@keyframes bp{50%{box-shadow:0 0 4px #ffd34d}}
-#advice{background:#1a0f08;border:1px solid #c9a22788;border-radius:6px;padding:5px 10px;margin:4px 0;font-size:13px;color:#ffe9a0;text-align:center}
-.hubg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}.hubg button{font-size:20px;padding:16px;background:linear-gradient(#5a3a20,#2a1a0f);border:2px solid #c9a227;color:#ffe080;border-radius:8px;cursor:pointer;font-family:Georgia,serif}.hubg button:hover{filter:brightness(1.3)}
-#avC{width:100%;background:#0a0f1a;border:2px solid #c9a227;border-radius:8px}#avM{font-size:34px;text-align:center;color:#ffe080;font-weight:bold}
-.bet{display:flex;gap:6px;align-items:center;justify-content:center;margin:6px 0;flex-wrap:wrap}.bet input{width:100px;padding:3px;background:#150d05;color:#ffe080;border:1px solid #c9a227;border-radius:4px}
-.res{text-align:center;margin:6px 0;font-size:13px}.res.w{color:#8f8}.res.l{color:#f88}.hist{text-align:center;font-size:12px;margin:4px}
-#rw{width:170px;height:170px;border-radius:50%;margin:6px auto;border:6px solid #c9a227;position:relative;transition:transform 4.2s cubic-bezier(.1,.7,.1,1)}#rw::before{content:'▼';position:absolute;top:-22px;left:50%;transform:translateX(-50%);color:#ffd34d}
-#rn{position:absolute;inset:0;margin:auto;width:60px;height:60px;border-radius:50%;background:#150d05;display:flex;align-items:center;justify-content:center;font-size:26px;color:#ffe080;transform:rotate(0)}
-.rg{display:grid;grid-template-rows:repeat(3,32px);grid-auto-flow:column;grid-auto-columns:minmax(24px,1fr);gap:2px}.ro{display:grid;grid-template-columns:repeat(9,1fr);gap:2px;margin-top:3px}
-.rg>div,.ro>div{display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;border:1px solid #ffffff33;cursor:pointer;position:relative;min-height:28px;background:#143a1c}.rg>div:hover,.ro>div:hover{filter:brightness(1.5)}
-[data-amt]::after{content:attr(data-amt);position:absolute;bottom:0;right:0;background:#ffd34d;color:#000;font-size:9px;padding:0 3px;border-radius:6px}.chips{text-align:center;margin:4px}.mini.on{border-color:#ffd34d;color:#ffd34d}
-.pc{display:inline-block;min-width:34px;padding:6px 4px;margin:3px;background:#f4ecd8;color:#111;border-radius:5px;font-weight:bold;text-align:center;font-size:16px}.pc.r{color:#c01818}.pc.back{background:#5a1a1a;color:#c9a227}.pkb{margin:8px 0;padding:6px;background:#0d3a1c;border-radius:8px;text-align:center;min-height:44px}
-.ups{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}.up{background:#150d05;border:1px solid #5a3a20;border-radius:6px;padding:6px;font-size:12px}.up button{float:right}
-.goal{position:relative;background:#150d05;border:1px solid #3a2414;border-radius:4px;margin:3px 0;padding:4px 8px;font-size:12px;overflow:hidden;display:flex;justify-content:space-between}.goal i{position:absolute;left:0;top:0;bottom:0;background:#2a5a2a55;z-index:0}.goal>*{position:relative;z-index:1}.goal.done{opacity:.55}.goal em{font-style:normal;color:#ffd34d}
-.stt{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:2px 10px;font-size:13px;margin:6px 0}#statsBox{font-size:13px;line-height:1.7}
-</style>
+<link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
 <h1>Гача-Гриндер 2<small>Тёмное Наследие</small></h1>
-<div id="topBar"><span><span class="crystal-icon"></span><span id="crystals">2500</span></span><span id="rate">+0.5/сек</span><span id="pity"></span><button class="mini" id="menuBtn">☰ Меню</button></div>
+<div id="topBar">
+  <span class="res-chip"><span class="crystal-icon"></span><span id="crystals">2500</span></span>
+  <span id="rate">+0/сек</span>
+  <span class="res-chip" id="sealsChip" title="Печати: вечная валюта Эпох"><span class="ic">🔱</span><span id="sealsTop">0</span></span>
+  <button class="mini" id="menuBtn">☰ Меню</button>
+</div>
 
 <div id="main">
   <div id="arenaCol">
@@ -373,8 +28,9 @@
         <div class="arena-bar-wrap"><div class="arena-bar" id="arenaEnemyBar" style="width:100%;"></div><div class="arena-hp-text" id="arenaEnemyHp">— / —</div></div>
       </div>
       <div class="arena-stats"><span>⚔ Атака: <span id="arenaStatAtk" class="hero">0</span></span><span>❤ HP: <span id="arenaStatHp" class="hero">0</span></span><span>⚡ Урон: <span id="arenaStatDmg" class="hero">0</span></span></div>
-      <div class="arena-status" id="altarBuff" style="color:#80e0ff"></div><div class="arena-fight-row">
-        <button id="arenaFightBtn" style="flex:1;">✖ Атаковать</button>
+      <div class="arena-status" id="altarBuff" style="color:#80e0ff"></div>
+      <div class="arena-fight-row">
+        <button id="arenaFightBtn" style="flex:1;">⚔ Атаковать</button>
         <label class="auto-label"><input type="checkbox" id="arenaAutoChk"> Авто</label>
       </div>
       <button id="arenaRetreatBtn">🏃 Отступить (фарм)</button>
@@ -384,29 +40,32 @@
   </div>
 
   <div id="centerCol">
+    <div id="epochBar">
+      <button id="epochUpBtn" class="epoch-big-btn notready"><span id="epochBtnLabel">⚜ ЭПОХА 1</span><span class="cost">0 / 25 тыс 💎 (0%)</span></button>
+      <button id="epochMenuBtn" class="epoch-info-btn" title="Меню Эпохи: разблокировки, печати 🔱, расширение Алтаря">⚜</button>
+    </div>
     <div class="grid-title">⚜ АЛТАРЬ СИНЕРГИЙ ⚜</div>
-    <div class="grid-stats" id="gridStats">Активных звеньев: <b>0</b> · Доход: <b>+0.00/сек</b></div>
+    <div class="grid-stats" id="gridStats">Доход: <b>+0/сек</b></div>
     <div id="gridAltar">
       <div id="gridWrap">
         <span class="corner-tl"></span><span class="corner-tr"></span><span class="corner-bl"></span><span class="corner-br"></span>
         <svg id="synergySvg"></svg>
         <div id="grid"></div>
-        <div id="memo">
-          <div class="counter-row">Контры: <b>Нежить > Звери > Культисты > Демоны > Нежить</b></div>
-          <div class="syn-row">Синергии — <b>цепочки по 2 юнита</b>.</div>
-          <div class="anti-row">Антисинергии: Нежить ↔ Демоны, Звери ↔ Культисты</div><div class="syn-row">Сет-бонус: 3/6/10 юнитов одной фракции = <b>+10/25/50%</b> дохода. Одинаковые карты можно стакать (до x5).</div><div class="syn-row">⛓ Формации одной фракции: 3 в ряд ×1.2 · 2×2 ×1.35 · 5 в ряд ×1.5.</div>
-        </div>
       </div>
+    </div>
+    <div id="rollBar">
+      <span id="pity"></span>
+      <button class="roll-btn" id="roll1">КРУТКА<span class="cost">150</span></button>
+      <button class="roll-btn" id="roll10">КРУТКА ×10<span class="cost">1500</span></button>
+      <button class="roll-btn" id="roll100">×100<span class="cost">15 тыс</span></button>
+      <button class="roll-btn" id="roll1000">×1000<span class="cost">150 тыс</span></button>
+      <button class="roll-btn" id="rollAll">НА ВСЕ ДЕНЬГИ<span class="cost">макс. круток</span></button>
     </div>
   </div>
 
   <div id="rightCol">
     <button id="casinoBtn"><span class="casino-icon">🎰</span>КАЗИНО</button>
-    <button class="action-btn" id="roll1">КРУТКА<span class="cost">250</span></button>
-    <button class="action-btn" id="roll10">КРУТКА x10<span class="cost">2500</span></button>
-    <button class="action-btn" id="roll100">КРУТКА x100<span class="cost">25000</span></button>
-    <button class="action-btn" id="roll1000">КРУТКА x1000<span class="cost">250000</span></button>
-    <button class="action-btn" id="rollAll">НА ВСЕ ДЕНЬГИ<span class="cost">макс. круток</span></button>
+    <button class="action-btn" id="achvBtn">🏅 ДОСТИЖЕНИЯ<span class="cost">0 / 22</span></button>
     <button class="move-tool-btn" id="moveToolBtn"><span class="icon">⇄</span>ПЕРЕМЕСТИТЬ</button>
     <button class="delete-tool-btn" id="deleteToolBtn"><span class="icon">✖</span>УДАЛИТЬ</button>
     <button class="settings-btn" id="settingsBtn"><span class="icon">⚙</span>НАСТРОЙКИ</button>
@@ -414,23 +73,30 @@
 </div>
 
 <div id="collection">
-  <div id="collectionHeader"><div id="collectionTabs"><div class="coll-tab active" data-faction="all">ВСЕ</div><div class="coll-tab" data-faction="undead">НЕЖИТЬ</div><div class="coll-tab" data-faction="demon">ДЕМОНЫ</div><div class="coll-tab" data-faction="cultist">КУЛЬТИСТЫ</div><div class="coll-tab" data-faction="beast">ЗВЕРИ</div></div><select id="rarityFilter"><option value="all">Все ★</option><option value="1">★1</option><option value="3">★3</option><option value="4">★4</option><option value="5">★5</option></select><span><button class="mini" id="bulkDup">⚔ Дубли в бой</button> <button class="mini" id="bulk1">⚔ Все ★1 в бой</button> <button class="mini" id="bulkAll">⚔ Всё в бой</button></span><span id="collectStats"></span></div>
-  <div id="cardActions"></div><div id="collectGrid"></div>
+  <div id="collectionHeader">
+    <div id="collectionTabs"></div>
+    <select id="rarityFilter"><option value="all">Все ★</option></select>
+    <span><button class="mini" id="bulkDup">⚔ Дубли в бой</button> <button class="mini" id="bulk1">⚔ Все ★1 в бой</button> <button class="mini" id="bulkAll">⚔ Всё в бой</button></span>
+    <span id="collectStats"></span>
+  </div>
+  <div id="cardActions"></div>
+  <div id="collectGrid"></div>
 </div>
 
 <div id="toast"></div>
-<div class="modal show" id="menu" style="z-index:500"><div class="modal-card" style="max-width:340px"><h2 style="font-size:24px">⚜ Гача-Гриндер 2 ⚜</h2><div class="desc">Тёмное Наследие</div>
+<div class="modal show" id="menu" style="z-index:500"><div class="modal-card" style="max-width:340px"><h2 style="font-size:24px">⚜ Гача-Гриндер 2 ⚜</h2><div class="desc">Тёмное Наследие · Эпохи Тьмы</div>
 <button class="btn btn-take" id="menuContinue" style="width:100%;max-width:none">▶ Продолжить</button><button class="btn btn-take" id="menuNew" style="width:100%;max-width:none">✦ Новая игра</button><button class="btn btn-take" id="menuTut" style="width:100%;max-width:none">📖 Обучение</button>
-<div class="flavor">Крутите карты, стройте синергии на Алтаре, сражайтесь на Арене.</div></div></div>
-<div id="tutPanel"><div id="tutText"></div><div id="tutBtns"><span id="tutStep"></span><button class="mini" id="tutExit">Выйти</button><button class="btn btn-take" id="tutNext" style="max-width:120px;padding:5px 10px">Далее</button></div></div><div id="tooltip"></div><div id="selectionBanner"></div>
+<div class="flavor">Крутите карты одной фракции, стройте синергии на Алтаре, качайте Эпохи.</div></div></div>
+<div id="tutPanel"><div id="tutText"></div><div id="tutBtns"><span id="tutStep"></span><button class="mini" id="tutExit">Выйти</button><button class="btn btn-take" id="tutNext" style="max-width:120px;padding:5px 10px">Далее</button></div></div>
+<div id="tooltip"></div><div id="selectionBanner"></div>
 
 <div class="modal" id="dropModal"><div class="modal-card" id="dropModalCard"><div class="rarity-banner" id="dropRarityBanner"></div><div class="big-card" id="dropCard" style="cursor:pointer;"></div><div class="stars-big" id="dropStars"></div><h2 id="dropName"></h2><div class="desc" id="dropEffect"></div><div class="flavor" id="dropFlavor"></div><div class="btn-row"><button class="btn btn-take" id="takeBtn">ПРИНЯТЬ</button><button class="btn btn-take" id="placeBtn">НА ПОЛЕ</button></div></div></div>
 <div class="modal" id="multiModal"><div class="modal-card" id="multiModalCard" style="max-width: 520px;"><div class="rarity-banner" id="multiRarityBanner"></div><h2 id="multiTitle">Крутки</h2><div class="multi-reveal" id="multiReveal"></div><div class="btn-row"><button class="btn btn-take" id="multiOk">ПРИНЯТЬ ВСЁ</button><button class="btn btn-take" id="multiFight">★1 СРАЗУ В БОЙ</button></div></div></div>
-<div class="modal" id="settingsModal"><div class="modal-card"><div id="statsBox"></div><h2>НАСТРОЙКИ</h2><div class="setting-row"><label>Интервал спавна врагов (сек)</label><input type="number" id="setSpawnInterval" min="1" max="300" value="15"></div><div class="setting-row"><label><input type="checkbox" id="setSpawnEnabled" checked> Появление противников</label></div><div class="setting-row"><label><input type="checkbox" id="setCellPriceGrowth" checked> Возрастание стоимости клеток</label></div><div class="setting-row" style="border:none;"><label><input type="checkbox" id="setEnemyBuff"> Усиление противников (HP + время)</label></div><div class="btn-row"><button class="btn btn-take" id="resetBtn" style="background:#4a1010">СБРОС</button><button class="btn btn-take" id="settingsClose">ЗАКРЫТЬ</button></div></div></div>
+<div class="modal" id="settingsModal"><div class="modal-card"><h2>НАСТРОЙКИ</h2><div class="desc">Игра сохраняется автоматически каждые 5 секунд.</div><div class="btn-row"><button class="btn btn-take" id="resetBtn" style="background:#4a1010">СБРОС</button><button class="btn btn-take" id="settingsClose">ЗАКРЫТЬ</button></div></div></div>
 
 <div class="modal" id="casinoModal">
   <div class="modal-card">
-    <h2>🎰 КАЗИНО 🎰</h2>
+    <h2>🎰 СЛОТЫ 🎰</h2>
     <div class="slot-machine-container">
       <div class="slot-grid" id="slotGrid"><svg class="paylines-svg" id="paylinesSvg"></svg></div>
       <div class="slot-bet-panel">
@@ -444,701 +110,30 @@
   </div>
 </div>
 
-<script>
-/* ================== ДАННЫЕ ================== */
-const CARDS = {};
-const FACTION_NAMES = { undead: 'Нежить', demon: 'Демоны', cultist: 'Культисты', beast: 'Звери' };
-const FACTION_COLORS = { undead: '#9a9a9a', demon: '#c03030', cultist: '#c9a227', beast: '#3aa03a' };
-const FACTION_KEYS = ['undead','demon','cultist','beast'];
-const isFactionKey = (k) => FACTION_KEYS.includes(k);
-const NAMES = { undead: ['Скелет','Зомби','Упырь','Могильщик','Кост. Голем','Кост. Рыцарь','Лич','Некромант','Вурдалак','Тень Смерти','Плакальщик','Катакомбный Ползун','Проклятый Труп','Костяной Паук','Жнец Душ','Смертный Судья','Тлен','Мор','Пожиратель Плоти','Ходячий Кошмар','Свежеватель','Хранитель Склепа','Бестелесный','Скованный Смертью','Владыка Тлена'], demon: ['Бес','Гончая Ада','Инкуб','Адский Рыцарь','Владыка Ямы','Балрог','Кровавый Гон','Пожиратель Грехов','Архидемон','Сукуб','Пламенный Титан','Тюремщик Душ','Дьяволёнок','Крылатый Ужас','Пепельный Лорд','Сердце Пламени','Разрушитель','Кровавый Жрец','Кузнец Ада','Порождение Бездны','Пылающий Вестник','Голод','Цербер','Ловчий','Князь Тьмы'], cultist: ['Послушник','Культист','Палач','Тёмный Жрец','Фанатик','Сектант','Ритуальный Убийца','Шептун','Кровавый Маг','Жрец Бездны','Носитель Проклятия','Тёмный Инквизитор','Мастер Ритуала','Свежеватель','Проповедник Тьмы','Кровавая Невеста','Одержимый','Теневик','Служитель Хаоса','Костяной Жрец','Палач Судьбы','Проклятый Певец','Связанный','Хранитель Тайны','Верховный Жрец'], beast: ['Крыса','Волк','Лютоволк','Падальщик','Грифон','Гидра','Оборотень','Медведь-Убийца','Кошмар','Мантикора','Ледяной Волк','Кровожад','Василиск','Саблезуб','Пещерный Ужас','Теневой Кот','Королевский Грифон','Змей','Вендиго','Костяной Бык','Химера','Пожиратель','Штормовой Волк','Древень','Хищник'] };
-const GLYPHS = { undead: ['☠️','🧟','🧟‍♂️','⚰️','🦴','💀','🧙','🔮','🩻','👻','💀','🕷️','🧟','🦴','💀','⚖️','🍂','🌫️','🥩','👁️','🔪','🏰','🌬️','⛓️','👑'], demon: ['👿','🐕‍🦺','🦇','🔥','👑','🌋','🩸','🍽️','😈','💃','🗿','⛓️','👺','🦅','🌑','❤️‍🔥','💥','🩸','⚒️','🕳️','🔥','🦷','🐺','🏹','👑'], cultist: ['🕯️','🩸','🪓','⛪','🙏','🩸','🔪','🤫','🩸','⛪','💀','⚖️','📿','🔪','📖','👰','😵','🌑','🌀','💀','⚔️','🎶','⛓️','🔑','⛪'], beast: ['🐀','🐺','🦊','🦅','🦁','🐉','🐗','🐻','🐙','🦂','🐺','🦈','🐍','🐯','🕷️','🐈‍⬛','🦅','🐲','🦌','🐂','🦁','🐊','🌩️','🌳','🐾'] };
-const FLAVORS = { undead: ['Плоть сгнила, но кости помнят, как держать меч.','Воняет так, что даже крысы обходят стороной.','Умер, но забыл об этом сообщить.','Тишина могилы звучит громче его шагов.','Склеен из чужих костей. Считает себя красавцем.','Доспех помнит славные битвы. Внутри — уже нет.','Знает имена всех, кто когда-либо умирал.','Поднимает мёртвых. Считает это «волонтёрством».','Голоден. Всегда. Даже когда не голоден.','Тень без хозяина. Шепчет забытые проклятия.','Плачет по тем, кого сам же и закопал.','Ползает по катакомбам в поисках свежих костей.','Смердит так, что враги теряют сознание.','Плетёт паутину из сухожилий.','Собирает души, как коллекционер марки.','Судья мёртвых. Приговор обжалованию не подлежит.','Истлел бы, да нечем — уже труха.','Мор. Просто Мор. Не спрашивай.','Ест плоть. Кости — на сувениры.','Кошмар, который ходит. Медленно, но верно.','Свежует всех, кто не успел убежать.','Сторожит склеп. Ключи потерял триста лет назад.','Бестелесный. Но почему-то всё ещё голодный.','Прикован к смерти цепью. Не жалуется.','Владыка Тлена. Устал от всего, но правит.'], demon: ['Мелкий пакостник. Кусает за пятки.','Гончая преисподней. Ищет то, что ты спрятал.','Соблазняет даже собственный хвост.','Адский рыцарь. Доспех из боли, конь — из страха.','Владыка ямы. Яма — это его личное пространство.','Балрог. Огонь, тьма, пафос — всё включено.','Кровавый гон. Бежит всегда, даже когда стоит.','Пожиратель грехов. Твоих — в первую очередь.','Архидемон. Бюрократия ада — его рук дело.','Сукуб. Шепчет то, что ты хотел бы забыть.','Пламенный титан. Плавит металл и нервы.','Тюремщик душ. Ключи носит на рогах.','Дьяволёнок. Рога ещё молочные.','Крылатый ужас. Перья — из пепла.','Пепельный лорд. После него остаётся только пепел.','Сердце пламени. Горит, но не сгорает.','Разрушитель. Просто идёт — и всё рушится.','Кровавый жрец. Молится ножом.','Кузнец ада. Куёт цепи для новых грешников.','Порождение Бездны. Смотрит на тебя из всех щелей.','Пылающий вестник. Приносит вести. Плохие.','Голод. Утроба без дна. Зовёт тихо, но настойчиво.','Цербер. Три пасти, ноль компромиссов.','Ловчий. Расставляет силки из страха.','Князь Тьмы. Устал от подхалимов, но терпит.'], cultist: ['Первый шаг к тьме начинается с послушания.','Нож. Молитва. Жертва. Всё как положено.','Палач. Головы отлетают ровно, как по линейке.','Тёмный жрец. Проповеди — с кровью на губах.','Фанатик. Верит так, что страшно становится.','Сектант. Секретничает даже с собой.','Ритуальный убийца. Убивает строго по расписанию.','Шептун. Слышит то, чего нет, и передаёт дальше.','Кровавый маг. Волшебство на крови — экономно.','Жрец Бездны. Бездна отвечает взаимностью.','Носитель проклятия. Передаётся по наследству.','Тёмный инквизитор. Ищет ересь, где её нет, и находит.','Мастер ритуала. Всегда есть свечи и жертвенный кинжал.','Свежеватель. Работает с людьми и их кожей.','Проповедник тьмы. Слово — тоже оружие.','Кровавая невеста. Брак — до первой крови. Или после.','Одержимый. Говорит голосами. Не своим.','Теневик. Живёт там, куда не падает свет.','Служитель хаоса. Порядок — его личный враг.','Костяной жрец. Молится на кости. Свои и чужие.','Палач судьбы. Выносит приговор без суда.','Проклятый певец. Его песни заставляют плакать камни.','Связанный. Кто его связал — уже не узнать.','Хранитель тайны. Знает столько, что уже не смеётся.','Верховный жрец. Тьма смотрит на тебя его глазами.'], beast: ['Крыса. Городская, наглая, вездесущая.','Волк. Стая — сила, одиночество — смерть.','Лютоволк. Побольше, позлее и с безумным взглядом.','Падальщик. Ест то, что осталось от культа.','Грифон. Гордость и перья. В основном перья.','Гидра. Отрубишь голову — вырастут две. Или больше.','Оборотень. Человек до заката, зверь после.','Медведь-убийца. Не «мишка». Совсем не «мишка».','Кошмар. Приходит во снах. И не только.','Мантикора. Жало, крылья, человеческий оскал.','Ледяной волк. Дышит холодом. Кусает тоже.','Кровожад. Чует кровь за милю.','Василиск. Один взгляд — и ты уже статуя.','Саблезуб. Клыки — как слоновьи бивни, только хуже.','Пещерный ужас. В темноте слышишь только шорох.','Теневой кот. Ходит там, где не ступала тень.','Королевский грифон. Царственная птица с острым клювом.','Змей. Мудр, стар и голоден.','Вендиго. Холод лесов. Голоднее, чем кажется.','Костяной бык. Челюсти из костей. Ими и жуёт.','Химера. Собрана по частям. Не спрашивай как.','Пожиратель. Поглощает всё. Даже надежду.','Штормовой волк. Молния в шерсти.','Древень. Дерево с зубами. Старое-старое.','Хищник. Ты его не увидишь. Он тебя — да.'] };
-const BASE_RATES = { 1: 1, 3: 2.5, 4: 6, 5: 18 };
-const RARITY_HP = { 1: 30, 3: 45, 4: 65, 5: 90 };
-const RARITY_DMG = { 1: 11, 3: 17, 4: 20, 5: 23 };
-function cardHp(rarity) { return RARITY_HP[rarity] || 30; }
-function fighterHp(rarity) { return { 1: 100, 3: 300, 4: 800, 5: 2000 }[rarity] || 100; }
-function fighterDmg(rarity) { return { 1: 10, 3: 35, 4: 120, 5: 350 }[rarity] || 10; }
-let cardIdCounter = 0;
-const rawCards = [];
-for (const faction of FACTION_KEYS) {
-  for (let i = 0; i < 5; i++) rawCards.push([`card_${cardIdCounter++}`, NAMES[faction][i], GLYPHS[faction][i], 1, BASE_RATES[1], faction, FLAVORS[faction][i]]);
-  for (let i = 5; i < 15; i++) rawCards.push([`card_${cardIdCounter++}`, NAMES[faction][i], GLYPHS[faction][i], 3, BASE_RATES[3], faction, FLAVORS[faction][i]]);
-  for (let i = 15; i < 22; i++) rawCards.push([`card_${cardIdCounter++}`, NAMES[faction][i], GLYPHS[faction][i], 4, BASE_RATES[4], faction, FLAVORS[faction][i]]);
-  for (let i = 22; i < 25; i++) rawCards.push([`card_${cardIdCounter++}`, NAMES[faction][i], GLYPHS[faction][i], 5, BASE_RATES[5], faction, FLAVORS[faction][i]]);
-}
-rawCards.forEach(c => { CARDS[c[0]] = { id:c[0], name:c[1], symbol:c[2], glyph:c[2], rarity:c[3], baseRate:c[4], faction:c[5], flavor:c[6] }; });
-const POOL_1=[], POOL_3=[], POOL_4=[], POOL_5=[];
-Object.keys(CARDS).forEach(id => { const r = CARDS[id].rarity; if (r===1) POOL_1.push(id); else if (r===3) POOL_3.push(id); else if (r===4) POOL_4.push(id); else if (r===5) POOL_5.push(id); });
-const GRID_SIZE = 9;
-let crystals = 2500;
-let grid = Array.from({length: GRID_SIZE}, () => Array(GRID_SIZE).fill(null));
-let playableMask = Array.from({length: GRID_SIZE}, () => Array(GRID_SIZE).fill(false));
-for (let r = 3; r <= 5; r++) for (let c = 3; c <= 5; c++) playableMask[r][c] = true;
-let boughtCells = 0;
-let settings = { spawnInterval: 10, spawnEnabled: true, cellPriceGrowth: true, enemyBuff: false };
-function cellPrice() { return 500 + (settings.cellPriceGrowth ? boughtCells * 250 : 0); }
-let inventory = {};
-let discovered = new Set();
-let pendingCard = null;
-let placingMode = false, deleteMode = false, moveMode = false, moveSource = null;
-let enemyTimer = 0, gamePaused = false, enemyHpMult = 1;
-let fighters = {};
-let fighterHpState = {};
-let arenaState = { floor: 1, room: 1, enemy: null, fighting: false, status: '', cleared: [false,false,false,false,false] };
-let arenaAuto = false;
-// [5] Убран стартовый скелет и стартовые карты
-// grid[4][4] = ... и inventory['card_0'] = 1 убраны!
-// Но для отладки и чтобы не было пустого экрана, можно дать игроку 1 крутку бесплатно (опционально), но пока просто пустой инвентарь.
-// Однако, если нет ни одной карты, игрок не сможет начать. Дадим ему 250 кристаллов, на которые он может сделать 1 крутку.
-const COUNTER_MAP = { undead: 'beast', beast: 'cultist', cultist: 'demon', demon: 'undead' };
-function isAnti(f1, f2) { return (f1==='undead'&&f2==='demon')||(f1==='demon'&&f2==='undead')||(f1==='beast'&&f2==='cultist')||(f1==='cultist'&&f2==='beast'); }
-const SYNERGY_PAIRS = [];
-function addPair(a, b, kind, value) {
-  if (!CARDS[a] || (!isFactionKey(b) && !CARDS[b])) { console.warn('bad pair', a, b); return; }
-  const fp = isFactionKey(a) || isFactionKey(b); const N = id => CARDS[id].symbol + CARDS[id].name;
-  const text = fp ? `${N(a)} + ${FACTION_NAMES[b]} → ×${value}` : kind === 'flat' ? `${N(a)} + ${N(b)} → +${value}/с` : `${N(a)} + ${N(b)} → ×${value}`;
-  SYNERGY_PAIRS.push({ a, b, kind, value, text, factionPair: fp });
-}
-// [1] Вычищены все ссылки на несуществующих юнитов (все ID от card_0 до card_99 существуют)
-addPair('card_0','card_5','flat',1,'Скелет ↔ Кост. Рыцарь: +1/сек'); addPair('card_1','card_3','flat',0.8,'Зомби ↔ Могильщик: +0.8/сек'); addPair('card_2','card_6','flat',1.2,'Упырь ↔ Лич: +1.2/сек'); addPair('card_4','card_8','flat',1,'Кост. Голем ↔ Вурдалак: +1/сек'); addPair('card_5','card_7','flat',1.5,'Кост. Рыцарь ↔ Некромант: +1.5/сек'); addPair('card_6','card_14','mult',1.3,'Лич ↔ Жнец Душ: x1.3'); addPair('card_9','card_10','flat',1.2,'Тень Смерти ↔ Плакальщик: +1.2/сек'); addPair('card_11','card_13','flat',1,'Катакомбный Ползун ↔ Костяной Паук: +1/сек'); addPair('card_12','card_14','mult',1.25,'Проклятый Труп ↔ Жнец Душ: x1.25'); addPair('card_7','undead','mult',1.3,'Некромант ↔ Нежить: x1.3');
-addPair('card_15','card_19','flat',2,'Смертный Судья ↔ Ходячий Кошмар: +2/сек'); addPair('card_16','card_17','mult',1.4,'Тлен ↔ Мор: x1.4'); addPair('card_18','card_20','flat',1.8,'Пожиратель Плоти ↔ Свежеватель: +1.8/сек'); addPair('card_21','card_18','mult',1.3,'Хранитель Склепа ↔ Пожиратель Плоти: x1.3'); addPair('card_16','undead','mult',1.2,'Тлен ↔ Нежить: x1.2');
-addPair('card_22','card_23','flat',2.5,'Бестелесный ↔ Скованный Смертью: +2.5/сек'); addPair('card_24','card_22','mult',1.5,'Владыка Тлена ↔ Бестелесный: x1.5'); addPair('card_24','undead','mult',1.4,'Владыка Тлена ↔ Нежить: x1.4');
-addPair('card_25','card_26','flat',1,'Бес ↔ Гончая Ада: +1/сек'); addPair('card_27','card_29','flat',1,'Инкуб ↔ Владыка Ямы: +1/сек'); addPair('card_28','card_30','flat',1.2,'Адский Рыцарь ↔ Балрог: +1.2/сек'); addPair('card_30','card_33','mult',1.3,'Балрог ↔ Архидемон: x1.3'); addPair('card_31','card_34','flat',1.2,'Кровавый Гон ↔ Сукуб: +1.2/сек'); addPair('card_32','card_36','flat',1.4,'Пожиратель Грехов ↔ Тюремщик Душ: +1.4/сек'); addPair('card_35','card_38','mult',1.25,'Пламенный Титан ↔ Крылатый Ужас: x1.25'); addPair('card_37','card_39','flat',1,'Дьяволёнок ↔ Пепельный Лорд: +1/сек'); addPair('card_32','demon','mult',1.2,'Пожиратель Грехов ↔ Демоны: x1.2');
-addPair('card_40','card_44','mult',1.4,'Сердце Пламени ↔ Порождение Бездны: x1.4'); addPair('card_41','card_42','flat',2,'Разрушитель ↔ Кровавый Жрец: +2/сек'); addPair('card_44','card_45','flat',1.8,'Порождение Бездны ↔ Пылающий Вестник: +1.8/сек'); addPair('card_43','card_46','mult',1.3,'Кузнец Ада ↔ Голод: x1.3'); addPair('card_40','demon','mult',1.2,'Сердце Пламени ↔ Демоны: x1.2');
-addPair('card_47','card_48','flat',2.5,'Цербер ↔ Ловчий: +2.5/сек'); addPair('card_49','card_47','mult',1.5,'Князь Тьмы ↔ Цербер: x1.5'); addPair('card_49','demon','mult',1.4,'Князь Тьмы ↔ Демоны: x1.4');
-addPair('card_50','card_51','flat',1.2,'Послушник ↔ Культист: +1.2/сек'); addPair('card_52','card_54','flat',1,'Палач ↔ Фанатик: +1/сек'); addPair('card_53','card_55','flat',1.2,'Тёмный Жрец ↔ Сектант: +1.2/сек'); addPair('card_55','card_57','flat',1.4,'Сектант ↔ Шептун: +1.4/сек'); addPair('card_56','card_58','mult',1.3,'Ритуальный Убийца ↔ Кровавый Маг: x1.3'); addPair('card_59','card_61','flat',1.2,'Жрец Бездны ↔ Тёмный Инквизитор: +1.2/сек'); addPair('card_60','card_63','mult',1.25,'Носитель Проклятия ↔ Свежеватель: x1.25'); addPair('card_62','card_64','flat',1,'Мастер Ритуала ↔ Проповедник Тьмы: +1/сек'); addPair('card_58','cultist','mult',1.2,'Кровавый Маг ↔ Культисты: x1.2');
-addPair('card_65','card_66','flat',2,'Кровавая Невеста ↔ Одержимый: +2/сек'); addPair('card_67','card_68','mult',1.4,'Теневик ↔ Служитель Хаоса: x1.4'); addPair('card_69','card_70','flat',1.8,'Костяной Жрец ↔ Палач Судьбы: +1.8/сек'); addPair('card_71','card_65','mult',1.3,'Проклятый Певец ↔ Кровавая Невеста: x1.3'); addPair('card_67','cultist','mult',1.2,'Теневик ↔ Культисты: x1.2');
-addPair('card_72','card_73','flat',2.5,'Связанный ↔ Хранитель Тайны: +2.5/сек'); addPair('card_74','card_72','mult',1.5,'Верховный Жрец ↔ Связанный: x1.5'); addPair('card_74','cultist','mult',1.4,'Верховный Жрец ↔ Культисты: x1.4');
-addPair('card_75','card_76','flat',0.8,'Крыса ↔ Волк: +0.8/сек'); addPair('card_77','card_79','flat',1,'Лютоволк ↔ Грифон: +1/сек'); addPair('card_78','card_80','flat',1.2,'Падальщик ↔ Гидра: +1.2/сек'); addPair('card_80','card_82','mult',1.3,'Гидра ↔ Медведь-Убийца: x1.3'); addPair('card_81','card_83','flat',1.2,'Оборотень ↔ Кошмар: +1.2/сек'); addPair('card_84','card_86','flat',1.4,'Мантикора ↔ Кровожад: +1.4/сек'); addPair('card_85','card_88','mult',1.25,'Ледяной Волк ↔ Саблезуб: x1.25'); addPair('card_87','card_89','flat',1,'Василиск ↔ Пещерный Ужас: +1/сек'); addPair('card_83','beast','mult',1.2,'Кошмар ↔ Звери: x1.2');
-addPair('card_90','card_93','flat',2,'Теневой Кот ↔ Вендиго: +2/сек'); addPair('card_91','card_92','mult',1.4,'Королевский Грифон ↔ Змей: x1.4'); addPair('card_94','card_95','flat',1.8,'Костяной Бык ↔ Химера: +1.8/сек'); addPair('card_96','card_90','mult',1.3,'Пожиратель ↔ Теневой Кот: x1.3'); addPair('card_92','beast','mult',1.2,'Змей ↔ Звери: x1.2');
-addPair('card_97','card_98','flat',2.5,'Штормовой Волк ↔ Древень: +2.5/сек'); addPair('card_99','card_97','mult',1.5,'Хищник ↔ Штормовой Волк: x1.5'); addPair('card_99','beast','mult',1.4,'Хищник ↔ Звери: x1.4');
-function pairApplies(thisCard, otherCard, pair) { const { a, b } = pair; if (!pair.factionPair) return (thisCard.id===a&&otherCard.id===b)||(thisCard.id===b&&otherCard.id===a); if (isFactionKey(a)) return thisCard.id===b&&otherCard.faction===a; else return thisCard.id===a&&otherCard.faction===b; }
-function pairsForCard(card) { return SYNERGY_PAIRS.filter(p => { if (!p.factionPair) return p.a===card.id||p.b===card.id; return p.a===card.id||p.b===card.id; }); }
-function activeLinks(r, c) { return effects(r, c); }
-const ENEMY_NAMES = { undead: 'Скелет-Враг', demon: 'Бес-Враг', cultist: 'Сектант-Враг', beast: 'Пёс-Враг' };
-const ENEMY_GLYPHS = { undead: '💀', demon: '👹', cultist: '🩸', beast: '🐕' };
-const gridEl = document.getElementById('grid'); const synergySvg = document.getElementById('synergySvg'); const tooltip = document.getElementById('tooltip'); const banner = document.getElementById('selectionBanner');
-function rarityColor(r) { return r===1 ? '#6a5a4a' : r===3 ? '#7080a0' : r===4 ? '#a070b0' : '#d4b050'; }
-function rarityBg(r) { return r===1 ? '#3a2a20' : r===3 ? '#202a40' : r===4 ? '#3a2040' : '#4a3010'; }
-function getNeighbors(r, c) { const res = []; const dirs = [[-1,0],[1,0],[0,-1],[0,1]]; for (const [dr, dc] of dirs) { const nr = r + dr, nc = c + dc; if (nr>=0 && nr<GRID_SIZE && nc>=0 && nc<GRID_SIZE && grid[nr][nc]) res.push({ r: nr, c: nc, item: grid[nr][nc] }); } return res; }
-function cardHasAnti(r, c) { const item = grid[r][c]; if (!item || item.isEnemy) return false; return getNeighbors(r, c).some(n => !n.item.isEnemy && isAnti(CARDS[item.cardId].faction, CARDS[n.item.cardId].faction)); }
-function isAdjacentToPlayable(r, c) { const dirs = [[-1,0],[1,0],[0,-1],[0,1]]; for (const [dr, dc] of dirs) { const nr = r + dr, nc = c + dc; if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE && playableMask[nr][nc]) return true; } return false; }
-function buildGrid() { gridEl.innerHTML = ''; for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) { const cell = document.createElement('div'); cell.className = 'cell'; gridEl.appendChild(cell); } renderGrid(); }
-function renderGrid() {
-  recountFactions(); const cells = gridEl.children;
-  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
-    const cell = cells[r * GRID_SIZE + c]; const item = grid[r][c];
-    cell.innerHTML = ''; cell.className = 'cell';
-    if (r === 4 && c === 4) cell.classList.add('center-cell');
-    cell.onclick = (e) => onCellClick(e, r, c);
-    if (moveMode && moveSource && moveSource.r === r && moveSource.c === c) cell.classList.add('move-source');
-    else if (moveMode && moveSource && !item && playableMask[r][c]) cell.classList.add('move-target');
-    else if (placingMode && pendingCard && playableMask[r][c] && !item) cell.classList.add('place-target');
-    if (playableMask[r][c]) { cell.classList.add('playable'); const hc = hintClass(r, c); if (hc) cell.classList.add(hc); }
-    else if (!item && isAdjacentToPlayable(r, c)) { cell.classList.add('buy-cell'); cell.innerHTML = `<div class="buy-cost">${cellPrice()}</div>`; continue; }
-    if (item) {
-      if (item.isEnemy) {
-        const f = item.faction; const enemyEl = document.createElement('div'); enemyEl.className = 'enemy-card';
-        const hpPct = Math.max(0, (item.hp / item.maxHp) * 100);
-        enemyEl.innerHTML = `<div class="hp-bar" style="width:${hpPct}%"></div><span class="glyph">${ENEMY_GLYPHS[f]}</span><span class="card-name">${ENEMY_NAMES[f]}</span><span class="hp-text">${Math.ceil(item.hp)}/${Math.ceil(item.maxHp)}</span>`;
-        enemyEl.addEventListener('mouseenter', (e) => { tooltip.innerHTML = `<div class="tt-name">${ENEMY_NAMES[f]}</div><div class="tt-income" style="color:#ff8080;">HP: ${Math.ceil(item.hp)} / ${Math.ceil(item.maxHp)}</div><div class="tt-synergy">Фракция: ${FACTION_NAMES[f]}<br>Побеждается: ${FACTION_NAMES[COUNTER_MAP[f]]}<br>Награда: ${Math.round(item.reward)} 💎</div>`; tooltip.classList.add('show'); moveTooltip(e); });
-        enemyEl.addEventListener('mousemove', moveTooltip); enemyEl.addEventListener('mouseleave', hideTooltip); cell.appendChild(enemyEl);
-      } else {
-        const card = CARDS[item.cardId]; if (!card) continue; const cardEl = document.createElement('div');
-        cardEl.className = `card star${card.rarity} f-${card.faction}`; cardEl.style.setProperty('--glow', rarityColor(card.rarity)); cardEl.style.setProperty('--cardBg', rarityBg(card.rarity));
-        const anti = cardHasAnti(r, c); if (anti) cardEl.classList.add('has-anti');
-        const income = calcCardIncome(r, c); const hpPct = Math.max(0, (item.hp / item.maxHp) * 100); const hpColor = hpPct > 50 ? '#40d040' : hpPct > 20 ? '#e0c040' : '#ff3030';
-        cardEl.innerHTML = `<div class="hp-bar" style="width:${hpPct}%;background:${hpColor};color:${hpColor};"></div><span class="faction-dot" style="background:${FACTION_COLORS[card.faction]}"></span><img class="glyph art" src="assets/cards/${card.id}.svg" draggable="false" onerror="this.replaceWith(document.createTextNode('${card.symbol}'))"><span class="card-name">${card.name}</span><span class="hp-text">${Math.ceil(item.hp)}/${item.maxHp}</span><span class="income-badge">+${income.toFixed(2)}</span>`;
-        if (anti) cardEl.innerHTML += `<span class="anti-badge">⚡</span>`; if (item.stacks > 1) cardEl.innerHTML += `<span class="stack-badge">x${item.stacks}</span>`;
-        cardEl.addEventListener('mouseenter', (e) => { showTooltip(e, card, income, r, c); }); cardEl.addEventListener('mousemove', moveTooltip); cardEl.addEventListener('mouseleave', hideTooltip); cell.appendChild(cardEl);
-      }
-    }
-  }
-  drawSynergies();
-  updateGridStats();
-}
-function drawSynergies() {
-  synergySvg.innerHTML = '';
-  const sr = synergySvg.getBoundingClientRect(); 
-  const gap = 3, padding = 4;
-  const cx = (c) => { const b = gridEl.children[c].getBoundingClientRect(); return b.left - sr.left + b.width / 2; }; const cy = (r) => { const b = gridEl.children[r * GRID_SIZE].getBoundingClientRect(); return b.top - sr.top + b.height / 2; };
-  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
-    const item = grid[r][c]; if (!item || item.isEnemy) continue; const card = CARDS[item.cardId];
-    getNeighbors(r, c).forEach(n => {
-      if (n.item.isEnemy) return; const nCard = CARDS[n.item.cardId]; const isForward = (r < n.r) || (r === n.r && c < n.c); if (!isForward) return;
-      const x1 = cx(c), y1 = cy(r); const x2 = cx(n.c), y2 = cy(n.r);
-      if (isAnti(card.faction, nCard.faction)) { const line = document.createElementNS('http://www.w3.org/2000/svg', 'line'); line.setAttribute('x1', x1); line.setAttribute('y1', y1); line.setAttribute('x2', x2); line.setAttribute('y2', y2); line.setAttribute('class', 'syn-bad'); synergySvg.appendChild(line); const t = document.createElementNS('http://www.w3.org/2000/svg', 'text'); t.setAttribute('x', (x1 + x2) / 2); t.setAttribute('y', (y1 + y2) / 2); t.setAttribute('class', 'syn-icon'); t.textContent = '⚡'; synergySvg.appendChild(t); return; }
-      let fwd = null, back = null; SYNERGY_PAIRS.forEach(p => { if (pairApplies(card, nCard, p)) fwd = fwd || p; if (pairApplies(nCard, card, p)) back = back || p; }); if (!fwd && !back) return;
-      const kind = ((fwd && fwd.kind === 'mult') || (back && back.kind === 'mult')) ? 'mult' : 'good';
-      const base = document.createElementNS('http://www.w3.org/2000/svg', 'line'); base.setAttribute('x1', x1); base.setAttribute('y1', y1); base.setAttribute('x2', x2); base.setAttribute('y2', y2); base.setAttribute('class', kind === 'mult' ? 'base-mult' : 'base-good'); synergySvg.appendChild(base);
-      if (fwd) { const flow = document.createElementNS('http://www.w3.org/2000/svg', 'line'); flow.setAttribute('x1', x1); flow.setAttribute('y1', y1); flow.setAttribute('x2', x2); flow.setAttribute('y2', y2); flow.setAttribute('class', 'syn-flow' + (kind === 'mult' ? ' mult' : '')); synergySvg.appendChild(flow); }
-      if (back) { const flow2 = document.createElementNS('http://www.w3.org/2000/svg', 'line'); flow2.setAttribute('x1', x1); flow2.setAttribute('y1', y1); flow2.setAttribute('x2', x2); flow2.setAttribute('y2', y2); flow2.setAttribute('class', 'syn-flow reverse' + (kind === 'mult' ? ' mult' : '')); synergySvg.appendChild(flow2); }
-    });
-  }
-}
-function effects(r, c) {
-  const item = grid[r][c]; if (!item || item.isEnemy) return []; const card = CARDS[item.cardId]; const out = [], seen = new Set();
-  getNeighbors(r, c).forEach(n => { if (n.item.isEnemy) return; const nc = CARDS[n.item.cardId]; if (isAnti(card.faction, nc.faction)) return;
-    SYNERGY_PAIRS.forEach((p, i) => { if (!pairApplies(card, nc, p)) return; if (p.factionPair) { if (seen.has(i)) return; seen.add(i); } out.push({ pair: p, partner: n.r + ',' + n.c, partnerName: nc.name }); }); });
-  return out;
-}
-function antiCount(r, c) { const card = CARDS[grid[r][c].cardId]; return getNeighbors(r, c).filter(n => !n.item.isEnemy && isAnti(card.faction, CARDS[n.item.cardId].faction)).length; }
-function calcCardIncome(r, c) {
-  const item = grid[r][c]; if (!item || item.isEnemy) return 0; const card = CARDS[item.cardId]; let flat = 0, mult = 1;
-  effects(r, c).forEach(e => { if (e.pair.kind === 'flat') flat += e.pair.value * item.stacks; else mult *= e.pair.value; });
-  mult *= Math.pow(0.7, antiCount(r, c));
-  return (card.baseRate * item.stacks * mult + flat) * setBonus(card.faction);
-}
-function linked(a, b) { return !isAnti(a.faction, b.faction) && SYNERGY_PAIRS.some(p => pairApplies(a, b, p) || pairApplies(b, a, p)); }
-function countLinks() { let n = 0; for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) { const it = grid[r][c]; if (!it || it.isEnemy) continue; getNeighbors(r, c).forEach(m => { if (!m.item.isEnemy && (r < m.r || (r === m.r && c < m.c)) && linked(CARDS[it.cardId], CARDS[m.item.cardId])) n++; }); } return n; }
-function cardsOnGrid() { let n = 0; grid.forEach(row => row.forEach(i => { if (i && !i.isEnemy) n++; })); return n; }
-function altarPower() { let b = 0.03 * countLinks(); FACTION_KEYS.forEach(f => b += setBonus(f) - 1); return Math.min(3, 1 + b); }
-function hintClass(r, c) {
-  if (!placingMode || !pendingCard) return ''; const p = CARDS[pendingCard]; const it = grid[r][c];
-  if (it) { if (it.isEnemy) return ''; if (linked(p, CARDS[it.cardId])) return 'syn-hint'; return it.cardId === pendingCard && it.stacks < 5 ? 'stack-hint' : ''; }
-  const ns = getNeighbors(r, c).filter(n => !n.item.isEnemy);
-  if (ns.some(n => isAnti(p.faction, CARDS[n.item.cardId].faction))) return 'bad-spot';
-  return ns.some(n => linked(p, CARDS[n.item.cardId])) ? 'good-spot' : '';
-}
-function calculateIncome() { recountFactions(); let total = 0; for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) if (grid[r][c] && !grid[r][c].isEnemy) total += calcCardIncome(r, c); return total; }
-function updateGridStats() {
-  let links = 0;
-  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
-    const item = grid[r][c]; if (!item || item.isEnemy) continue;
-    getNeighbors(r, c).forEach(n => {
-      if (n.item.isEnemy) return;
-      if ((r < n.r) || (r === n.r && c < n.c)) {
-        const card = CARDS[item.cardId], nCard = CARDS[n.item.cardId];
-        if (!isAnti(card.faction, nCard.faction)) {
-          let has = false;
-          SYNERGY_PAIRS.forEach(p => { if (pairApplies(card, nCard, p) || pairApplies(nCard, card, p)) has = true; });
-          if (has) links++;
-        }
-      }
-    });
-  }
-  document.getElementById('gridStats').innerHTML = `Активных звеньев: <b>${links}</b> · Доход: <b>+${calculateIncome().toFixed(2)}/сек</b> · Сеты: ${FACTION_KEYS.filter(f=>setBonus(f)>1).map(f=>FACTION_NAMES[f]+' +'+Math.round((setBonus(f)-1)*100)+'%').join(', ')||'—'}`;
-}
-let lastTick = performance.now(); let combatTimer = 0;
-function gameLoop(now) {
-  const dt = Math.min((now - lastTick) / 1000, 0.2); lastTick = now;
-  if (!gamePaused) { crystals += calculateIncome() * dt; gameTime += dt; if (settings.spawnEnabled) { enemyTimer += dt; if (enemyTimer >= settings.spawnInterval) { enemyTimer = 0; spawnEnemy(); } } combatTimer += dt; if (combatTimer >= 1.5) { combatTimer = 0; processCombat(); } updateHUD(); }
-  requestAnimationFrame(gameLoop);
-}
-function spawnEnemy() {
-  if (grid.flat().filter(i => i && i.isEnemy).length >= 8) return;
-  const free = []; for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) if (!playableMask[r][c] && !grid[r][c]) free.push([r, c]);
-  if (!free.length) return;
-  const adj = free.filter(([a, b]) => isAdjacentToPlayable(a, b)); const pool = adj.length && Math.random() < 0.8 ? adj : free;
-  const faction = FACTION_KEYS[Math.floor(Math.random() * 4)]; const [r, c] = pool[Math.floor(Math.random() * pool.length)];
-  if (settings.enemyBuff) enemyHpMult += 0.02;
-  const lvl = 1 + gameTime / 240; const hp = Math.round(20 * lvl * enemyHpMult);
-  grid[r][c] = { isEnemy: true, faction, hp, maxHp: hp, reward: Math.round(30 * lvl + calculateIncome() * 6), dmg: 4 + lvl * 1.5 }; renderGrid();
-}
-function processCombat() {
-  let changed = false;
-  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
-    const item = grid[r][c]; if (!item) continue;
-    if (item.isEnemy) { getNeighbors(r, c).forEach(n => { if (!n.item.isEnemy) { n.item.hp -= item.dmg || 5; changed = true; } }); continue; }
-    const card = CARDS[item.cardId]; let hot = false;
-    getNeighbors(r, c).forEach(n => {
-      if (n.item.isEnemy) { hot = true; let d = RARITY_DMG[card.rarity] * item.stacks; if (COUNTER_MAP[card.faction] === n.item.faction) d *= 2; n.item.hp -= d; changed = true; }
-      else if (isAnti(card.faction, CARDS[n.item.cardId].faction)) { hot = true; n.item.hp -= 1.5 * item.stacks; changed = true; }
-    });
-    if (!hot && item.hp < item.maxHp) { item.hp = Math.min(item.maxHp, item.hp + item.maxHp * 0.03); changed = true; }
-  }
-  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
-    const it = grid[r][c]; if (!it || it.hp > 0) continue;
-    if (it.isEnemy) { crystals += it.reward; let m = '+' + it.reward + ' 💎'; if (Math.random() < 0.12) { const P = Math.random() < 0.6 ? POOL_1 : POOL_3; const id = P[Math.floor(Math.random() * P.length)]; inventory[id] = (inventory[id] || 0) + 1; discovered.add(id); m += ' · трофей: ' + CARDS[id].name; } toast(m); }
-    grid[r][c] = null; changed = true;
-  }
-  if (changed) { renderGrid(); renderCollection(); updateHUD(); }
-}
-function updateHUD() {
-  const c = Math.floor(crystals); document.getElementById('crystals').textContent = c.toLocaleString('ru-RU');
-  document.getElementById('rate').textContent = `+${calculateIncome().toFixed(2)}/сек`;
-  document.getElementById('pity').textContent = `· до ★4: ${10 - pity4} · до ★5: ${80 - pity5}`;
-  [1, 10, 100, 1000].forEach(n => document.getElementById('roll' + n).disabled = c < n * ROLL_COST); document.getElementById('rollAll').disabled = c < ROLL_COST;
-}
-function moveTooltip(e) { tooltip.style.left = Math.min(e.clientX + 14, window.innerWidth - 320) + 'px'; tooltip.style.top = Math.min(e.clientY + 14, window.innerHeight - 220) + 'px'; }
-function hideTooltip() { tooltip.classList.remove('show'); }
-function showTooltip(e, card, income, r, c) {
-  let linksHtml = '';
-  if (r !== undefined && c !== undefined) { const links = activeLinks(r, c); if (links.length > 0) linksHtml = `<div class="tt-synergy"><div class="tt-synergy-title">Активные звенья</div>` + links.map(l => `<span class="tt-good">${l.pair.text} (с ${l.partnerName})</span>`).join('<br>') + `</div>`; else linksHtml = `<div class="tt-synergy"><div class="tt-synergy-title">Активные звенья</div><span style="color:#8a6a4a;">Нет активных звеньев с соседями.</span></div>`; }
-  let possibleHtml = '';
-  if (r === undefined) { const ps = pairsForCard(card); if (ps.length > 0) possibleHtml = `<div class="tt-synergy"><div class="tt-synergy-title">Возможные звенья</div>` + ps.map(p => `<span class="tt-good">${p.text}</span>`).join('<br>') + `</div>`; }
-  let antiLine = '';
-  if (r !== undefined && c !== undefined) { const anti = getNeighbors(r, c).filter(n => !n.item.isEnemy && isAnti(card.faction, CARDS[n.item.cardId].faction)); if (anti.length > 0) antiLine = `<div class="tt-synergy"><div class="tt-synergy-title">Антисинергия</div><span class="tt-bad">⚡ За каждого соседа-антипода: доход ×0.7 и урон 1.5/сек обеим картам</span></div>`; }
-  tooltip.innerHTML = `<div class="tt-name">${card.name}</div><div class="tt-stars">${'★'.repeat(card.rarity)}</div><div class="tt-income">Прирост: +${income.toFixed(2)}/сек</div><div class="tt-synergy"><div class="tt-synergy-title">Фракция</div>${FACTION_NAMES[card.faction]}</div>${linksHtml}${possibleHtml}${antiLine}<div class="tt-flavor">«${card.flavor}»</div>`;
-  tooltip.classList.add('show'); moveTooltip(e);
-}
-function updateBanner() {
-  if (placingMode && pendingCard) { const c = CARDS[pendingCard]; banner.innerHTML = `Выбрана карта: <b>${c.name}</b>. Кликните по подсвеченной клетке. Esc — отмена.`; banner.classList.add('show'); }
-  else if (deleteMode) { banner.innerHTML = `Режим удаления. Кликните по карте — она будет удалена навсегда. Esc — отмена.`; banner.classList.add('show'); }
-  else if (moveMode) { banner.innerHTML = moveSource ? `Перемещение: кликните по свободной подсвеченной клетке. Esc — отмена.` : `Перемещение: кликните по карте на поле. Esc — отмена.`; banner.classList.add('show'); }
-  else banner.classList.remove('show');
-}
-function cancelSelection() { placingMode = false; pendingCard = null; deleteMode = false; moveMode = false; moveSource = null; document.getElementById('deleteToolBtn').classList.remove('active'); document.getElementById('moveToolBtn').classList.remove('active'); renderGrid(); renderCollection(); updateBanner(); }
-function onCellClick(e, r, c) {
-  hideTooltip(); const item = grid[r][c];
-  if (moveMode) { if (!moveSource) { if (item && !item.isEnemy) { moveSource = { r, c }; renderGrid(); updateBanner(); } return; } if (moveSource.r === r && moveSource.c === c) { moveSource = null; renderGrid(); updateBanner(); return; } if (!playableMask[r][c] || (item && item.isEnemy)) return; const src = grid[moveSource.r][moveSource.c]; if (!src || src.isEnemy) { moveSource = null; renderGrid(); updateBanner(); return; } grid[r][c] = src; grid[moveSource.r][moveSource.c] = item || null; moveSource = null; renderGrid(); renderCollection(); updateHUD(); updateBanner(); return; }
-  if (deleteMode) { if (item && !item.isEnemy) { if (CARDS[item.cardId].rarity >= 4 || item.stacks > 1) { const rr = r, cc = c; ask('Удалить навсегда: ' + CARDS[item.cardId].name + ' ×' + item.stacks + '?', () => { grid[rr][cc] = null; renderGrid(); renderCollection(); updateHUD(); }); return; } grid[r][c] = null; renderGrid(); renderCollection(); updateHUD(); cancelSelection(); } return; }
-  if (placingMode && pendingCard) { if (!playableMask[r][c] || (inventory[pendingCard] || 0) <= 0) return; const card = CARDS[pendingCard]; const hp = cardHp(card.rarity); if (item) { if (item.isEnemy || item.cardId !== pendingCard || item.stacks >= 5) return; item.stacks++; item.maxHp += hp; item.hp += hp; } else grid[r][c] = { cardId: pendingCard, stacks: 1, hp, maxHp: hp }; inventory[pendingCard]--; if (inventory[pendingCard] <= 0) { delete inventory[pendingCard]; cancelSelection(); } else { renderGrid(); renderCollection(); updateHUD(); } return; }
-  if (!playableMask[r][c] && !item && isAdjacentToPlayable(r, c)) { const price = cellPrice(); if (crystals >= price) { crystals -= price; playableMask[r][c] = true; boughtCells++; renderGrid(); updateHUD(); } return; }
-}
-document.getElementById('deleteToolBtn').addEventListener('click', function() { deleteMode = !deleteMode; placingMode = false; pendingCard = null; moveMode = false; moveSource = null; document.getElementById('moveToolBtn').classList.remove('active'); this.classList.toggle('active', deleteMode); renderGrid(); renderCollection(); updateBanner(); });
-document.getElementById('moveToolBtn').addEventListener('click', function() { moveMode = !moveMode; moveSource = null; placingMode = false; pendingCard = null; deleteMode = false; document.getElementById('deleteToolBtn').classList.remove('active'); this.classList.toggle('active', moveMode); renderGrid(); renderCollection(); updateBanner(); });
-document.getElementById('settingsBtn').addEventListener('click', () => { document.getElementById('settingsModal').classList.add('show'); document.getElementById('setSpawnInterval').value = settings.spawnInterval; document.getElementById('setSpawnEnabled').checked = settings.spawnEnabled; document.getElementById('setCellPriceGrowth').checked = settings.cellPriceGrowth; document.getElementById('setEnemyBuff').checked = settings.enemyBuff; });
-document.getElementById('settingsClose').addEventListener('click', () => { document.getElementById('settingsModal').classList.remove('show'); settings.spawnInterval = Math.max(1, parseInt(document.getElementById('setSpawnInterval').value) || 15); settings.spawnEnabled = document.getElementById('setSpawnEnabled').checked; settings.cellPriceGrowth = document.getElementById('setCellPriceGrowth').checked; settings.enemyBuff = document.getElementById('setEnemyBuff').checked; renderGrid(); });
-let ROLL_COST=150;
-let pity4=0,pity5=0,gameTime=0,noSave=false,gameStarted=false,toastT;
-function toast(t){const e=document.getElementById('toast');e.textContent=t;e.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>e.classList.remove('show'),1800);}
-function weightedRoll(){pity4++;pity5++;const r=Math.random()*100;let t;if(pity5>=80||r>=99)t=5;else if(pity4>=10||r>=90)t=4;else t=r<45?1:3;if(t>=4)pity4=0;if(t===5)pity5=0;const P={1:POOL_1,3:POOL_3,4:POOL_4,5:POOL_5}[t];return P[Math.floor(Math.random()*P.length)];}
-let factionCounts={undead:0,demon:0,cultist:0,beast:0};
-function recountFactions(){FACTION_KEYS.forEach(f=>factionCounts[f]=0);for(const row of grid)for(const i of row)if(i&&!i.isEnemy)factionCounts[CARDS[i.cardId].faction]+=i.stacks;}
-function setBonus(f){const n=factionCounts[f];return n>=10?1.5:n>=6?1.25:n>=3?1.1:1;}
-const SAVE_KEY='gacha_grinder2_v2';
-function saveGame(){if(noSave||!gameStarted)return;try{const g=grid.map(r=>r.map(i=>i&&!i.isEnemy?i:null));localStorage.setItem(SAVE_KEY,JSON.stringify({t:Date.now(),crystals,g,playableMask,boughtCells,inventory,disc:[...discovered],fighters,fighterHpState,arena:{floor:arenaState.floor,room:arenaState.room,cleared:arenaState.cleared},settings,pity4,pity5,gameTime,stats,ess,essT,up,goalsDone,run}));}catch(e){}}
-function loadGame(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');if(!d)return;crystals=d.crystals;grid=d.g;playableMask=d.playableMask;boughtCells=d.boughtCells;inventory=d.inventory;discovered=new Set(d.disc);fighters=d.fighters;fighterHpState=d.fighterHpState;Object.assign(arenaState,d.arena);Object.assign(settings,d.settings);pity4=d.pity4||0;pity5=d.pity5||0;gameTime=d.gameTime||0;stats=d.stats||stats;ess=d.ess||0;essT=d.essT||0;up=d.up||up;goalsDone=d.goalsDone||{};run=d.run||run;const gain=calculateIncome()*Math.min((Date.now()-d.t)/1000,3600)*0.5;if(gain>=1){crystals+=gain;setTimeout(()=>toast('Пока вас не было: +'+Math.floor(gain)+' 💎'),500);}}catch(e){}}
-setInterval(saveGame,5000);window.addEventListener('beforeunload',saveGame);
-document.getElementById('resetBtn').addEventListener('click',()=>{ask('Стереть весь прогресс?',()=>{noSave=true;localStorage.removeItem(SAVE_KEY);location.reload();});});
-
-// [3] Возвращены кнопки 1, 10, 100, 1000, ВСЕ
-function doRolls(count) {
-  if (crystals < ROLL_COST * count) { toast('Не хватает 💎'); return; }
-  crystals -= ROLL_COST * count;
-  const results = [];
-  for (let i = 0; i < count; i++) results.push(weightedRoll());
-  if (results.length === 1) { showDrop(results[0]); }
-  else { showMulti(results); }
-}
-document.getElementById('roll1').addEventListener('click', () => doRolls(1));
-document.getElementById('roll10').addEventListener('click', () => doRolls(10));
-document.getElementById('roll100').addEventListener('click', () => doRolls(100));
-document.getElementById('roll1000').addEventListener('click', () => doRolls(1000));
-document.getElementById('rollAll').addEventListener('click', () => {
-  if (crystals < ROLL_COST) return;
-  const maxRolls = Math.min(2000, Math.floor(crystals / ROLL_COST));
-  
-  doRolls(maxRolls);
-});
-function playRarityEffect(modalCardEl, bannerEl, rarity) { bannerEl.className = 'rarity-banner'; bannerEl.textContent = ''; if (rarity === 4) { bannerEl.textContent = 'РЕДКАЯ КАРТА'; bannerEl.classList.add('r4','show'); modalCardEl.classList.add('rarity4'); spawnSparks(modalCardEl,'r4',10); } else if (rarity === 5) { bannerEl.textContent = 'ЛЕГЕНДАРНАЯ КАРТА'; bannerEl.classList.add('r5','show'); modalCardEl.classList.add('rarity5'); spawnSparks(modalCardEl,'r5',18); } else modalCardEl.classList.remove('rarity4','rarity5'); }
-function spawnSparks(container, cls, count) { for (let i = 0; i < count; i++) { const s = document.createElement('div'); s.className = 'spark ' + cls; const angle = Math.random() * Math.PI * 2; const dist = 40 + Math.random() * 60; s.style.setProperty('--dx', Math.cos(angle) * dist + 'px'); s.style.setProperty('--dy', Math.sin(angle) * dist + 'px'); s.style.left = '50%'; s.style.top = '50%'; container.appendChild(s); setTimeout(() => { s.classList.add('go'); }, 10 + i * 20); setTimeout(() => s.remove(), 1400); } }
-function showDrop(cardId) {
-  pendingCard = cardId; const card = CARDS[cardId]; gamePaused = true; const modalCard = document.getElementById('dropModalCard'); const bannerEl = document.getElementById('dropRarityBanner'); const el = document.getElementById('dropCard');
-  el.className = 'big-card'; el.style.setProperty('--glow', rarityColor(card.rarity)); el.style.setProperty('--cardBg', rarityBg(card.rarity)); el.textContent = card.symbol;
-  document.getElementById('dropStars').textContent = '★'.repeat(card.rarity); document.getElementById('dropName').textContent = card.name;
-  document.getElementById('dropEffect').innerHTML = pairsForCard(card).map(p => p.text).join('<br>') || 'Нет особых синергий.'; document.getElementById('dropFlavor').textContent = `«${card.flavor}»`;
-  modalCard.classList.remove('rarity4','rarity5'); playRarityEffect(modalCard, bannerEl, card.rarity);
-  if (card.rarity === 4) { el.classList.add('pop4'); setTimeout(()=>el.classList.remove('pop4'), 1000); } if (card.rarity === 5) { el.classList.add('pop5'); setTimeout(()=>el.classList.remove('pop5'), 1400); }
-  document.getElementById('dropModal').classList.add('show');
-  document.getElementById('placeBtn').onclick = () => { const id = pendingCard; document.getElementById('takeBtn').onclick(); pendingCard = id; placingMode = true; deleteMode = false; moveMode = false; renderGrid(); renderCollection(); updateBanner(); };
-  document.getElementById('takeBtn').onclick = () => { document.getElementById('dropModal').classList.remove('show'); if (pendingCard) { inventory[pendingCard] = (inventory[pendingCard] || 0) + 1; discovered.add(pendingCard); renderCollection(); pendingCard = null; } gamePaused = false; };
-}
-document.getElementById('dropCard').addEventListener('mouseenter', (e) => { if (pendingCard && CARDS[pendingCard]) { const c = CARDS[pendingCard]; showTooltip(e, c, c.baseRate); } });
-document.getElementById('dropCard').addEventListener('mousemove', moveTooltip); document.getElementById('dropCard').addEventListener('mouseleave', hideTooltip);
-function showMulti(cards) {
-  gamePaused = true; const rev = document.getElementById('multiReveal'); rev.innerHTML = ''; const modalCard = document.getElementById('multiModalCard'); const bannerEl = document.getElementById('multiRarityBanner'); modalCard.classList.remove('rarity4','rarity5'); let has4 = false, has5 = false;
-  document.getElementById('multiTitle').textContent = `${cards.length} круток`;
-  cards.forEach((c, i) => { const card = CARDS[c]; if (card.rarity === 4) has4 = true; if (card.rarity === 5) has5 = true; const el = document.createElement('div'); el.className = 'multi-item'; el.style.setProperty('--glow', rarityColor(card.rarity)); el.style.setProperty('--cardBg', rarityBg(card.rarity)); el.innerHTML = `<span>${card.symbol}</span><span class="multi-name">${card.name}</span>`; el.addEventListener('mouseenter', (e) => showTooltip(e, card, card.baseRate)); el.addEventListener('mousemove', moveTooltip); el.addEventListener('mouseleave', hideTooltip); rev.appendChild(el); setTimeout(() => { if (card.rarity === 4) el.classList.add('rare4'); else if (card.rarity === 5) el.classList.add('rare5'); }, Math.min(i * 15, 500)); });
-  if (has5) playRarityEffect(modalCard, bannerEl, 5); else if (has4) playRarityEffect(modalCard, bannerEl, 4);
-  document.getElementById('multiModal').classList.add('show');
-  document.getElementById('multiFight').onclick = () => { document.getElementById('multiOk').onclick(); cards.forEach(c => { if (CARDS[c].rarity === 1 && inventory[c]) addFighter(c, 1); }); };
-  document.getElementById('multiOk').onclick = () => { document.getElementById('multiModal').classList.remove('show'); cards.forEach(c => { inventory[c] = (inventory[c]||0)+1; discovered.add(c); }); renderCollection(); gamePaused = false; };
-}
-let collectionFilter = 'all';
-document.querySelectorAll('.coll-tab').forEach(tab => { tab.addEventListener('click', () => { document.querySelectorAll('.coll-tab').forEach(t => t.classList.remove('active')); tab.classList.add('active'); collectionFilter = tab.dataset.faction; renderCollection(); }); });
-let rarityFilter = 'all';
-function renderCollection() {
-  const cont = document.getElementById('collectGrid'); cont.innerHTML = ''; const sel = placingMode && pendingCard ? CARDS[pendingCard] : null;
-  const ids = Object.keys(inventory).filter(id => (collectionFilter === 'all' || CARDS[id].faction === collectionFilter) && (rarityFilter === 'all' || CARDS[id].rarity == rarityFilter));
-  const pv = id => sel && sel.id !== id && linked(sel, CARDS[id]) ? 1 : 0;
-  ids.sort((a, b) => pv(b) - pv(a) || CARDS[b].rarity - CARDS[a].rarity || a.localeCompare(b));
-  ids.forEach(id => {
-    const card = CARDS[id], count = inventory[id], el = document.createElement('div'); el.className = `coll-card star${card.rarity} f-${card.faction}`;
-    el.style.setProperty('--glow', rarityColor(card.rarity)); el.style.setProperty('--cardBg', rarityBg(card.rarity));
-    if (pv(id)) el.classList.add('partner'); if (sel && sel.id === id) el.classList.add('selected');
-    el.innerHTML = `<img class="coll-glyph art" src="assets/cards/${card.id}.svg" draggable="false" onerror="this.replaceWith(document.createTextNode('${card.symbol}'))"><span class="faction-dot" style="background:${FACTION_COLORS[card.faction]}"></span><span class="count">${count}</span>`;
-    el.addEventListener('mouseenter', e => showTooltip(e, card, card.baseRate)); el.addEventListener('mousemove', moveTooltip); el.addEventListener('mouseleave', hideTooltip);
-    el.addEventListener('click', e => {
-      if (e.ctrlKey || e.shiftKey) { addFighter(id, 1); return; }
-      deleteMode = false; moveMode = false; moveSource = null; document.getElementById('deleteToolBtn').classList.remove('active'); document.getElementById('moveToolBtn').classList.remove('active');
-      if (placingMode && pendingCard === id) { cancelSelection(); return; } pendingCard = id; placingMode = true; hideTooltip(); renderGrid(); renderCollection(); updateBanner();
-    });
-    el.addEventListener('contextmenu', e => { e.preventDefault(); addFighter(id, 1); });
-    cont.appendChild(el);
-  });
-  if (!ids.length) cont.innerHTML = '<div class="fighter-empty">Здесь пусто. Крутите карты!</div>';
-  document.getElementById('collectStats').textContent = `Карт: ${Object.values(inventory).reduce((a, b) => a + b, 0)} · открыто ${discovered.size}/100`;
-  renderActions();
-}
-function renderActions() {
-  const el = document.getElementById('cardActions');
-  if (!placingMode || !pendingCard || !inventory[pendingCard]) { el.innerHTML = '<span class="act-hint">Выберите карту: <b style="color:#80e060">зелёная рамка</b> — партнёры по синергии, на Алтаре подсветятся лучшие клетки (красные — антисинергия). ПКМ / Shift+клик — в бой.</span>'; return; }
-  const c = CARDS[pendingCard], n = inventory[pendingCard];
-  el.innerHTML = `<b>${c.symbol} ${c.name}</b> ×${n} <button data-n="1">⚔ ×1</button>` + (n > 5 ? '<button data-n="5">⚔ ×5</button>' : '') + (n > 1 ? `<button data-n="${n}">⚔ все (${n})</button>` : '') + '<span class="act-hint">или кликните по Алтарю</span>';
-}
-document.getElementById('cardActions').addEventListener('click', e => { const n = +e.target.dataset.n; if (n && pendingCard) addFighter(pendingCard, n); });
-document.getElementById('rarityFilter').addEventListener('change', e => { rarityFilter = e.target.value; renderCollection(); });
-function bulkFight(mode) { let n = 0; Object.keys(inventory).forEach(id => { const c = inventory[id]; const k = mode === 'dup' ? c - 1 : mode === 'one' ? (CARDS[id].rarity === 1 ? c : 0) : c; if (k > 0) { addFighter(id, k); n += k; } }); toast(n ? 'В бой отправлено: ' + n : 'Нечего отправлять'); }
-document.getElementById('bulkDup').onclick = () => bulkFight('dup'); document.getElementById('bulk1').onclick = () => bulkFight('one');
-document.getElementById('bulkAll').onclick = () => { ask('Отправить в бой ВСЕ карты из коллекции?', () => bulkFight('all')); };
-function addFighter(cardId, cnt = 1) {
-  const have = inventory[cardId] || 0; cnt = Math.min(cnt, have); if (cnt <= 0) return; inventory[cardId] = have - cnt;
-  if (inventory[cardId] <= 0) { delete inventory[cardId]; if (pendingCard === cardId) { placingMode = false; pendingCard = null; } }
-  fighters[cardId] = (fighters[cardId] || 0) + cnt; fighterHpState[cardId] = (fighterHpState[cardId] || 0) + fighterHp(CARDS[cardId].rarity) * cnt;
-  renderFighters(); renderCollection(); renderGrid(); updateArenaUI(); updateBanner(); if (arenaAuto) setTimeout(tryStartAutoBattle, 200);
-}
-function renderFighters() {
-  const list = document.getElementById('fightersList'); list.innerHTML = ''; const ids = Object.keys(fighters).sort((a,b) => CARDS[b].rarity - CARDS[a].rarity);
-  ids.forEach(id => {
-    const c = CARDS[id]; const count = fighters[id]; const row = document.createElement('div');
-    const currentHp = fighterHpState[id] || fighterHp(c.rarity) * count;
-    const maxHp = fighterHp(c.rarity) * count;
-    row.className = 'fighter-row';
-    row.innerHTML = `<div class="f-hp-bar" style="width:${(currentHp/maxHp)*100}%"></div><span class="f-icon">${c.symbol}</span><span class="f-name">${c.name}</span><span class="f-count">x${count}</span><span class="f-dmg">⚔${fighterDmg(c.rarity) * count}</span>`;
-    if (currentHp <= 0) row.style.opacity = .4; row.title = 'Клик — вернуть в инвентарь';
-    row.onclick = () => { if (arenaState.fighting) return; inventory[id] = (inventory[id] || 0) + fighters[id]; delete fighters[id]; delete fighterHpState[id]; renderFighters(); renderCollection(); updateArenaUI(); };
-    list.appendChild(row);
-  });
-  if (ids.length === 0) list.innerHTML = '<div class="fighter-empty">Нет бойцов.<br>Ctrl+клик или ПКМ по карте в коллекции,<br>чтобы добавить её в бойцы.</div>';
-  document.getElementById('fightersTotalDmg').textContent = `Σ ${calcTotalDamage()}`;
-}
-function arenaDmg(e) { let d = 0; for (const id in fighters) { const c = CARDS[id]; const n = Math.ceil((fighterHpState[id] || 0) / fighterHp(c.rarity)); d += fighterDmg(c.rarity) * n * (COUNTER_MAP[c.faction] === e.faction ? 1.5 : 1); } return Math.round(d * altarPower()); }
-function calcTotalDamage() { return arenaDmg({}); }
-function calcTotalHp() { let hp = 0; Object.keys(fighters).forEach(id => { hp += fighterHpState[id] || 0; }); return hp; }
-function initArena() { arenaState.enemy = generateArenaEnemy(arenaState.floor, arenaState.room); updateArenaUI(); }
-function generateArenaEnemy(floor, room) {
-  const isBoss = room === 5; const f = FACTION_KEYS[(floor * 2 + room + (isBoss ? 1 : 0)) % 4];
-  let hp = Math.round([100, 180, 320, 550, 1200][room - 1] * Math.pow(1.6, floor - 1) * (0.85 + Math.random() * 0.3)); if (isBoss) hp = Math.round(hp * 1.5);
-  const bossNames = ['Владыка Бездны', 'Кровавый Титан', 'Древний Ужас', 'Пожиратель Миров', 'Тёмный Владыка', 'Король Мёртвых'];
-  const base = isBoss ? '👑 ' + bossNames[(floor - 1) % bossNames.length] : ENEMY_NAMES[f].replace('-Враг', '');
-  return { hp, maxHp: hp, faction: f, name: `${base} · ${FACTION_NAMES[f]} (слаб к: ${FACTION_NAMES[Object.keys(COUNTER_MAP).find(k => COUNTER_MAP[k] === f)]})`, glyph: isBoss ? '👑' : ENEMY_GLYPHS[f], isBoss };
-}
-function updateArenaUI() {
-  const bossTag = document.getElementById('arenaMonsterName'); const enemy = arenaState.enemy; document.getElementById('arenaFloorNum').textContent = arenaState.floor;
-  const ind = document.getElementById('roomIndicator'); ind.innerHTML = '';
-  for (let i = 1; i <= 5; i++) { const d = document.createElement('div'); d.className = 'room-dot'; if (i === 5) d.classList.add('boss'); if (arenaState.cleared[i-1]) d.classList.add('cleared'); if (i === arenaState.room) d.classList.add('current'); ind.appendChild(d); }
-  document.getElementById('arenaRoomText').textContent = `✖ Комната ${arenaState.room} / 5`;
-  if (enemy) { bossTag.textContent = enemy.name; document.getElementById('arenaMonsterIcon').textContent = enemy.glyph; const pct = Math.max(0, (enemy.hp / enemy.maxHp) * 100); document.getElementById('arenaEnemyBar').style.width = pct + '%'; document.getElementById('arenaEnemyHp').textContent = `${Math.ceil(enemy.hp)} / ${enemy.maxHp}`; }
-  document.getElementById('arenaStatAtk').textContent = calcTotalDamage(); document.getElementById('arenaStatHp').textContent = calcTotalHp(); document.getElementById('arenaStatDmg').textContent = calcTotalDamage(); document.getElementById('altarBuff').textContent = '🔱 Мощь Алтаря: ×' + altarPower().toFixed(2) + ' к урону (звенья и сеты)';
-  document.getElementById('arenaStatus').textContent = arenaState.status; document.getElementById('arenaStatus').className = 'arena-status ' + (arenaState.status.includes('Победа') ? 'win' : arenaState.status.includes('Поражение') ? 'lose' : '');
-  const btn = document.getElementById('arenaFightBtn'); const retBtn = document.getElementById('arenaRetreatBtn');
-  if (arenaState.fighting) { btn.disabled = true; btn.textContent = '⚔ БОЙ ИДЁТ...'; retBtn.style.display = 'block'; }
-  else { btn.disabled = false; retBtn.style.display = 'none'; if (arenaState.cleared[arenaState.room - 1]) { if (arenaState.room < 5) btn.textContent = '➡ Следующая комната'; else btn.textContent = '🏆 Новый этаж'; } else { btn.textContent = '⚔ Атаковать'; } }
-}
-document.getElementById('arenaAutoChk').addEventListener('change', function() {
-  arenaAuto = this.checked;
-  if (arenaAuto) tryStartAutoBattle();
-});
-function tryStartAutoBattle() {
-  if (!arenaAuto || arenaState.fighting) return;
-  if (Object.keys(fighters).length === 0) { arenaAuto = false; document.getElementById('arenaAutoChk').checked = false; return; }
-  if (arenaState.cleared[arenaState.room - 1]) {
-    if (arenaState.room < 5) { arenaState.room++; arenaState.status = `Комната ${arenaState.room}: приготовьтесь.`; }
-    else { arenaState.floor++; arenaState.room = 1; arenaState.cleared = [false,false,false,false,false]; arenaState.status = `Этаж ${arenaState.floor}. Новые противники!`; }
-    arenaState.enemy = generateArenaEnemy(arenaState.floor, arenaState.room);
-    updateArenaUI();
-    setTimeout(tryStartAutoBattle, 400);
-    return;
-  }
-  if (!arenaState.enemy) arenaState.enemy = generateArenaEnemy(arenaState.floor, arenaState.room);
-  arenaState.fighting = true; arenaState.status = 'Бой начался!'; updateArenaUI(); runArenaCombat();
-}
-document.getElementById('arenaFightBtn').addEventListener('click', () => {
-  if (arenaState.fighting) return;
-  if (arenaState.cleared[arenaState.room - 1]) { if (arenaState.room < 5) { arenaState.room++; arenaState.status = `Комната ${arenaState.room}: приготовьтесь.`; } else { arenaState.floor++; arenaState.room = 1; arenaState.cleared = [false,false,false,false,false]; arenaState.status = `Этаж ${arenaState.floor}. Новые противники!`; } arenaState.enemy = generateArenaEnemy(arenaState.floor, arenaState.room); updateArenaUI(); if (arenaAuto) setTimeout(tryStartAutoBattle, 400); return; }
-  if (calcTotalHp() <= 0) { arenaState.status = 'Нет живых бойцов! Добавьте карты в список.'; updateArenaUI(); return; }
-  if (!arenaState.enemy) arenaState.enemy = generateArenaEnemy(arenaState.floor, arenaState.room);
-  arenaState.fighting = true; arenaState.status = 'Бой начался!'; updateArenaUI(); runArenaCombat();
-});
-document.getElementById('arenaRetreatBtn').addEventListener('click', () => { if (!arenaState.fighting) return; arenaState.fighting = false; arenaState.status = 'Вы отступили. Враг сохранил HP, выжившие бойцы сохранили HP.'; updateArenaUI(); renderFighters(); });
-function runArenaCombat() {
-  const enemy = arenaState.enemy; if (!enemy) { arenaState.fighting = false; updateArenaUI(); return; }
-  const heroDmg = calcTotalDamage(); const enemyDmg = Math.max(10, Math.round(enemy.maxHp * 0.03));
-  let heroCd = 0.5, enemyCd = 1.0; let last = performance.now();
-  function tick(now) {
-    if (!arenaState.fighting) return; const dt = Math.min((now - last) / 1000, 0.2); last = now;
-    if (!gamePaused) {
-      heroCd -= dt; enemyCd -= dt;
-      if (heroCd <= 0) { enemy.hp -= arenaDmg(enemy); { const ic = document.getElementById('arenaMonsterIcon'); ic.style.transform = 'scale(1.25)'; setTimeout(() => ic.style.transform = '', 90); } heroCd = 0.7; updateArenaUI(); }
-      if (enemyCd <= 0 && enemy.hp > 0) {
-        const aliveIds = Object.keys(fighters).filter(id => (fighterHpState[id] || 0) > 0);
-        if (aliveIds.length > 0) {
-          const targetId = aliveIds[Math.floor(Math.random() * aliveIds.length)];
-          fighterHpState[targetId] = Math.max(0, (fighterHpState[targetId] || 0) - enemyDmg);
-          { const per = fighterHp(CARDS[targetId].rarity); const u = Math.ceil(fighterHpState[targetId] / per);
-            if (u < fighters[targetId]) { arenaState.status = `${CARDS[targetId].name}: потеряно ${fighters[targetId] - u}`; fighters[targetId] = u; }
-            if (u <= 0) { delete fighters[targetId]; delete fighterHpState[targetId]; } renderFighters(); }
-        }
-        enemyCd = 1.2;
-        updateArenaUI(); renderFighters();
-      }
-      if (enemy.hp <= 0) {
-        arenaState.fighting = false; enemy.hp = 0;
-        const reward = enemy.isBoss ? Math.round(400 * Math.pow(1.6, arenaState.floor - 1)) : Math.round(60 * Math.pow(1.6, arenaState.floor - 1));
-        crystals += reward; arenaState.cleared[arenaState.room - 1] = true;
-        arenaState.status = enemy.isBoss ? `🏆 БОСС ПОВЕРЖЕН! +${reward} 💎` : `Победа! +${reward} 💎`;
-        Object.keys(fighters).forEach(id => { fighterHpState[id] = fighterHp(CARDS[id].rarity) * fighters[id]; });
-        updateArenaUI(); updateHUD(); renderFighters();
-        if (arenaAuto) setTimeout(tryStartAutoBattle, 600);
-        return;
-      }
-      if (calcTotalHp() <= 0) {
-        arenaState.fighting = false;
-        arenaState.status = 'Поражение. Бойцы восстановлены, враг тоже — усильтесь!'; enemy.hp = enemy.maxHp; Object.keys(fighters).forEach(id => { fighterHpState[id] = fighterHp(CARDS[id].rarity) * fighters[id]; });
-        if (arenaAuto) { arenaAuto = false; document.getElementById('arenaAutoChk').checked = false; }
-        updateArenaUI(); renderFighters();
-        return;
-      }
-    }
-    requestAnimationFrame(tick);
-  }
-  requestAnimationFrame(tick);
-}
-
-/* ================== КАЗИНО ================== */
-// [4] Минимальная ставка 1000
-let casinoBet = 0, casinoSpinning = false;
-const MIN_BET = 1000;
-const SLOT_SYMBOLS = ['🍒','🍋','🔔','🍀','💎','⭐','7️⃣','💀','📖'];
-const SLOT_WEIGHTS = { '🍒': 35, '🍋': 28, '🔔': 18, '🍀': 12, '💎': 8, '⭐': 5, '7️⃣': 3, '💀': 2, '📖': 1.5 };
-const SLOT_PAYOUTS = { '🍒': [2, 5, 15], '🍋': [2.5, 7, 20], '🔔': [3, 10, 35], '🍀': [4, 15, 60], '💎': [6, 25, 100], '⭐': [10, 50, 250], '7️⃣': [20, 150, 1000], '💀': [0, 0, 0], '📖': [5, 20, 150] };
-const WILD_SYMBOL = '📖'; const SCATTER_SYMBOL = '💀';
-const PAYLINES = [[1,1,1,1,1],[0,0,0,0,0],[2,2,2,2,2],[0,1,2,1,0],[2,1,0,1,2],[0,0,1,2,2],[2,2,1,0,0],[1,0,0,0,1],[1,2,2,2,1]];
-function getSlotSymbol() { let total = 0; for (const k in SLOT_WEIGHTS) total += SLOT_WEIGHTS[k]; let r = Math.random() * total; for (const k in SLOT_WEIGHTS) { r -= SLOT_WEIGHTS[k]; if (r <= 0) return k; } return '🍒'; }
-function generateSlotGrid() { return Array.from({length: 3}, () => Array(5).fill(null).map(() => getSlotSymbol())); }
-function checkGridWin(grid) {
-  let results = []; let totalWin = 0; let scatterCount = 0;
-  grid.forEach(row => row.forEach(sym => { if (sym === SCATTER_SYMBOL) scatterCount++; }));
-  if (scatterCount >= 3) { let scatterMult = scatterCount === 3 ? 5 : scatterCount === 4 ? 20 : 100; results.push({ type: 'scatter', count: scatterCount, mult: scatterMult }); totalWin += scatterMult; }
-  PAYLINES.forEach((line, idx) => {
-    let symbols = line.map((row, col) => grid[row][col]); let firstSym = symbols[0] === WILD_SYMBOL ? null : symbols[0]; let comboLen = 0;
-    for (let i = 0; i < 5; i++) { let sym = symbols[i]; if (sym === SCATTER_SYMBOL) break; if (sym === WILD_SYMBOL) { comboLen++; continue; } if (firstSym === null) { firstSym = sym; comboLen++; continue; } if (sym === firstSym) { comboLen++; continue; } break; }
-    if (comboLen >= 3 && firstSym !== null) { let mult = SLOT_PAYOUTS[firstSym] ? SLOT_PAYOUTS[firstSym][comboLen - 3] : 0; if (mult > 0) { results.push({ type: 'line', line: idx, symbols: symbols.slice(0, comboLen), mult, len: comboLen, firstSym }); totalWin += mult; } }
-  });
-  return { results, totalWin };
-}
-function renderSlotGrid(grid, winLines = []) {
-  const container = document.getElementById('slotGrid'); const svg = document.getElementById('paylinesSvg');
-  Array.from(container.querySelectorAll('.slot-cell')).forEach(c => c.remove()); svg.innerHTML = '';
-  for (let r = 0; r < 3; r++) for (let c = 0; c < 5; c++) { const cell = document.createElement('div'); cell.className = 'slot-cell'; cell.id = `cell-${r}-${c}`; cell.textContent = grid[r][c]; container.appendChild(cell); }
-  const cellSize = 72, gap = 8, padding = 10;
-  const cx = (c) => padding + c * (cellSize + gap) + cellSize / 2; const cy = (r) => padding + r * (cellSize + gap) + cellSize / 2;
-  const lineColors = ['#ff4040', '#40ff40', '#4080ff', '#ff40ff', '#ffff40', '#40ffff', '#ff8040', '#8040ff', '#ff4040'];
-  winLines.forEach((win) => {
-    if (win.type === 'scatter') return;
-    const coords = PAYLINES[win.line]; const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-    const points = coords.map((r, c) => `${cx(c)},${cy(r)}`).join(' '); polyline.setAttribute('points', points);
-    polyline.setAttribute('stroke', lineColors[win.line % lineColors.length]); polyline.setAttribute('class', 'active'); svg.appendChild(polyline);
-  });
-}
-window.openSlots = () => { if (casinoSpinning) return; casinoBet = Math.max(MIN_BET, Math.min(casinoBet, Math.floor(crystals))); if (crystals < MIN_BET) { toast('Минимальная ставка 1000 💎'); return; } updateCasinoUI(); const grid = generateSlotGrid(); renderSlotGrid(grid); document.getElementById('casinoModal').classList.add('show'); document.getElementById('slotResult').textContent = ''; document.getElementById('slotResult').className = ''; };
-document.getElementById('slotCloseBtn').addEventListener('click', () => { if (casinoSpinning) return; document.getElementById('casinoModal').classList.remove('show'); });
-function updateCasinoUI() { document.getElementById('slotBetAmount').textContent = Math.floor(casinoBet); const addBtns = ['betAdd1000','betAdd10000']; const vals = [1000,10000]; addBtns.forEach((id, i) => { document.getElementById(id).disabled = casinoSpinning || casinoBet + vals[i] > Math.floor(crystals); }); document.getElementById('betAll').disabled = casinoSpinning || Math.floor(crystals) <= casinoBet; document.getElementById('betReset').disabled = casinoSpinning || casinoBet === 0; const lever = document.getElementById('slotLeverBtn'); lever.disabled = casinoSpinning || casinoBet < MIN_BET || casinoBet > Math.floor(crystals); }
-function addBet(amount) { if (casinoSpinning) return; const max = Math.floor(crystals); casinoBet = Math.min(max, casinoBet + amount); updateCasinoUI(); }
-document.getElementById('betAdd1000').addEventListener('click', () => addBet(1000)); document.getElementById('betAdd10000').addEventListener('click', () => addBet(10000)); document.getElementById('betAll').addEventListener('click', () => { if (casinoSpinning) return; casinoBet = Math.max(MIN_BET, Math.floor(crystals)); updateCasinoUI(); }); document.getElementById('betReset').addEventListener('click', () => { if (casinoSpinning) return; casinoBet = MIN_BET; updateCasinoUI(); });
-document.getElementById('slotLeverBtn').addEventListener('click', () => {
-  if (casinoSpinning || casinoBet < MIN_BET || casinoBet > Math.floor(crystals)) return;
-  casinoSpinning = true; crystals -= casinoBet; updateHUD(); updateCasinoUI();
-  document.getElementById('slotResult').textContent = ''; document.getElementById('slotResult').className = '';
-  const finalGrid = generateSlotGrid(); const cells = document.querySelectorAll('.slot-cell');
-  let startTime = performance.now(); const spinDuration = 1600; let lastSymbolTime = 0;
-  function spinFrame(now) {
-    const elapsed = now - startTime;
-    if (elapsed < spinDuration) {
-      if (now - lastSymbolTime > 60) { lastSymbolTime = now; cells.forEach(cell => { cell.textContent = getSlotSymbol(); }); }
-      requestAnimationFrame(spinFrame);
-    } else {
-      for (let r = 0; r < 3; r++) for (let c = 0; c < 5; c++) { const cell = document.getElementById(`cell-${r}-${c}`); if (cell) cell.textContent = finalGrid[r][c]; }
-      const winData = checkGridWin(finalGrid); renderSlotGrid(finalGrid, winData.results);
-      if (winData.totalWin > 0) {
-        const winAmount = Math.round(casinoBet * winData.totalWin * 0.38); crystals += winAmount; rec('slots', winAmount - casinoBet); updateHUD();
-        winData.results.forEach(res => { if (res.type === 'scatter') { for (let r = 0; r < 3; r++) for (let c = 0; c < 5; c++) if (finalGrid[r][c] === SCATTER_SYMBOL) document.getElementById(`cell-${r}-${c}`).classList.add('win'); } else { const coords = PAYLINES[res.line]; coords.slice(0, res.len).forEach((r, c) => { const cell = document.getElementById(`cell-${r}-${c}`); if (cell) cell.classList.add('win'); }); } });
-        const resEl = document.getElementById('slotResult'); let text = '';
-        if (winData.totalWin >= 50) { text = `🎉 ДЖЕКПОТ! Выигрыш: ${winAmount} 💎 (x${(winData.totalWin * 0.38).toFixed(1)})`; resEl.className = 'jackpot'; }
-        else if (winData.totalWin >= 10) { text = `✨ Крупный выигрыш: ${winAmount} 💎 (x${(winData.totalWin * 0.38).toFixed(1)})`; resEl.className = 'win'; }
-        else { text = `Выигрыш: ${winAmount} 💎 (x${(winData.totalWin * 0.38).toFixed(1)})`; resEl.className = 'win'; }
-        resEl.textContent = text;
-      } else { rec('slots', -casinoBet); const resEl = document.getElementById('slotResult'); resEl.textContent = `Нет совпадений. Вы проиграли ${casinoBet} 💎.`; resEl.className = 'lose'; }
-      casinoSpinning = false; casinoBet = Math.max(MIN_BET, Math.min(casinoBet, Math.floor(crystals))); updateCasinoUI();
-    }
-  }
-  requestAnimationFrame(spinFrame);
-});
-window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { if (document.getElementById('casinoModal').classList.contains('show')) { if (!casinoSpinning) document.getElementById('casinoModal').classList.remove('show'); return; } cancelSelection(); } });
-window.addEventListener('contextmenu', (e) => { if (placingMode || deleteMode || moveMode) { e.preventDefault(); cancelSelection(); } });
-window.addEventListener('resize', drawSynergies);
-[1, 10, 100, 1000].forEach(n => document.querySelector('#roll' + n + ' .cost').textContent = n * ROLL_COST); buildGrid(); renderCollection(); renderFighters(); initArena(); updateHUD(); updateBanner(); updateCasinoUI(); requestAnimationFrame(gameLoop);
-function refreshAll() { buildGrid(); renderCollection(); renderFighters(); initArena(); updateHUD(); updateBanner(); }
-function hasSave() { try { return !!localStorage.getItem(SAVE_KEY); } catch (e) { return false; } }
-function showMenu() { gamePaused = true; document.getElementById('menuContinue').disabled = !hasSave() && !gameStarted; document.getElementById('menu').classList.add('show'); }
-function hideMenu() { document.getElementById('menu').classList.remove('show'); gamePaused = false; }
-function restartWith(mode) { try { sessionStorage.setItem('gg_mode', mode); } catch (e) {} noSave = true; location.reload(); }
-document.getElementById('menuContinue').onclick = () => { if (!gameStarted) { loadGame(); gameStarted = true; refreshAll(); } hideMenu(); };
-document.getElementById('menuNew').onclick = () => { const go = () => { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} noSave = true; try { sessionStorage.setItem('gg_mode', 'new'); } catch (e) {} location.reload(); }; if (hasSave() || gameStarted) ask('Начать заново? Текущий прогресс будет стёрт.', go); else go(); };
-document.getElementById('menuTut').onclick = () => restartWith('tutorial');
-document.getElementById('menuBtn').onclick = () => { saveGame(); showMenu(); };
-const GIVE = l => { l.forEach(([id, n]) => { inventory[id] = (inventory[id] || 0) + n; discovered.add(id); }); renderCollection(); };
-const TUT = [
- { t: '📖 <b>Обучение.</b> Цель — копить 💎 и растить армию. 💎 приносят карты на <b>Алтаре</b> (центр). Сражаться можно на <b>Арене</b> (слева). Это учебная игра, прогресс не сохраняется.', n: 1, pre: () => { crystals = 500; } },
- { t: '<b>Шаг 1.</b> Нажмите «КРУТКА» справа (150 💎), затем «ПРИНЯТЬ». Карта попадёт в коллекцию внизу.', hl: '#roll1', ok: () => Object.keys(inventory).length > 0 },
- { t: '<b>Шаг 2.</b> Кликните по карте в коллекции, чтобы выбрать её. Клетки Алтаря, куда её можно поставить, подсветятся.', hl: '#collectGrid', ok: () => placingMode },
- { t: '<b>Шаг 3.</b> Кликните по подсвеченной клетке в центре Алтаря. Карта начнёт приносить 💎/сек (см. счётчик вверху).', hl: '#grid', ok: () => cardsOnGrid() > 0 },
- { t: '<b>Шаг 4. Синергии.</b> Мы выдали «Скелета» и «Кост. Рыцаря» — они усиливают друг друга. Выберите карту: <b style="color:#80e060">зелёная рамка</b> в коллекции и зелёные клетки на Алтаре показывают партнёров. Поставьте их рядом — между ними загорится линия, а наведя курсор, вы увидите бонус.', pre: () => GIVE([['card_0', 1], ['card_5', 1]]), hl: '#grid', ok: () => countLinks() > 0 },
- { t: '<b>Антисинергия и контры.</b> Нежить ↔ Демоны и Звери ↔ Культисты рядом друг с другом: доход ×0.7 и взаимный урон (красные клетки при выборе карты). Контры (×2 урона): Нежить → Звери → Культисты → Демоны → Нежить. Сет-бонус: 3/6/10 карт одной фракции на Алтаре = +10/25/50% дохода.', n: 1 },
- { t: '<b>Шаг 5. Арена.</b> Мы выдали 3 «Зомби». Выберите их в коллекции и нажмите «⚔ все» — они станут бойцами (список слева, клик по бойцу вернёт карту).', pre: () => GIVE([['card_1', 3]]), hl: '#collection', ok: () => Object.keys(fighters).length > 0 },
- { t: '<b>Шаг 6.</b> Нажмите «Атаковать». Бой идёт сам; павшие бойцы исчезают навсегда. «Авто» проходит комнаты подряд. Урон бойцов растёт от <b>Мощи Алтаря</b> — звенья и сеты усиливают и арену!', hl: '#arenaFightBtn', ok: () => arenaState.cleared[0] },
- { t: '<b>Враги на Алтаре.</b> Мы призвали одного за границей вашей зоны. Карты рядом бьют врагов сами; за победу — 💎 и шанс на карту-трофей. Расширяйте зону кликом по клеткам «+».', pre: () => spawnEnemy(), n: 1 },
- { t: '<b>Готово!</b> Совет: Алтарь — главный источник дохода и силы. Казино — риск за 💎. Удачи!', n: 1, last: 1 }
-];
-let tutI = -1, tutTimer;
-function tutGo(i) {
-  tutI = i; document.querySelectorAll('.tut-hl').forEach(e => e.classList.remove('tut-hl')); const st = TUT[i]; if (st.pre) st.pre();
-  document.getElementById('tutText').innerHTML = st.t; document.getElementById('tutStep').textContent = `Шаг ${i + 1} / ${TUT.length}`;
-  const nb = document.getElementById('tutNext'); nb.style.display = st.n ? '' : 'none'; nb.textContent = st.last ? 'В меню' : 'Далее';
-  if (st.hl) { const t = document.querySelector(st.hl); if (t) { t.classList.add('tut-hl'); t.scrollIntoView({ block: 'nearest' }); } }
-}
-function startTutorial() {
-  noSave = true; settings.spawnEnabled = false; document.getElementById('menuBtn').style.display = 'none'; document.getElementById('tutPanel').classList.add('show');
-  document.getElementById('tutNext').onclick = () => { if (TUT[tutI].last) location.reload(); else tutGo(tutI + 1); };
-  document.getElementById('tutExit').onclick = () => location.reload();
-  tutGo(0); tutTimer = setInterval(() => { const st = TUT[tutI]; if (st && st.ok && st.ok()) tutGo(tutI + 1); }, 400);
-}
-(function boot() {
-  let m = null; try { m = sessionStorage.getItem('gg_mode'); sessionStorage.removeItem('gg_mode'); } catch (e) {} window.BOOT_MODE = m;
-  if (m === 'new' || m === 'asc') { gameStarted = true; hideMenu(); } else if (m === 'tutorial') { hideMenu(); startTutorial(); } else showMenu();
-})();
-</script>
-<script>
-/* ===== Расширение v3 ===== */
-const $=id=>document.getElementById(id);
-let busy=0,bestSpot=null,stats={g:{},pulls:{},rolls:0,maxInc:0},ess=0,essT=0,up={inc:0,disc:0,fight:0,start:0},goalsDone={},run={earned:0,rolls:0};
-function mk(id,html,z){const d=document.createElement('div');d.className='modal';d.id=id;d.innerHTML='<div class="modal-card" style="max-width:580px;align-items:stretch;max-height:92vh;overflow:auto">'+html+'</div>';if(z)d.style.zIndex=z;document.body.appendChild(d);return d;}
-const open_=id=>$(id).classList.add('show'),close_=id=>$(id).classList.remove('show');
-mk('dlg','<div id="dlgT" style="font-size:15px;text-align:center;margin:10px"></div><div class="btn-row"><button class="btn btn-take" id="dlgNo">Отмена</button><button class="btn btn-take" id="dlgYes">Да</button></div>',600);
-function ask(t,yes){$('dlgT').textContent=t;open_('dlg');$('dlgYes').onclick=()=>{close_('dlg');yes();};$('dlgNo').onclick=()=>close_('dlg');}
-function rec(g,net){if(!net)return;const o=stats.g[g]||(stats.g[g]={w:0,l:0,net:0});net>0?o.w++:o.l++;o.net+=net;}
-const _wr=weightedRoll;weightedRoll=function(){const id=_wr();stats.pulls[id]=(stats.pulls[id]||0)+1;stats.rolls++;run.rolls++;return id;};
-
-/* ===== Синергии: формации, авто-расстановка, подсветка ===== */
-function formation(r,c){const it=grid[r][c];if(!it||it.isEnemy)return 1;const f=CARDS[it.cardId].faction;const same=(a,b)=>{const x=grid[a]&&grid[a][b];return x&&!x.isEnemy&&CARDS[x.cardId].faction===f;};let m=1;
- for(const [dr,dc] of [[0,1],[1,0]]){let n=1;for(let k=1;k<9;k++){if(same(r+dr*k,c+dc*k))n++;else break;}for(let k=1;k<9;k++){if(same(r-dr*k,c-dc*k))n++;else break;}if(n>=3)m=Math.max(m,1.2);if(n>=5)m=Math.max(m,1.5);}
- for(const [a,b] of [[0,0],[0,-1],[-1,0],[-1,-1]])if(same(r+a,c+b)&&same(r+a+1,c+b)&&same(r+a,c+b+1)&&same(r+a+1,c+b+1))m=Math.max(m,1.35);return m;}
-const _cci=calcCardIncome;calcCardIncome=function(r,c){return _cci(r,c)*formation(r,c)*(1+0.15*up.inc)*(1+0.03*essT);};
-const _ad=arenaDmg;arenaDmg=function(e){return Math.round(_ad(e)*(1+0.1*up.fight));};
-function localInc(r,c){let s=0;[[r,c]].concat(getNeighbors(r,c).map(n=>[n.r,n.c])).forEach(([a,b])=>{if(grid[a][b]&&!grid[a][b].isEnemy)s+=calcCardIncome(a,b);});return s;}
-function bestFor(id){const hp=cardHp(CARDS[id].rarity);let best=null,bv=-1e9;for(let r=0;r<GRID_SIZE;r++)for(let c=0;c<GRID_SIZE;c++)if(playableMask[r][c]&&!grid[r][c]){const b0=localInc(r,c);grid[r][c]={cardId:id,stacks:1,hp,maxHp:hp};const v=localInc(r,c)-b0;grid[r][c]=null;if(v>bv){bv=v;best={r,c,v};}}return best;}
-function autoPlace(){let n=0;Object.keys(inventory).sort((a,b)=>CARDS[b].rarity-CARDS[a].rarity).forEach(id=>{while(inventory[id]>0){const b=bestFor(id);if(!b||b.v<=0)break;const hp=cardHp(CARDS[id].rarity);grid[b.r][b.c]={cardId:id,stacks:1,hp,maxHp:hp};inventory[id]--;n++;}if(!inventory[id])delete inventory[id];});
- cancelSelection();renderGrid();renderCollection();updateHUD();toast(n?`🪄 Расставлено карт: ${n}`:'Нет свободных клеток или карт');}
-const _hc=hintClass;hintClass=function(r,c){return bestSpot&&bestSpot.r===r&&bestSpot.c===c?'best-spot':_hc(r,c);};
-const _rg=renderGrid;renderGrid=function(){bestSpot=placingMode&&pendingCard&&inventory[pendingCard]?bestFor(pendingCard):null;_rg();decorate();};
-function decorate(){for(let r=0;r<GRID_SIZE;r++)for(let c=0;c<GRID_SIZE;c++){const it=grid[r][c];if(!it||it.isEnemy)continue;const b=gridEl.children[r*GRID_SIZE+c].querySelector('.income-badge');if(!b)continue;const base=CARDS[it.cardId].baseRate*it.stacks*(1+0.15*up.inc)*(1+0.03*essT),v=calcCardIncome(r,c);b.classList.remove('up','down');if(v>base*1.01){b.classList.add('up');b.textContent='▲'+v.toFixed(1);}else if(v<base*.99){b.classList.add('down');b.textContent='▼'+v.toFixed(1);}else b.textContent='+'+v.toFixed(1);if(formation(r,c)>1)b.textContent+=' ⛓';}}
-{const b=document.createElement('button');b.className='mini';b.id='autoBtn';b.textContent='🪄 Авто';b.title='Расставить все карты в лучшие клетки';b.onclick=autoPlace;const p=$('bulkDup').parentNode;p.parentNode.insertBefore(b,p);}
-{const a=document.createElement('div');a.id='advice';$('gridWrap').parentNode.insertBefore(a,$('gridWrap'));}
-function advice(){const inv=Object.values(inventory).reduce((a,b)=>a+b,0);let free=0;for(let r=0;r<GRID_SIZE;r++)for(let c=0;c<GRID_SIZE;c++)if(playableMask[r][c]&&!grid[r][c])free++;
- if(ascGain()>0&&run.earned>=40000&&!inv)return `🔱 Можно вознестись: +${ascGain()} эссенции`;
- if(!cardsOnGrid()&&!inv)return crystals>=ROLL_COST?'🎲 Крутите карты справа →':'⏳ Копим кристаллы…';
- if(inv&&free)return '🪄 Жмите «Авто» над коллекцией — карты встанут в лучшие клетки';
- if(inv&&crystals>=cellPrice())return '➕ Алтарь забит: купите клетку «+» рядом с зоной';
- if(inv>4&&!Object.keys(fighters).length)return '⚔ Лишние карты — в бой (кнопки над коллекцией)';
- if(crystals>=ROLL_COST*10)return '🎲 Хватает на ×10 круток';
- return '💡 ▲ зелёное — бонус синергии, ▼ красное — штраф, ⛓ — формация фракции';}
-
-/* ===== Вознесение, цели, улучшения ===== */
-const ascGain=()=>run.earned>=40000?Math.floor(Math.sqrt(run.earned/2500)):0;
-const UPS=[['inc','📈 Доход','+15% дохода за уровень',3],['disc','🏷 Скидка','−5% цены круток',3],['fight','⚔ Мощь','+10% урона арены',4],['start','🎁 Дар','+1500 💎 на старте',2]];
-const sumNet=()=>Object.values(stats.g).reduce((a,o)=>a+Math.max(0,o.net),0);
-const GOALS=[['Заработать 5 000 💎',()=>run.earned,5000,'c',1500],['Заработать 50 000 💎',()=>run.earned,5e4,'e',1],['Заработать 500 000 💎',()=>run.earned,5e5,'e',2],['Заработать 5 000 000 💎',()=>run.earned,5e6,'e',4],
- ['Арена: этаж 2',()=>arenaState.floor,2,'c',2000],['Арена: этаж 4',()=>arenaState.floor,4,'e',1],['Арена: этаж 7',()=>arenaState.floor,7,'e',3],['10 карт на Алтаре',cardsOnGrid,10,'c',3000],['25 карт на Алтаре',cardsOnGrid,25,'e',2],
- ['5 активных звеньев',countLinks,5,'c',3000],['15 активных звеньев',countLinks,15,'e',2],['Открыть 30 карт',()=>discovered.size,30,'e',1],['Открыть 60 карт',()=>discovered.size,60,'e',2],['Открыть 100 карт',()=>discovered.size,100,'e',5],['Выиграть в казино 20 000 💎',sumNet,2e4,'e',1]];
-mk('asc','<h2>🔱 Вознесение</h2><div id="ascB"></div><button class="btn btn-take" style="align-self:center" id="ascX">Закрыть</button>');
-function renderAsc(){const g=ascGain();$('ascB').innerHTML=`<div class="res">Эссенция: <b>${ess}</b> · всего ${essT} (+${essT*3}% дохода)</div><button class="btn btn-take" data-asc="go" ${g?'':'disabled'} style="max-width:none">${g?`ВОЗНЕСТИСЬ → +${g} 🔱`:`Вознесение с ${(40000).toLocaleString('ru-RU')} 💎 за забег (сейчас ${Math.floor(run.earned).toLocaleString('ru-RU')})`}</button>
- <div class="ups">${UPS.map(([k,n,d,c])=>{const l=up[k],cost=c*(l+1);return `<div class="up"><b>${n}</b> ур.${l}/10<br><small>${d}</small><button class="mini" data-asc="${k}" ${l>=10||ess<cost?'disabled':''}>${l>=10?'МАКС':cost+' 🔱'}</button></div>`;}).join('')}</div><h3>Цели</h3>`+GOALS.map((g,i)=>{const v=Math.min(g[1](),g[2]),done=goalsDone[i];return `<div class="goal ${done?'done':''}"><span>${done?'✔ ':''}${g[0]}</span><i style="width:${v/g[2]*100}%"></i><em>${g[3]==='e'?g[4]+' 🔱':g[4]+' 💎'}</em></div>`;}).join('');}
-$('asc').addEventListener('click',e=>{const k=e.target.dataset&&e.target.dataset.asc;if(!k)return;if(k==='go'){const g=ascGain();ask(`Вознестись? Поле, карты и 💎 сбросятся, вы получите ${g} 🔱.`,()=>{ess+=g;essT+=g;try{localStorage.setItem('gg_meta',JSON.stringify({ess,essT,up,goalsDone,stats,disc:[...discovered]}));localStorage.removeItem(SAVE_KEY);sessionStorage.setItem('gg_mode','asc');}catch(x){}noSave=true;location.reload();});return;}
- const c=UPS.find(u=>u[0]===k)[3]*(up[k]+1);if(ess>=c&&up[k]<10){ess-=c;up[k]++;renderAsc();toast('Улучшено!');}});
-$('ascX').onclick=()=>close_('asc');
-{const b=document.createElement('button');b.className='mini';b.textContent='🔱 Цели';b.onclick=()=>{renderAsc();open_('asc');};$('menuBtn').before(b);}
-let lastC=crystals;
-setInterval(()=>{const d=crystals-lastC;if(d>0&&!document.querySelector('#cgModal.show,#casinoModal.show'))run.earned+=d;lastC=crystals;
- const rc=Math.max(50,Math.round(150*(1+run.rolls/250)*(1-0.05*up.disc)));if(rc!==ROLL_COST){ROLL_COST=rc;[1,10,100,1000].forEach(n=>{const e=document.querySelector('#roll'+n+' .cost');if(e)e.textContent=n*ROLL_COST;});}
- stats.maxInc=Math.max(stats.maxInc,calculateIncome());},250);
-setInterval(()=>{if(gamePaused||!gameStarted&&!noSave)return;GOALS.forEach((g,i)=>{if(!goalsDone[i]&&g[1]()>=g[2]){goalsDone[i]=1;if(g[3]==='e'){ess+=g[4];essT+=g[4];}else crystals+=g[4];toast(`🏆 ${g[0]}: +${g[4]} ${g[3]==='e'?'🔱':'💎'}`);}});$('advice').textContent=advice();},1000);
-
-/* ===== Статистика ===== */
-const GN={slots:'🎰 Слоты',aviator:'✈ Авиатор',roulette:'🎡 Рулетка',poker:'🃏 Покер'};
-function renderStats(){const top=Object.entries(stats.pulls).sort((a,b)=>b[1]-a[1])[0];const fmt=n=>(n>0?'+':'')+Math.round(n).toLocaleString('ru-RU');
- $('statsBox').innerHTML=`<h3>📊 Статистика игры</h3><div class="stt">`+Object.keys(GN).map(k=>{const o=stats.g[k]||{w:0,l:0,net:0};return `<div>${GN[k]}</div><div>✔${o.w} ✖${o.l}</div><div style="color:${o.net>=0?'#8f8':'#f88'}">${fmt(o.net)} 💎</div>`;}).join('')+`</div><div>⭐ Любимая карта: <b>${top?CARDS[top[0]].symbol+' '+CARDS[top[0]].name+' (×'+top[1]+')':'—'}</b></div><div>📈 Рекорд дохода: <b>${stats.maxInc.toFixed(1)}/сек</b></div><div>🎲 Круток всего: <b>${stats.rolls}</b></div><hr>`;}
-$('settingsBtn').addEventListener('click',renderStats);
-
-/* ===== Казино: хаб ===== */
-mk('hub','<h2>🎰 Казино</h2><div class="hubg"><button data-g="slots">🎰<br>Слоты</button><button data-g="aviator">✈<br>Авиатор</button><button data-g="roulette">🎡<br>Рулетка</button><button data-g="poker">🃏<br>Покер</button></div><button class="btn btn-take" style="align-self:center" id="hubX">Закрыть</button>');
-mk('cgModal','<div id="cgBody"></div><button class="btn btn-take" id="cgClose" style="align-self:center">Назад</button>');
-$('casinoBtn').addEventListener('click',()=>open_('hub'));$('hubX').onclick=()=>close_('hub');
-$('cgClose').onclick=()=>{if(busy)return toast('Сначала завершите раунд');close_('cgModal');open_('hub');};
-$('hub').addEventListener('click',e=>{const g=e.target.closest('[data-g]');if(!g)return;close_('hub');if(g.dataset.g==='slots')return openSlots();open_('cgModal');({aviator:gAviator,roulette:gRoulette,poker:gPoker})[g.dataset.g]();});
-const betUI=(id,d)=>`<div class="bet">Ставка: <input type="number" id="${id}" value="${d}" min="100" step="100"> <button class="mini" data-b="${id}:h">½</button><button class="mini" data-b="${id}:d">×2</button><button class="mini" data-b="${id}:m">МАКС</button></div>`;
-document.addEventListener('click',e=>{const b=e.target.dataset&&e.target.dataset.b;if(!b)return;const [id,k]=b.split(':'),i=$(id),v=+i.value||0;i.value=k==='h'?Math.max(100,Math.floor(v/2)):k==='d'?Math.min(Math.floor(crystals),v*2):Math.floor(crystals);});
-const getBet=id=>{const v=Math.floor(+$(id).value);if(!(v>=100)){toast('Минимальная ставка 100 💎');return 0;}if(v>crystals){toast('Не хватает 💎');return 0;}return v;};
-
-/* ===== Авиатор ===== */
-let av=null,avH=[];
-function gAviator(){$('cgBody').innerHTML=`<h2>✈ Авиатор</h2><canvas id="avC" width="520" height="220"></canvas><div id="avM">1.00×</div>${betUI('avBet',1000)}<div class="bet">Авто-вывод на: <input type="number" id="avAuto" value="2" step="0.1" min="1.1" style="width:70px"> ×</div><div class="btn-row"><button class="btn btn-take" id="avGo">СТАРТ</button></div><div id="avH" class="hist"></div><div id="avR" class="res">Заберите выигрыш до того, как самолёт улетит!</div>`;$('avGo').onclick=avClick;avDraw(1,0);avHist();}
-function avHist(){$('avH').innerHTML=avH.slice(-12).map(x=>`<span style="color:${x>=2?'#8f8':'#f88'}">${x.toFixed(2)}×</span>`).join(' ');}
-function avDraw(m,t,boom){const c=$('avC').getContext('2d'),W=520,H=220;c.clearRect(0,0,W,H);c.strokeStyle='#223';for(let i=1;i<5;i++){c.beginPath();c.moveTo(0,H*i/5);c.lineTo(W,H*i/5);c.stroke();}
- const xm=Math.max(10,t*1.1),ym=Math.max(2,m*1.15),X=s=>s/xm*(W-40)+10,Y=v=>H-10-(v-1)/(ym-1)*(H-30);c.strokeStyle=boom?'#f44':'#ffd34d';c.lineWidth=3;c.beginPath();for(let s=0;s<=t;s+=t/60||1){const v=Math.exp(.1*s);c.lineTo(X(s),Y(v));}c.lineTo(X(t),Y(m));c.stroke();c.font='26px serif';c.fillText(boom?'💥':'✈',X(t)-10,Y(m)-6);}
-function avClick(){if(av&&av.on)return avCash();const bet=getBet('avBet');if(!bet)return;crystals-=bet;updateHUD();av={on:1,bet,crash:Math.max(1,Math.floor(96/(1-Math.random()))/100),t0:performance.now(),auto:+$('avAuto').value||0};busy=1;$('avGo').textContent='ЗАБРАТЬ';$('avR').textContent='';requestAnimationFrame(avTick);}
-function avEnd(win,m){av.on=0;busy=0;const net=win?Math.floor(av.bet*m)-av.bet:-av.bet;if(win){crystals+=Math.floor(av.bet*m);}rec('aviator',net);updateHUD();avH.push(av.crash);avHist();$('avGo').textContent='СТАРТ';$('avR').textContent=win?`✔ Забрали на ${m.toFixed(2)}× → +${net} 💎 (самолёт улетел бы на ${av.crash.toFixed(2)}×)`:`💥 Улетел на ${av.crash.toFixed(2)}× — ставка потеряна`;$('avR').className='res '+(win?'w':'l');}
-function avCash(){const m=Math.min(av.crash,Math.exp(.1*(performance.now()-av.t0)/1000));avEnd(true,Math.floor(m*100)/100);}
-function avTick(now){if(!av||!av.on||!$('avC'))return;const t=(now-av.t0)/1000,m=Math.exp(.1*t);if(m>=av.crash){avDraw(av.crash,t,1);$('avM').textContent=av.crash.toFixed(2)+'×';return avEnd(false,0);}
- if(av.auto>=1.1&&m>=av.auto){return avEnd(true,av.auto);}$('avM').textContent=m.toFixed(2)+'×';avDraw(m,t);requestAnimationFrame(avTick);}
-
-/* ===== Рулетка (европейская) ===== */
-const RED=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]),WH=[0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
-let rb={},chip=100,rrot=0;const rcol=n=>n===0?'#0a7a2a':RED.has(n)?'#b01818':'#1a1a1a';
-function gRoulette(){rb={};const seg=360/37,grad=WH.map((n,i)=>`${rcol(n)} ${i*seg}deg ${(i+1)*seg}deg`).join(',');let g='<div class="rg"><div data-k="n:0" style="grid-row:span 3;background:#0a7a2a">0</div>';
- for(let c=0;c<12;c++)for(let r=0;r<3;r++){const n=c*3+(3-r);g+=`<div data-k="n:${n}" style="background:${rcol(n)}">${n}</div>`;}
- g+='<div data-k="c3">2:1</div><div data-k="c2">2:1</div><div data-k="c1">2:1</div></div><div class="ro">'+[['d1','1-12'],['d2','13-24'],['d3','25-36'],['low','1-18'],['even','Чёт'],['red','🔴'],['black','⚫'],['odd','Нечёт'],['high','19-36']].map(([k,t])=>`<div data-k="${k}">${t}</div>`).join('')+'</div>';
- $('cgBody').innerHTML=`<h2>🎡 Рулетка</h2><div id="rw" style="background:conic-gradient(${grad})"><b id="rn">?</b></div><div class="chips">${[100,1000,10000,100000].map(v=>`<button class="mini ${v===chip?'on':''}" data-chip="${v}">${v}</button>`).join('')} <button class="mini" id="rClr">Очистить</button></div>${g}<div class="res" id="rR">Выберите фишку и кликайте по полю. Число 35:1, цвет/чёт/диапазон 1:1, дюжины и колонки 2:1.</div><div class="btn-row"><button class="btn btn-take" id="rGo">КРУТИТЬ</button></div>`;
- $('rGo').onclick=rSpin;$('rClr').onclick=()=>{if(busy)return;rb={};rMark();};}
-function rMark(){document.querySelectorAll('#cgBody [data-k]').forEach(e=>{const v=rb[e.dataset.k];v?e.setAttribute('data-amt',v):e.removeAttribute('data-amt');});}
-$('cgBody').addEventListener('click',e=>{const ch=e.target.dataset.chip;if(ch){chip=+ch;document.querySelectorAll('[data-chip]').forEach(b=>b.classList.toggle('on',b===e.target));return;}const k=e.target.dataset.k;if(!k||busy)return;const tot=Object.values(rb).reduce((a,b)=>a+b,0);if(tot+chip>crystals)return toast('Не хватает 💎');rb[k]=(rb[k]||0)+chip;rMark();});
-function rPay(k,n){if(k[0]==='n')return +k.slice(2)===n?36:0;if(!n)return 0;return {red:RED.has(n)?2:0,black:!RED.has(n)?2:0,even:n%2===0?2:0,odd:n%2?2:0,low:n<=18?2:0,high:n>=19?2:0,d1:n<=12?3:0,d2:n>12&&n<=24?3:0,d3:n>24?3:0,c1:n%3===1?3:0,c2:n%3===2?3:0,c3:n%3===0?3:0}[k];}
-function rSpin(){if(busy)return;const tot=Object.values(rb).reduce((a,b)=>a+b,0);if(!tot)return toast('Сделайте ставку');crystals-=tot;updateHUD();busy=1;const n=Math.floor(Math.random()*37),k=WH.indexOf(n),seg=360/37;rrot=(Math.floor(rrot/360)+7)*360-(k+.5)*seg;$('rw').style.transform=`rotate(${rrot}deg)`;$('rR').textContent='Шарик катится…';
- setTimeout(()=>{let pay=0;for(const q in rb)pay+=rb[q]*rPay(q,n);crystals+=pay;rec('roulette',pay-tot);updateHUD();busy=0;$('rn').textContent=n;$('rn').style.color=n===0?'#6f6':RED.has(n)?'#f66':'#fff';$('rR').className='res '+(pay>tot?'w':'l');$('rR').textContent=`Выпало ${n} ${n===0?'🟢':RED.has(n)?'🔴':'⚫'} · ${pay>tot?'+'+(pay-tot):pay===tot?'в ноль':'−'+(tot-pay)} 💎`;rb={};rMark();},4300);}
-
-/* ===== Покер: Техасский холдем 1 на 1 ===== */
-const RK='23456789TJQKA',ST='♠♥♦♣',CATN=['Старшая карта','Пара','Две пары','Сет','Стрит','Флеш','Фулл-хаус','Каре','Стрит-флеш'];
-const cs=c=>RK[c>>2]+ST[c&3],isRed=c=>(c&3)===1||(c&3)===2;
-function mkDeck(){const d=[];for(let i=0;i<52;i++)d.push(i);for(let i=51;i>0;i--){const j=Math.random()*(i+1)|0;[d[i],d[j]]=[d[j],d[i]];}return d;}
-function score5(a){const r=a.map(c=>c>>2).sort((x,y)=>y-x),fl=a.every(c=>(c&3)===(a[0]&3)),cnt={};r.forEach(x=>cnt[x]=(cnt[x]||0)+1);const g=Object.entries(cnt).map(([k,v])=>[v,+k]).sort((x,y)=>y[0]-x[0]||y[1]-x[1]),u=[...new Set(r)];let st=0;if(u.length===5){if(u[0]-u[4]===4)st=u[0]+1;else if(u.join()==='12,3,2,1,0')st=4;}
- const cat=st&&fl?8:g[0][0]===4?7:g[0][0]===3&&g[1][0]===2?6:fl?5:st?4:g[0][0]===3?3:g[0][0]===2&&g[1][0]===2?2:g[0][0]===2?1:0,key=st?[st-1]:g.map(x=>x[1]);return cat*1e7+key.reduce((s,x,i)=>s+x*Math.pow(15,4-i),0);}
-function best(h){let b=0;for(let i=0;i<h.length;i++)for(let j=i+1;j<h.length;j++){const s=score5(h.filter((_,k)=>k!==i&&k!==j));if(s>b)b=s;}return b;}
-function equity(h,bd,n){const used=new Set(h.concat(bd)),rest=[];for(let c=0;c<52;c++)if(!used.has(c))rest.push(c);const need=2+5-bd.length;let w=0;for(let i=0;i<n;i++){for(let k=0;k<need;k++){const j=k+Math.random()*(rest.length-k)|0;[rest[k],rest[j]]=[rest[j],rest[k]];}const bd2=bd.concat(rest.slice(2,need)),a=best(h.concat(bd2)),b=best([rest[0],rest[1]].concat(bd2));w+=a>b?1:a===b?.5:0;}return w/n;}
-let pk=null,pkLast='';
-function gPoker(){$('cgBody').innerHTML='<h2>🃏 Холдем 1 на 1</h2><div id="pkT"></div>';pkIdle();}
-function pkIdle(){$('pkT').innerHTML=`<div class="res">Против бота. Обе стороны вносят блайнд-анте. Улицы: префлоп, флоп, тёрн, ривер. Ставка = размер блайнда, рейз = ещё 2 блайнда. Нужно иметь минимум 6 блайндов.</div>${betUI('pkBet',500)}<div class="btn-row"><button class="btn btn-take" data-p="deal">РАЗДАТЬ</button></div><div class="res">${pkLast}</div>`;}
-function pkR(show){const c=x=>`<span class="pc ${isRed(x)?'r':''}">${cs(x)}</span>`,h='<span class="pc back">?</span>',ph=pk.phase;
- $('pkT').innerHTML=`<div>Бот: ${show?pk.b.map(c).join(''):h+h}</div><div class="pkb">${pk.bd.map(c).join('')||'<small>стол пуст</small>'}</div><div>Вы: ${pk.p.map(c).join('')}</div><div class="res">Банк: ${pk.pot} 💎 · ${pk.msg}</div><div class="btn-row">`+(ph==='p'?`<button class="btn btn-take" data-p="check">Чек</button><button class="btn btn-take" data-p="bet">Ставка ${pk.B}</button>`:ph==='owe'?`<button class="btn btn-take" data-p="call">Колл ${pk.owe}</button>`+(pk.owe===pk.B?`<button class="btn btn-take" data-p="raise">Рейз +${2*pk.B}</button>`:''):`<button class="btn btn-take" data-p="again">Новая раздача</button>`)+(ph!=='end'?'<button class="btn btn-take" data-p="fold">Фолд</button>':'')+'</div>';}
-function pkPay(x){if(x>crystals){toast('Не хватает 💎');return false;}crystals-=x;pk.pc+=x;pk.pot+=x;updateHUD();return true;}
-function pkEnd(w,msg){const p=w>0?pk.pot:w===0?Math.floor(pk.pot/2):0;crystals+=p;updateHUD();rec('poker',p-pk.pc);pk.phase='end';pk.msg=msg+(p?` (+${p} 💎)`:'');pkLast=`Итог прошлой раздачи: ${p-pk.pc>=0?'+':''}${p-pk.pc} 💎`;busy=0;pkR(true);}
-function pkNext(){if(++pk.st>3){const a=best(pk.p.concat(pk.bd)),b=best(pk.b.concat(pk.bd)),n=s=>CATN[Math.floor(s/1e7)];return pkEnd(a>b?1:a<b?-1:0,`Вскрытие: у вас ${n(a)}, у бота ${n(b)}. ${a>b?'Вы победили!':a<b?'Бот победил.':'Ничья.'}`);}
- for(let i=pk.st===1?3:1;i>0;i--)pk.bd.push(pk.d.pop());pk.phase='p';pk.owe=0;pk.msg=['','Флоп','Тёрн','Ривер'][pk.st]+' — ваш ход';pkR();}
-function pkAct(a){if(!pk&&a!=='deal')return;
- if(a==='deal'){const B=getBet('pkBet');if(!B)return;if(crystals<B*6)return toast('Нужно минимум 6 блайндов: '+B*6+' 💎');crystals-=B;updateHUD();const d=mkDeck();pk={d,p:[d.pop(),d.pop()],b:[d.pop(),d.pop()],bd:[],B,pot:2*B,pc:B,st:0,phase:'p',msg:'префлоп — ваш ход',owe:0};busy=1;return pkR();}
- if(a==='again')return pkIdle();if(a==='fold')return pkEnd(-1,'Вы сбросили карты.');
- const e=()=>equity(pk.b,pk.bd,140);
- if(pk.phase==='p'){if(a==='check'){const q=e();if(q>0.62&&Math.random()<0.8||q<0.4&&Math.random()<0.1){pk.pot+=pk.B;pk.owe=pk.B;pk.phase='owe';pk.msg=`бот ставит ${pk.B}`;pkR();}else{pk.msg='бот чекает';pkNext();}}
-  else if(a==='bet'){if(!pkPay(pk.B))return;const q=e();if(q<0.38&&Math.random()>0.12)return pkEnd(1,'Бот сбросил карты.');if(q>0.75&&Math.random()<0.5){pk.pot+=3*pk.B;pk.owe=2*pk.B;pk.phase='owe';pk.msg='бот рейзит!';pkR();}else{pk.pot+=pk.B;pkNext();}}}
- else if(pk.phase==='owe'){if(a==='call'){if(pkPay(pk.owe))pkNext();}else if(a==='raise'){if(!pkPay(pk.owe+2*pk.B))return;const q=e();if(q<0.5&&Math.random()>0.1)return pkEnd(1,'Бот не потянул рейз.');pk.pot+=2*pk.B;pkNext();}}}
-$('cgBody').addEventListener('click',e=>{const a=e.target.dataset.p;if(a)pkAct(a);});
-
-/* ===== Старт после вознесения ===== */
-if(window.BOOT_MODE==='asc'){try{const m=JSON.parse(localStorage.getItem('gg_meta'));ess=m.ess;essT=m.essT;up=m.up;goalsDone=m.goalsDone;stats=m.stats;discovered=new Set(m.disc);crystals+=1500*up.start;renderCollection();updateHUD();toast(`🔱 Вы вознеслись! Эссенции: ${ess}`);}catch(e){}}
-if(window.BOOT_MODE==='new'){try{localStorage.removeItem('gg_meta');}catch(e){}}
-
-</script>
+<script src="js/utils.js"></script>
+<script src="js/data/factions.js"></script>
+<script src="js/data/cards.js"></script>
+<script src="js/data/synergies.js"></script>
+<script src="js/data/epochs.js"></script>
+<script src="js/data/achievements.js"></script>
+<script src="js/data/arena.js"></script>
+<script src="js/data/casino.js"></script>
+<script src="js/state.js"></script>
+<script src="js/logic/economy.js"></script>
+<script src="js/logic/faction_mechanics.js"></script>
+<script src="js/logic/gacha.js"></script>
+<script src="js/logic/grid.js"></script>
+<script src="js/logic/arena.js"></script>
+<script src="js/logic/casino_logic.js"></script>
+<script src="js/logic/epochs.js"></script>
+<script src="js/logic/achievements_logic.js"></script>
+<script src="js/render/hud.js"></script>
+<script src="js/render/grid_render.js"></script>
+<script src="js/render/collection_render.js"></script>
+<script src="js/render/arena_render.js"></script>
+<script src="js/render/gacha_render.js"></script>
+<script src="js/render/casino_render.js"></script>
+<script src="js/render/epoch_render.js"></script>
+<script src="js/main.js"></script>
 </body>
 </html>
