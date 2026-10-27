@@ -245,6 +245,10 @@ function factionMult(r, c, card, item) {
     if (eng && eng.herbPenalty && card.diet === 'herb') m *= eng.herbPenalty;
     /* Голод хищника (без добычи рядом) — ставит beastCycleTick */
     if (item.hunger && item.hunger < 1) m *= item.hunger;
+    /* v1.1: Лань — Стадность: +6% за соседа-травоядного */
+    if (card.id === 'b12') m *= 1 + 0.06 * getNeighbors(r, c).filter(n => CARDS[n.item.cardId].diet === 'herb').length;
+    /* v1.1: Колосс — Живая Крепость: жиреет от укусов (fleshyBuff ставит beastCycleTick) */
+    if (card.id === 'b17' && item.fleshyBuff) m *= 1 + item.fleshyBuff;
     /* Древень-флора: +12% за каждого прокормленного (леченого или выпасанного) — в floraBuff */
     /* «Гидра» (★4): +10% за соседа-хищника */
     if (card.id === 'b9') m *= 1 + 0.10 * getNeighbors(r, c).filter(n => isPredator(CARDS[n.item.cardId])).length;
@@ -266,6 +270,11 @@ function factionMult(r, c, card, item) {
     if (card.id === 'd8') m *= 1 + 0.06 * nb.filter(n => CARDS[n.item.cardId].faction === 'demon').length;
     /* «Князь Тьмы» (★5): +10% за демона в радиусе 2 */
     if (card.id === 'd10') m *= 1 + 0.10 * radius2(r, c).filter(n => CARDS[n.item.cardId].faction === 'demon').length;
+    /* v1.1: роли младших демонов и новые карты */
+    if (card.id === 'd0') m *= 1 + 0.08 * nb.filter(n => (n.item.embers || 0) >= 3).length;          /* Бес дразнит */
+    if (card.id === 'd2' && item.harmBuff) m *= 1 + item.harmBuff;                                    /* Гончая чует взрывы */
+    if (card.id === 'd13' && item.tyrBuff && item.tyrBuff > 1) m *= item.tyrBuff;                     /* Пепельный Тиран */
+    if (card.id === 'd14') m *= 1 + 0.10 * radius2(r, c).filter(n => CARDS[n.item.cardId].faction === 'demon').length; /* Кулак Пекла */
     /* «Кузня Хаоса» Балрога: накопленный бафф */
     if (card.id === 'd9' && item.balrBuff) m *= item.balrBuff;
     /* «Голод» (★5): +40% за соседа-демона, соседи теряют 10% */

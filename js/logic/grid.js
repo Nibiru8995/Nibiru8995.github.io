@@ -99,6 +99,8 @@ function onCellClick(r, c) {
     } else {
       grid[r][c] = { cardId: pendingCard, stacks: 1, hp, maxHp: hp,
         predBuff: 0, mutBuff: 1, embers: 0, hunger: 1, graze: 0, floraBuff: 0, scavBuff: 0, boomUntil: 0, petrCount: 0 };
+      /* v1.1: «Уголёк» (d3) — вечно тлеет: появляется уже с 1 углём Хаоса */
+      if (pendingCard === 'd3') grid[r][c].embers = 1;
     }
     stats.placed++;
     sfx('place');
