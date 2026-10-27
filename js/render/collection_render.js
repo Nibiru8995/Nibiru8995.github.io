@@ -84,14 +84,15 @@ function renderActions() {
   const el = $('cardActions');
   if (!placingMode || !pendingCard || !inventory[pendingCard]) {
     el.innerHTML = '<span class="act-hint">Выберите карту: <b style="color:#80e060">зелёная рамка</b> — партнёры по синергии, подсветятся лучшие клетки. ПКМ / Shift+клик — в бой.</span>' +
-      '<button id="autoBtn2">🪄 Авто</button>';
+      '<button id="autoBtn2">🪄 Стак</button>';
   } else {
     const c = CARDS[pendingCard], n = inventory[pendingCard];
     el.innerHTML = '<b>' + cardArtHTML(c, 'inline-art', '') + ' ' + c.name + '</b> ×' + n +
       ' <button data-n="1">⚔ ×1</button>' + (n > 5 ? '<button data-n="5">⚔ ×5</button>' : '') +
       (n > 1 ? '<button data-n="' + n + '">⚔ все (' + n + ')</button>' : '') +
-      '<span class="act-hint">или кликните по Алтарю</span><button id="autoBtn2">🪄 Авто</button>';
+      '<span class="act-hint">или кликните по Алтарю</span><button id="autoBtn2">🪄 Стак</button>';
   }
-  $('autoBtn2').onclick = autoPlace;
+  $('autoBtn2').onclick = autoStack;
+  $('autoBtn2').title = 'Уложить карты из инвентаря в существующие стопки на поле';
   el.querySelectorAll('[data-n]').forEach(b => b.onclick = () => addFighter(pendingCard, +b.dataset.n));
 }

@@ -83,46 +83,49 @@ function onCellClick(r, c) {
   }
 }
 
-/* Авто-расстановка: в клетку с максимальным приростом дохода */
+/* «СТАК» (пункт 8 ТЗ): кнопка НЕ размещает карты на пустые клетки — расстановка
+   целиком у игрока. Она только докладывает карты из инвентаря В СУЩЕСТВУЮЩИЕ
+   стопки таких же карт на поле, выбирая клетку с максимальным приростом дохода. */
 function localInc(r, c) {
   let s = calcCardIncome(r, c);
   getNeighbors(r, c).forEach(n => { s += calcCardIncome(n.r, n.c); });
   return s;
 }
-function bestFor(id) {
+function bestStackFor(id) {
   const hp = cardHp(CARDS[id].rarity);
   let best = null, bv = -1e9;
   for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
-    if (!playableMask[r][c] || grid[r][c]) continue;
+    const it = grid[r][c];
+    if (!it || it.cardId !== id || it.stacks >= maxStacks()) continue; /* только уже стоящие такие же карты */
     const b0 = localInc(r, c);
-    grid[r][c] = { cardId: id, stacks: 1, hp, maxHp: hp, predBuff: 0, mutBuff: 1 };
+    it.stacks++; it.maxHp += hp; it.hp += hp;
     computeIncome();
     const v = localInc(r, c) - b0;
-    grid[r][c] = null;
+    it.stacks--; it.maxHp -= hp; it.hp -= hp;
+    computeIncome();
     if (v > bv) { bv = v; best = { r, c, v }; }
   }
-  computeIncome();
   return best;
 }
-function autoPlace() {
+function autoStack() {
+  const invIds = Object.keys(inventory);
+  if (!invIds.length) { toast('Инвентарь пуст — крутите карты!'); return; }
+  if (!cardsOnGrid()) { toast('На Алтаре нет карт — поставьте первую вручную: клик по карте в коллекции'); return; }
   let n = 0;
-  Object.keys(inventory).sort((a, b) => CARDS[b].rarity - CARDS[a].rarity).forEach(id => {
+  invIds.sort((a, b) => CARDS[b].rarity - CARDS[a].rarity).forEach(id => {
     while (inventory[id] > 0) {
-      const b = bestFor(id);
-      if (!b || b.v <= 0) break;
+      const b = bestStackFor(id);
+      if (!b) break;
       const hp = cardHp(CARDS[id].rarity);
-      const existing = grid[b.r][b.c];
-      if (existing && existing.cardId === id && existing.stacks < maxStacks()) {
-        existing.stacks++; existing.maxHp += hp; existing.hp += hp;
-      } else if (!existing) {
-        grid[b.r][b.c] = { cardId: id, stacks: 1, hp, maxHp: hp, predBuff: 0, mutBuff: 1 };
-      } else break;
+      const it = grid[b.r][b.c];
+      it.stacks++; it.maxHp += hp; it.hp += hp;
       stats.placed++;
+      sfx('place');
       inventory[id]--; n++;
       if (!inventory[id]) delete inventory[id];
     }
   });
   cancelSelection();
   computeIncome(); renderGrid(); renderCollection(); updateHUD();
-  toast(n ? '🪄 Расставлено карт: ' + n : 'Нет свободных клеток или карт');
+  toast(n ? '🪄 Уложено в стаки карт: ' + n : 'Подходящих стаков нет: на поле должна стоять ТА ЖЕ карта и не достигнут лимит ×' + maxStacks());
 }
