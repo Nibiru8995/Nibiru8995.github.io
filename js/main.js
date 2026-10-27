@@ -145,7 +145,7 @@ function debugSecretClick() {
 function openDebugModal() {
   const maxE = Math.max(EPOCHS.length + 2, 12);
   mk('dbgModal',
-    '<h2>🛠 DEBUG</h2>' +
+    '<h2>🛠 ЧИТ-РЕЖИМ</h2>' +
     '<div class="res">Старт с любой Эпохи и фракции. По умолчанию сохранение ОТКЛЮЧЕНО (мета-прогресс не трогается).</div>' +
     '<h3 style="margin:8px 0 4px">Эпоха</h3><div id="dbgEpochs" style="display:flex;flex-wrap:wrap;gap:4px">' +
     Array.from({ length: maxE }, (_, i) => '<button class="mini dbg-e" data-e="' + (i + 1) + '">' + (i + 1) + '</button>').join('') + '</div>' +
@@ -153,8 +153,14 @@ function openDebugModal() {
     FACTION_KEYS.map(f => '<div class="faction-card dbg-f" data-f="' + f + '" style="border-color:' + FACTION_INFO[f].color + '"><h3 style="color:' + FACTION_INFO[f].color + '">' + FACTION_INFO[f].name + '</h3><small>' + FACTION_INFO[f].mechanicName + '</small></div>').join('') + '</div>' +
     '<div class="set-row" style="margin-top:8px"><span>💰 Толстый кошелёк (+1 млрд 💎):</span><input type="checkbox" id="dbgRich"></div>' +
     '<div class="set-row"><span>💾 Включить сохранение (ОСТОРОЖНО: перезапишет забег):</span><input type="checkbox" id="dbgSave"></div>' +
+    '<div class="set-row"><span>💎 Кристаллы в ТЕКУЩИЙ забег (+250 тыс):</span><button class="mini" id="dbgCash"' + (gameStarted ? '' : ' disabled') + '>ВЫДАТЬ</button></div>' +
     '<div class="btn-row"><button class="btn btn-take" id="dbgX">Закрыть</button><button class="btn btn-take" id="dbgGo" disabled>СТАРТ</button></div>', 640);
   $('dbgX').onclick = () => close_('dbgModal');
+  $('dbgCash').onclick = () => {
+    crystals += 250000;
+    computeIncome(); updateHUD(); saveRun();
+    toast('🛠 ЧИТ: +250 000 кристаллов');
+  };
   let selE = 0, selF = null;
   const refresh = () => {
     $('dbgEpochs').querySelectorAll('.dbg-e').forEach(b => b.style.borderColor = +b.dataset.e === selE ? '#ffe080' : '');
@@ -198,7 +204,7 @@ function startDebugRun(ep, f, rich, keepSave) {
   if (keepSave) { saveRun(); saveMeta(); }
   hideMenu();
   refreshAll();
-  toast('🛠 DEBUG: Эпоха ' + ep + ' · ' + FACTION_INFO[f].name + (keepSave ? ' · сохранение ВКЛ' : ' · сохранение ВЫКЛ'));
+  toast('🛠 ЧИТ: Эпоха ' + ep + ' · ' + FACTION_INFO[f].name + (keepSave ? ' · сохранение ВКЛ' : ' · сохранение ВЫКЛ'));
 }
 function refreshAll() {
   buildGrid(); renderCollection(); renderFighters(); initArena(); updateHUD(); updateBanner(); updateEpochUI();
@@ -326,7 +332,8 @@ function wireEvents() {
 
   /* Меню */
   $('menuBtn').onclick = () => { saveRun(); saveMeta(); showMenu(); };
-  $('menuFlavor').addEventListener('click', debugSecretClick); /* фидбек 4: 3 клика — дебаг */
+  $('menuFlavor').addEventListener('click', debugSecretClick); /* пасхалка: 3 клика по подзаголовку */
+  $('menuCheat').onclick = openDebugModal; /* видимая кнопка чит-режима */
   $('menuContinue').onclick = () => {
     if (!gameStarted) { const ok = loadRun(); gameStarted = true; if (ok) toast('Забег загружен'); refreshAll(); }
     hideMenu();

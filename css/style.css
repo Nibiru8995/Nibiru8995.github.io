@@ -230,6 +230,10 @@ h1 small { display: block; font-size: 9px; letter-spacing: 2px; color: #8a6a4a; 
   linear-gradient(rgba(6,3,1,.72), rgba(6,3,1,.88)),
   url('../assets/menu_bg.jpg') center 30% / cover no-repeat #0a0503; }
 #menu .modal-card { box-shadow: 0 0 80px #000000ee, 0 0 40px #c9a22733, inset 0 0 30px #000000aa; }
+/* Чит-режим: секретная строка намекает на кликабельность, кнопка — на видном месте */
+#menuFlavor { cursor: pointer; transition: color .2s, text-shadow .2s; }
+#menuFlavor:hover { color: #ffe080; text-shadow: 0 0 10px #c9a22788; }
+#menuCheat:hover { border-color: #c9a227 !important; box-shadow: 0 0 10px #c9a22744; }
 
 /* ===== v1.2: ВЫБОР ТРОФЕЯ БОССА ===== */
 .trophy-list { display: flex; flex-direction: column; gap: 8px; width: 100%; }
