@@ -4,7 +4,6 @@
    Автоматические подсказки-карточки при ПОЯВЛЕНИИ новой фичи:
    - Арена (Э2): выдать карту -> отправить в бой -> атаковать -> авто;
    - Казино (Э4): открыть хаб -> слоты -> дёрнуть рычаг 1 раз;
-   - Расширение Алтаря (Э3): открыть Меню Эпохи -> купить 5×5;
    - Первая Эпоха за фракцию: краткое обучение её механике.
    Гайды одноразовые (guideSeen в мета-сохранении), шаги по действию
    продвигаются сами, есть «Пропустить». В учебном режиме (noSave)
@@ -18,6 +17,12 @@ function guideMarkSeen(id) {
   guideSeen[id] = 1;
   saveMeta();
 }
+
+/* Автопометка: собрал знамение — гайд больше не нужен */
+(function () {
+  const origCheck = checkAchievements;
+  checkAchievements = function () { if ((stats.omens || 0) >= 1 && !guideSeen.omen) guideMarkSeen('omen'); origCheck(); };
+})();
 
 /* ---------------- Определения гайдов ---------------- */
 function guideArenaDef() {
@@ -49,14 +54,10 @@ function guideCasinoDef() {
   ];
 }
 
-function guideAltarDef() {
-  const cost = altarUpgradeCost();
+function guideOmenDef() {
   return [
-    { t: '🧱 <b>АЛТАРЬ МОЖНО РАСШИРИТЬ до 5×5!</b> Больше клеток — больше карт и дохода. Откройте <b>Меню Эпохи</b>: нажмите большую кнопку ЭПОХИ над Алтарём (или ☰ Меню → «Меню Эпохи»).',
-      hl: '#epochUpBtn', ok: () => $('epochModal') && $('epochModal').classList.contains('show') },
-    { t: 'В секции «🧱 Алтарь» купите расширение' + (crystals >= cost ? '.' : ' (пока не хватает ' + fmtShort(cost) + ' 💎 — пропустите и вернитесь, когда накопите).'),
-      hl: '#altarUpBtn', ok: () => playableSize >= 5 },
-    { t: '🧱 Новые клетки появляются по краям, карты сохраняют позиции. Дальше: 7×7 в Эпохе 6, 9×9 в Эпохе 9. Печать Зодчего 🔱 удешевляет расширения на 15% за уровень.', n: 1, last: 1 }
+    { t: '✨ <b>ЗНАМЕНИЕ!</b> На Алтаре вспыхнула пульсирующая иконка. Кликни по ней, пока она не погасла (18 сек) — за это дают 💠 кристаллы, ⏱ ускорение ×3 или 🔮 Реликвию. Знамения появляются каждые пару минут.',
+      hl: '.omen', ok: () => (stats.omens || 0) >= 1, last: 1 }
   ];
 }
 
@@ -118,7 +119,7 @@ function guideQueueRun() {
   let def = null;
   if (id === 'arena') def = guideArenaDef();
   else if (id === 'casino') def = guideCasinoDef();
-  else if (id === 'altar') def = guideAltarDef();
+  else if (id === 'omen') def = guideOmenDef();
   else if (id.indexOf('faction_') === 0) def = guideFactionDef(id.slice(8));
   if (def) guideStart(id, def); else guideQueueRun();
 }
@@ -130,7 +131,6 @@ function queueFeatureGuides() {
   if (!guideSeen[f]) q.push(f);
   if (epochHasArena(epoch) && !guideSeen.arena) q.push('arena');
   if (epochHasCasino(epoch) && !guideSeen.casino) q.push('casino');
-  if (epochMaxSize(epoch) >= 5 && !guideSeen.altar) q.push('altar');
   if (q.length) {
     q.forEach(x => { if (!guideQueue.includes(x)) guideQueue.push(x); });
     setTimeout(guideQueueRun, 900); /* дать интерфейсу перерисоваться после Эпохи */
@@ -142,7 +142,6 @@ function queueFeatureGuides() {
 function initGuidesForSave() {
   if (epochHasArena(epoch)) guideMarkSeen('arena');
   if (epochHasCasino(epoch)) guideMarkSeen('casino');
-  if (epochMaxSize(epoch) >= 5) guideMarkSeen('altar');
   queueFeatureGuides();
 }
 

@@ -3,9 +3,8 @@
    ЛОГИКА: ГРИД / АЛТАРЬ (logic/grid.js)
    Установка, перемещение, удаление, авто-расстановка. Врагов на
    гриде НЕТ (пункт 5 ТЗ) — грид это чистая экономика.
-   Покупки отдельных клеток НЕТ (пункты 7-8 ТЗ): размер Алтаря
-   растёт только целыми нечётными шагами через buyAltarUpgrade()
-   в logic/epochs.js.
+   Покупки отдельных клеток НЕТ (пункты 7-8 ТЗ): размер поля растёт
+   АВТОМАТИЧЕСКИ при переходе Эпохи (doEpochUp, logic/epochs.js).
    ============================================================ */
 
 function linked(a, b) { return SYNERGY_PAIRS.some(p => pairApplies(a, b, p)); }
@@ -15,7 +14,7 @@ function hintClass(r, c) {
   if (!placingMode || !pendingCard) return '';
   const p = CARDS[pendingCard]; const it = grid[r][c];
   if (it) {
-    if (it.cardId === pendingCard && it.stacks < 5) return 'stack-hint';
+    if (it.cardId === pendingCard && it.stacks < maxStacks()) return 'stack-hint';
     if (linked(p, CARDS[it.cardId])) return 'syn-hint';
     return '';
   }
@@ -69,12 +68,14 @@ function onCellClick(r, c) {
     const card = CARDS[pendingCard];
     const hp = cardHp(card.rarity);
     if (item) {
-      if (item.cardId !== pendingCard || item.stacks >= 5) return;
+      if (item.cardId !== pendingCard || item.stacks >= maxStacks()) return;
       item.stacks++; item.maxHp += hp; item.hp += hp;
     } else {
       grid[r][c] = { cardId: pendingCard, stacks: 1, hp, maxHp: hp, predBuff: 0, mutBuff: 1 };
     }
     stats.placed++;
+    sfx('place');
+    fxAtCell(r, c, [FACTION_INFO[card.faction].color, '#fff', '#e8c060'], 12);
     inventory[pendingCard]--;
     computeIncome();
     if (inventory[pendingCard] <= 0) { delete inventory[pendingCard]; cancelSelection(); }
@@ -111,7 +112,7 @@ function autoPlace() {
       if (!b || b.v <= 0) break;
       const hp = cardHp(CARDS[id].rarity);
       const existing = grid[b.r][b.c];
-      if (existing && existing.cardId === id && existing.stacks < 5) {
+      if (existing && existing.cardId === id && existing.stacks < maxStacks()) {
         existing.stacks++; existing.maxHp += hp; existing.hp += hp;
       } else if (!existing) {
         grid[b.r][b.c] = { cardId: id, stacks: 1, hp, maxHp: hp, predBuff: 0, mutBuff: 1 };

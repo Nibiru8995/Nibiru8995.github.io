@@ -6,8 +6,10 @@
    ТОЛЬКО карты текущей фракции. Спрайтов нет — только эмодзи.
    ============================================================ */
 
-/* Шансы: 44% ★1, 46% ★3, 9% ★4, 1% ★5 (если редкость открыта) */
+/* Шансы: 44% ★1, 46% ★3, 9% ★4, 1% ★5 (если редкость открыта).
+   «Череп Владыки» (реликвия): малый pity 10 → 8. */
 function unlockedRarities() { return epochRarities(epoch); }
+function pity4Max() { return hasRelic('skull') ? 8 : 10; }
 
 function rollRarity() {
   const unlocked = unlockedRarities();
@@ -15,7 +17,7 @@ function rollRarity() {
   const best = has5 ? 5 : has4 ? 4 : 3; /* старшая ДОСТУПНАЯ редкость */
   const fateBonus = sealLv.fate;
   pity4 += 1 + fateBonus; pity5 += 1 + fateBonus;
-  const hitSmallPity = pity4 >= 10, hitBigPity = pity5 >= 80;
+  const hitSmallPity = pity4 >= pity4Max(), hitBigPity = pity5 >= 80;
 
   let t;
   const r = Math.random() * 100;
@@ -25,9 +27,10 @@ function rollRarity() {
   else if (hitSmallPity) t = best; /* малый pity на ранних Эпохах даёт ★3 */
   else t = r < 45 ? 1 : 3;
 
-  /* Счётчики сбрасываются, когда гарантия сработала по своей шкале */
+  /* Счётчики сбрасываются, когда гарантия сработала по своей шкале.
+     ★5 из гачи может принести РЕЛИКВИЮ (шанс 25%) */
   if (t >= 4 || hitSmallPity) pity4 = 0;
-  if (t === 5 || hitBigPity) pity5 = 0;
+  if (t === 5 || hitBigPity) { pity5 = 0; if (t === 5) grantRandomRelic(); }
   return t;
 }
 
@@ -46,9 +49,10 @@ function rollOne() {
   return id;
 }
 
-/* Сыграть count круток. Возвращает {cards: [id, ...]} */
-function performRolls(count) {
-  const cost = rollCost() * count;
+/* Сыграть count круток. free=true — крутка за счёт вехи (без денег).
+   Возвращает {cards: [id, ...]} */
+function performRolls(count, free) {
+  const cost = free ? 0 : rollCost() * count;
   if (crystals < cost) return null;
   crystals -= cost;
   const cards = [];

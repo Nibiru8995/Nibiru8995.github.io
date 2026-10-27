@@ -8,7 +8,7 @@
 let lastTick = performance.now();
 
 function gameLoop(now) {
-  const dt = Math.min((now - lastTick) / 1000, 0.2);
+  const dt = Math.min((now - lastTick) / 1000, 0.2) * speedMult;
   lastTick = now;
   if (!gamePaused && gameStarted) {
     computeIncome();
@@ -16,6 +16,7 @@ function gameLoop(now) {
     crystals += inc * dt;
     runTime += dt; gameTime += dt;
     tickFactionMechanics(dt);
+    tickOmens(dt);
     updateHUD();
   }
   requestAnimationFrame(gameLoop);
@@ -23,8 +24,11 @@ function gameLoop(now) {
 
 /* ---------------- Гача: обработка кнопок ---------------- */
 function doRolls(count) {
-  const res = performRolls(count);
+  const free = count === 1 && freeRolls > 0;
+  const res = performRolls(count, free);
   if (!res) { toast('Не хватает 💎'); return; }
+  if (free) { freeRolls--; saveRun(); toast('🏅 Бесплатная крутка по вехе!'); }
+  sfx('roll');
   if (count === 1 && res.cards.length === 1) showDrop(res.cards[0]);
   else showMulti(res.cards, count);
   updateHUD(); checkAchievements();
@@ -46,7 +50,7 @@ const TUT = [
   { t: '<b>Шаг 5. Стак.</b> Выберите второго Скелета и кликните по ТОЙ ЖЕ клетке — карты лягут стопкой ×2. Доход клетки растёт с каждым слоем. Стак — способ выжать максимум из одной клетки без расширения.', hl: '#grid', ok: gridStacked },
   { t: '<b>Шаг 6. Синергии.</b> Мы выдали «Костяного Рыцаря» — партнёр Скелета. <b style="color:#80e060">Зелёная рамка</b> в коллекции — партнёры, зелёные клетки — ставить рядом. Между партнёрами загорится линия.', pre: () => TUT_GIVE([['u4', 1]]), hl: '#grid', ok: () => countLinks() > 0 },
   { t: '<b>Правила Алтаря.</b> ♻ Повторы одной пары затухают (2-я ×0.8, 3-я ×0.55) — стройте разные связки. 🎵 Хор: +4% за каждую УНИКАЛЬНУЮ активную пару. ⛓ Формации: 3 в ряд ×1.15, 2×2 ×1.3, 5 в ряд ×1.5. 🪄 Кнопка «Авто» расставит всё за вас.', n: 1 },
-  { t: '<b>Шаг 7. Эпоха — без принуждения.</b> Большая кнопка над Алтарём показывает % порога. Когда наберёте — она предложит начать Эпоху ' + (epoch + 1) + ' (+печати 🔱). Торопиться НЕ обязательно — фармите, сколько хочется. Эпохи открывают: Э2 — ⚔ Арену; Э3 — Алтарь 5×5 и ★4; Э4 — 🎰 Казино; Э5 — Культистов; дальше ★5, Звери, 7×7, 9×9, Демоны. При переходе сбрасываются карты и 💎; остаются 🔱, ачивки и открытые фишки.', hl: '#epochUpBtn', n: 1 },
+  { t: '<b>Шаг 7. Эпоха — без принуждения.</b> Большая кнопка над Алтарём показывает % порога. Когда наберёте — она предложит начать Эпоху ' + (epoch + 1) + ' (+печати 🔱). Торопиться НЕ обязательно — фармите, сколько хочется. Эпохи открывают: Э2 — ⚔ Арену; Э3 — Поле 5×5 и ★4; Э4 — 🎰 Казино; Э5 — Культистов; дальше 7×7, ★5, Звери, 9×9, Демоны. ПОЛЕ растёт САМО при переходе — докупать ничего не нужно. При переходе сбрасываются карты и 💎; остаются 🔱, ачивки и открытые фишки.', hl: '#epochUpBtn', n: 1 },
   { t: '<b>Готово!</b> Совет: Алтарь — главный источник дохода. Новые фичи (Арена, Казино, расширения) сами покажут подсказку при открытии. Удачи, Гриндер!', n: 1, last: 1 }
 ];
 let tutI = -1, tutTimer = null;
@@ -83,9 +87,12 @@ function startFreshRun() {
   rebuildPlayableMask();
   inventory = {}; pendingCard = null;
   fighters = {}; fighterHpState = {};
-  arenaState = { floor: 1, room: 1, enemy: null, fighting: false, status: '', cleared: Array(ARENA.roomsPerFloor).fill(false) };
+  arenaState = { floor: 1, room: 1, enemy: null, fighting: false, status: '', cleared: Array(ARENA.roomsPerFloor).fill(false), fallen: {} };
   arenaAuto = false;
   pity4 = 0; pity5 = 0; runRolls = 0; runEarned = 0; runTime = 0;
+  altBuff = { mult: 1, until: 0, label: '' };
+  milestoneIdx = 0; freeRolls = 0;
+  omens = []; omenTimer = 60;
   const startR1 = POOL_1.filter(id => CARDS[id].faction === faction);
   const startR3 = POOL_3.filter(id => CARDS[id].faction === faction);
   drawDistinct(startR1, 2).concat([pick(startR3)]).forEach(id => { inventory[id] = (inventory[id] || 0) + 1; discovered.add(id); });
@@ -111,6 +118,14 @@ function restartWith(mode) {
   try { sessionStorage.setItem('gg_mode', mode); } catch (e) { }
   noSave = true;
   location.reload();
+}
+
+/* Обновление настроек-интерфейса */
+function updateSettingsUI() {
+  document.querySelectorAll('.speed-btn').forEach(b => b.classList.toggle('active', (+b.dataset.s) === speedMult));
+  $('sfxToggle').textContent = soundOn ? 'ВКЛ' : 'ВЫКЛ';
+  $('musicToggle').textContent = musicOn ? 'ВКЛ' : 'ВЫКЛ';
+  $('fxToggle').textContent = fxOn ? 'ВКЛ' : 'ВЫКЛ';
 }
 
 /* ---------------- Привязка событий ---------------- */
@@ -188,11 +203,25 @@ function wireEvents() {
 
   /* Настройки */
   $('settingsBtn').addEventListener('click', () => {
+    updateSettingsUI();
     $('settingsModal').classList.add('show');
   });
   $('settingsClose').addEventListener('click', () => {
     $('settingsModal').classList.remove('show');
   });
+  document.querySelectorAll('.speed-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      speedMult = +b.dataset.s || 1;
+      if (speedMult > 1) stats.speedUsed = 1;
+      saveMeta(); updateSettingsUI(); checkAchievements();
+      toast('⏩ Скорость игры: ×' + speedMult);
+    });
+  });
+  $('sfxToggle').addEventListener('click', () => { soundOn = !soundOn; saveMeta(); updateSettingsUI(); if (soundOn) sfx('click'); });
+  $('musicToggle').addEventListener('click', () => { musicOn = !musicOn; saveMeta(); if (musicOn) musicStart(); else musicStop(); updateSettingsUI(); });
+  $('fxToggle').addEventListener('click', () => { fxOn = !fxOn; saveMeta(); updateSettingsUI(); });
+  /* Реликвии */
+  $('relicsBtn').addEventListener('click', openRelics);
   $('resetBtn').addEventListener('click', () => {
     ask('Стереть ВЕСЬ прогресс (включая печати и ачивки)?', () => {
       noSave = true; wipeAll(); location.reload();
@@ -244,6 +273,7 @@ setInterval(() => {
   /* Заработок идёт только от экономики, не от казино (чтобы не «натыкать» Эпохи) */
   if (d > 0 && !document.querySelector('#casinoModal.show,#cgModal.show')) runEarned += d;
   lastC = crystals;
+  checkMilestones();
   if (runEarned >= epochThreshold(epoch) && gameStarted && !gamePaused) {
     const upBtn = $('epochUpBtn');
     if (upBtn && !upBtn.classList.contains('flash-once')) {
@@ -262,6 +292,12 @@ setInterval(() => {
   window.BOOT_MODE = m;
   loadMeta();
   wireEvents();
+  fxInit();
+  document.addEventListener('pointerdown', soundUnlock, { once: true });
+  /* Звук кликов на кнопки/карты — делегированно */
+  document.addEventListener('click', e => {
+    if (e.target.closest && e.target.closest('button, .cell, .coll-card, .faction-card, .omen')) sfx('click');
+  }, true);
   requestAnimationFrame(gameLoop);
   if (m === 'tutorial') { hideMenu(); startTutorial(); return; }
   if (m === 'new') { hideMenu(); startFreshRun(); return; }

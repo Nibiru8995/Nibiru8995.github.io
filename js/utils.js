@@ -44,7 +44,8 @@ function drawDistinct(pool, n) {
 let toastT = null;
 function toast(t) {
   const e = $('toast'); if (!e) return;
-  e.textContent = t; e.classList.add('show');
+  e.innerHTML = t; /* допускает <b> и эмодзи-разметку из внутренних тостов игры */
+  e.classList.add('show');
   clearTimeout(toastT); toastT = setTimeout(() => e.classList.remove('show'), 2400);
 }
 

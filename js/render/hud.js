@@ -23,19 +23,29 @@ function updateHUD() {
   $('rate').textContent = '+' + calculateIncome().toFixed(2) + '/сек';
   applyFeatureLocks();
 
-  /* Pity — гарантия до старшей ДОСТУПНОЙ редкости (показ у кнопок круток) */
+  /* Pity — гарантия до старшей ДОСТУПНОЙ редкости (показ у кнопок круток).
+     «Череп Владыки» (реликвия) приближает ★4-гарантию */
   const unlocked = unlockedRarities();
+  const p4m = pity4Max();
   let pity = 'Гарантия: ';
-  if (unlocked.includes(5)) pity += 'до ★4: ' + Math.max(0, 10 - pity4) + ' · до ★5: ' + Math.max(0, 80 - pity5);
-  else if (unlocked.includes(4)) pity += 'до ★4: ' + Math.max(0, 10 - pity4);
-  else pity += 'до ★3: ' + Math.max(0, 10 - pity4);
+  if (unlocked.includes(5)) pity += 'до ★4: ' + Math.max(0, p4m - pity4) + ' · до ★5: ' + Math.max(0, 80 - pity5);
+  else if (unlocked.includes(4)) pity += 'до ★4: ' + Math.max(0, p4m - pity4);
+  else pity += 'до ★3: ' + Math.max(0, p4m - pity4);
   $('pity').textContent = pity;
 
   const rc = rollCost();
   [1, 10, 100, 1000].forEach(n => {
     const el = $('roll' + n);
-    el.disabled = crystals < n * rc;
+    el.disabled = false;
     const cost = el.querySelector('.cost');
+    if (n === 1 && freeRolls > 0) {
+      cost.textContent = 'БЕСПЛАТНО ×' + freeRolls;
+      el.classList.add('free-roll');
+      el.disabled = false;
+      return;
+    }
+    el.classList.remove('free-roll');
+    el.disabled = crystals < n * rc;
     if (cost) cost.textContent = fmt(n * rc);
   });
   $('rollAll').disabled = crystals < rc;
@@ -60,6 +70,10 @@ function updateHUD() {
   }
   const achvBtnCost = $('achvBtn') && $('achvBtn').querySelector('.cost');
   if (achvBtnCost) achvBtnCost.textContent = achvCount() + ' / ' + ACHIEVEMENTS.length;
+  const relicCost = $('relicsBtn') && $('relicsBtn').querySelector('.cost');
+  if (relicCost) relicCost.textContent = RELICS_OWNED.size + ' / ' + RELICS.length;
+  /* живой индикатор армии/бафов в строке над Алтарём */
+  if (typeof updateGridStats === 'function') updateGridStats();
 }
 
 function updateBanner() {
@@ -98,6 +112,9 @@ function showCardTooltip(e, card, income, r, c) {
       ps.map(p => '<span class="tt-good">' + p.text + '</span>').join('<br>') + '</div>';
   }
   let mechLine = '<div class="tt-synergy"><div class="tt-synergy-title">Роль</div>' + roleText(card) + '</div>';
+  /* Уникальная механика ★4/★5 (SPECIALS в data/cards.js) */
+  const sp = SPECIALS[card.id];
+  if (sp) mechLine += '<div class="tt-synergy"><div class="tt-synergy-title">✦ Особенность</div><span style="color:#e8c060">' + sp + '</span></div>';
   tooltip.innerHTML =
     '<div class="tt-name">' + cardArtHTML(card, 'tt-art', '') + '<span>' + card.name + '</span></div>' +
     '<div class="tt-stars">' + '★'.repeat(card.rarity) + ' · ' + FACTION_INFO[card.faction].name + '</div>' +

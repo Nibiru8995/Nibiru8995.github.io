@@ -78,6 +78,11 @@ function showDrop(cardId) {
   $('dropFlavor').textContent = '«' + card.flavor + '»';
   modalCard.classList.remove('rarity4', 'rarity5');
   playRarityEffect(modalCard, bannerEl, card.rarity);
+  /* Звук + canvas-FX по редкости */
+  sfx(card.rarity === 5 ? 'drop5' : card.rarity === 4 ? 'drop4' : 'drop3');
+  if (card.rarity === 5) { const b = $('dropModalCard').getBoundingClientRect(); fxBeams(b.left + b.width / 2, b.top + b.height / 2); fxConfetti(70); }
+  else if (card.rarity === 4) fxFxAt($('dropModalCard'), ['#a070b0', '#e8c060', '#fff'], 26);
+  else fxFxAt($('dropModalCard'), ['#7080a0', '#fff'], 12);
   if (card.rarity === 4) { el.classList.add('pop4'); setTimeout(() => el.classList.remove('pop4'), 1000); }
   if (card.rarity === 5) { el.classList.add('pop5'); setTimeout(() => el.classList.remove('pop5'), 1400); }
   $('dropModal').classList.add('show');

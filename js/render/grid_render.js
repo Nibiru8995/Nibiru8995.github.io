@@ -70,6 +70,8 @@ function renderGrid() {
         '<span class="card-name">' + card.name + '</span>' +
         '<span class="income-badge">' + income.toFixed(2) + '</span>';
       if (card.id === 'u10' || card.id === 'c4' || card.id === 'b10' || card.id === 'd10') badges += '<span class="anchor-badge">🔱</span>';
+      /* Уникальная механика ★4/★5 — золотой значок ✦ */
+      if (SPECIALS[card.id]) badges += '<span class="anchor-badge" style="color:#e8c060">✦</span>';
       if (item.mutBuff && item.mutBuff !== 1 && FACTION_INFO[faction].mechanic === 'chaos')
         badges += '<span class="mut-badge">' + (item.mutBuff > 1 ? '▲' : '▼') + '</span>';
       if (item.predBuff > 0 && FACTION_INFO[faction].mechanic === 'cycle')
@@ -86,6 +88,7 @@ function renderGrid() {
   }
   drawSynergies();
   updateGridStats();
+  renderOmens();
 }
 
 /* SVG-линии: парные синергии + цепи нежити (координаты — по открытым клеткам) */
@@ -134,7 +137,16 @@ function drawSynergies() {
 
 function updateGridStats() {
   const inc = calculateIncome();
+  let extra = '';
+  /* Активный буст «Жатва» (Жнец ★4) */
+  const b = activeAltBuff();
+  if (b.mult > 1) extra += ' · <b style="color:#ffd34d">' + b.label + '</b> (' + Math.max(0, Math.ceil(b.until - gameTime)) + 'с)';
+  /* Армия нежити (крупнейшая непрерывная цепь) */
+  if (FACTION_INFO[faction].mechanic === 'chain' && incomeCache.armyBest > 1) {
+    const am = Math.min(2, 1 + 0.015 * (incomeCache.armyBest - 1));
+    extra += ' · Армия: <b>' + incomeCache.armyBest + '</b> (×' + am.toFixed(2) + ')';
+  }
   $('gridStats').innerHTML = 'Активных звеньев: <b>' + countLinks() + '</b>' +
     ' · Уникальных пар: <b>' + currentDiversity() + '</b> (+' + Math.round((incomeCache.diversityMult - 1) * 100) + '%)' +
-    ' · Доход: <b>+' + inc.toFixed(2) + '/сек</b>';
+    ' · Доход: <b>+' + inc.toFixed(2) + '/сек</b>' + extra;
 }

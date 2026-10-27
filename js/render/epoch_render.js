@@ -28,25 +28,13 @@ function renderEpochMenu() {
       '<span class="er-icon">' + icon + '</span><span class="er-txt"><b>Эпоха ' + e + ':</b> ' + txt +
       '<br><small>' + thr + (unlockedNow ? '' : ' · впереди') + '</small></span></div>';
   }
-  /* Секция Алтаря: текущий размер + покупка следующего нечётного шага (пункты 7-8 ТЗ) */
-  const nextSize = altarNextSize();
-  let altarHtml;
-  if (!nextSize) {
-    altarHtml = '<div class="up"><b>🧱 Алтарь: ' + playableSize + '×' + playableSize + '</b><br><small>Максимальный размер достигнут.</small></div>';
-  } else if (nextSize <= epochMaxSize(epoch)) {
-    const cost = altarUpgradeCost();
-    altarHtml = '<div class="up"><b>🧱 Алтарь ' + playableSize + '×' + playableSize + ' → ' + nextSize + '×' + nextSize + '</b>' +
-      '<br><small>Новые клетки по краям, карты сохранят позиции.</small>' +
-      '<button class="mini" id="altarUpBtn" ' + (crystals >= cost ? '' : 'disabled') + '>' + fmtShort(cost) + ' 💎</button></div>';
-  } else {
-    let ue = 3;
-    while (epochMaxSize(ue) < nextSize) ue++;
-    altarHtml = '<div class="up"><b>🧱 Алтарь: ' + playableSize + '×' + playableSize + '</b><br><small>Расширение до ' + nextSize + '×' + nextSize + ' откроется в Эпохе ' + ue + '</small></div>';
-  }
+  const sizeNote = playableSize >= GRID_SIZE ? 'Поле максимального размера (9×9).'
+    : 'Размер поля сейчас ' + playableSize + '×' + playableSize + ' · вырастет до ' + epochMaxSize(epoch + 1) + '×' + epochMaxSize(epoch + 1) + ' при переходе в Эпоху ' + (epoch + 1) + ' (бесплатно).';
   $('epochBody').innerHTML =
     '<div class="res">Текущая Эпоха: <b>' + epoch + '</b> · ' + FACTION_INFO[faction].epochTitle + ' · фракция: <b>' + FACTION_INFO[faction].name + '</b></div>' +
     '<div class="goal"><span>Прогресс: ' + fmtShort(p.earned) + ' / ' + fmtShort(p.threshold) + ' 💎</span><i style="width:' + Math.floor(p.pct * 100) + '%"></i><em>' + Math.floor(p.pct * 100) + '%</em></div>' +
-    '<h3>🧱 Алтарь</h3><div class="ups">' + altarHtml + '</div>' +
+    '<div class="up"><b>🧱 Поле Алтаря: ' + playableSize + '×' + playableSize + '</b><br><small>' + sizeNote + '</small></div>' +
+    milHtml() +
     '<h3>Разблокировки</h3>' + list +
     '<h3>🔱 Печати: ' + fmt(seals) + '</h3>' +
     '<div class="ups">' + SEALS_SHOP.map(s => {
@@ -59,11 +47,39 @@ function renderEpochMenu() {
     '<div class="btn-row"><button class="btn btn-take" id="epochGoBtn" style="max-width:none" ' + (canEpochUp() ? '' : 'disabled') + '>' +
     (canEpochUp() ? '⚔ НАЧАТЬ НОВУЮ ЭПОХУ → +' + epochSealsGain(epoch) + ' 🔱' : 'Порог не достигнут (' + Math.floor(p.pct * 100) + '%)') + '</button></div>';
 
-  const altarBtn = $('altarUpBtn');
-  if (altarBtn) altarBtn.onclick = buyAltarUpgrade;
   $('epochBody').querySelectorAll('[data-seal]').forEach(b => b.onclick = () => { buySeal(b.dataset.seal); renderEpochMenu(); });
   const go = $('epochGoBtn');
   if (go && canEpochUp()) go.onclick = () => { close_('epochModal'); confirmEpochUp(); };
+}
+
+/* Вехи забега в Меню Эпохи */
+function milHtml() {
+  let rows = '';
+  MIL_FRACS.forEach((f, i) => {
+    const done = i < milestoneIdx, cur = i === milestoneIdx;
+    rows += '<div class="epoch-row ' + (done ? 'on' : 'off') + (cur ? ' cur' : '') + '">' +
+      '<span class="er-icon">' + (done ? '🏅' : cur ? '⏳' : '▫️') + '</span><span class="er-txt"><b>Веха ' + (f * 100) + '%</b> — ' + milLabel(MIL_REWARDS[i]) +
+      (done ? ' · выполнена' : cur ? ' · <b>текущая</b>' : '') + '</span></div>';
+  });
+  return '<h3>🏅 Вехи забега</h3>' + rows;
+}
+
+/* ---------------- Модал Реликвий ---------------- */
+function openRelics() {
+  mk('relicsModal',
+    '<h2>⚒ Реликвии</h2>' +
+    '<div class="res">Вечные артефакты: НЕ сбрасываются с Эпохами. Найдено: <b>' + RELICS_OWNED.size + ' / ' + RELICS.length + '</b></div>' +
+    '<div id="relicGrid"></div>' +
+    '<div class="flavor">Источники: этажи Арены, боссы, крупный выигрыш в казино, гарантия ★5, Эпохи 3/5/7 и Знамения на Алтаре.</div>' +
+    '<div class="btn-row"><button class="btn btn-take" id="relicsX">Закрыть</button></div>', 560);
+  $('relicsX').onclick = () => close_('relicsModal');
+  $('relicGrid').innerHTML = RELICS.map(r => {
+    const own = hasRelic(r.id);
+    return '<div class="relic-card ' + (own ? 'own' : 'locked') + '">' +
+      '<span class="relic-ic">' + (own ? r.icon : '❓') + '</span>' +
+      '<span><b>' + (own ? r.name : '???') + '</b><br><small>' + (own ? r.desc : 'Источник: ' + r.src) + '</small></span></div>';
+  }).join('');
+  open_('relicsModal');
 }
 
 /* Окно-предупреждение перед сбросом (пункт 1 ТЗ) */

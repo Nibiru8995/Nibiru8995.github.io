@@ -1,9 +1,20 @@
 'use strict';
 /* ============================================================
    ЛОГИКА: АРЕНА (logic/arena.js)
-   Пункт 7 ТЗ: HP врагов растёт ×1.6 за этаж, награды — только
-   ×1.28 (см. data/arena.js). Контр-множителей НЕТ (пункт 5 ТЗ).
+   Арена ВЫГОДНА: награды ×1.5/этаж (data/arena.js), боссы дают
+   ТРОФЕЙ (карту ★3), а павшие бойцы ВСЕГДА возвращаются после
+   боя — карты больше не теряются навсегда.
    ============================================================ */
+
+/* Вернуть павших в бой и восстановить HP (победа/поражение/отступ) */
+function reviveFighters() {
+  Object.keys(arenaState.fallen || {}).forEach(id => {
+    const n = arenaState.fallen[id];
+    if (n && CARDS[id]) fighters[id] = (fighters[id] || 0) + n;
+    delete arenaState.fallen[id];
+  });
+  Object.keys(fighters).forEach(id => { fighterHpState[id] = fighterHp(CARDS[id].rarity) * fighters[id]; });
+}
 
 function arenaDmg() {
   let d = 0;
@@ -12,7 +23,8 @@ function arenaDmg() {
     const n = Math.ceil((fighterHpState[id] || 0) / fighterHp(c.rarity));
     d += fighterDmg(c.rarity) * n;
   }
-  return Math.round(d * altarPower());
+  /* «Клык Тирана» (реликвия): атака +15% */
+  return Math.round(d * altarPower() * (hasRelic('fang') ? 1.15 : 1));
 }
 function calcTotalDamage() { return arenaDmg(); }
 function calcTotalHp() {
@@ -67,6 +79,8 @@ function advanceArenaRoom() {
     arenaState.room = 1;
     arenaState.cleared = Array(ARENA.roomsPerFloor).fill(false);
     arenaState.status = 'Этаж ' + arenaState.floor + '. Новые противники!';
+    /* Реликвия за каждые 3 этажа Арены */
+    if (arenaState.floor % 3 === 0) setTimeout(() => grantRandomRelic(), 700);
   }
   arenaState.enemy = generateArenaEnemy(arenaState.floor, arenaState.room);
   updateArenaUI();
@@ -103,14 +117,15 @@ function arenaFightClick() {
 function arenaRetreat() {
   if (!arenaState.fighting) return;
   arenaState.fighting = false;
-  arenaState.status = 'Вы отступили. Враг сохранил HP, выжившие бойцы сохранили HP.';
+  reviveFighters();
+  arenaState.status = 'Вы отступили. Враг сохранил HP, бойцы полностью восстановлены.';
   updateArenaUI(); renderFighters();
 }
 
 function runArenaCombat() {
   const enemy = arenaState.enemy;
   if (!enemy) { arenaState.fighting = false; updateArenaUI(); return; }
-  const enemyDmg = Math.max(10, Math.round(enemy.maxHp * 0.03));
+  const enemyDmg = Math.max(10, Math.round(enemy.maxHp * 0.015));
   let heroCd = 0.5, enemyCd = 1.0, last = performance.now();
 
   function tick(now) {
@@ -133,32 +148,49 @@ function runArenaCombat() {
           const per = fighterHp(CARDS[targetId].rarity);
           const u = Math.ceil(fighterHpState[targetId] / per);
           if (u < fighters[targetId]) {
-            arenaState.status = CARDS[targetId].name + ': потеряно ' + (fighters[targetId] - u);
-            stats.arenaDeaths += fighters[targetId] - u;
+            const lost = fighters[targetId] - u;
+            /* Павшие юниты вернутся после боя (reviveFighters) — карты не теряются */
+            arenaState.fallen = arenaState.fallen || {};
+            arenaState.fallen[targetId] = (arenaState.fallen[targetId] || 0) + lost;
+            arenaState.status = CARDS[targetId].name + ': выбыло ' + lost + ' (вернутся после боя)';
+            stats.arenaDeaths += lost;
             fighters[targetId] = u;
           }
-          if (u <= 0) { stats.arenaDeaths += 0; delete fighters[targetId]; delete fighterHpState[targetId]; }
+          if (u <= 0) { delete fighters[targetId]; delete fighterHpState[targetId]; }
           renderFighters();
         }
         enemyCd = 1.2; updateArenaUI();
       }
       if (enemy.hp <= 0) {
         arenaState.fighting = false; enemy.hp = 0;
-        const reward = arenaReward(arenaState.floor, arenaState.room);
+        const reward = Math.round(arenaReward(arenaState.floor, arenaState.room) * (hasRelic('ring') ? 1.15 : 1));
         crystals += reward; runEarned += reward;
-        if (enemy.isBoss) stats.bossKills++;
+        sfx(enemy.isBoss ? 'boss' : 'win');
+        fxFxAt($('arenaPanel'), enemy.isBoss ? ['#c9a227', '#fff', '#ff6b6b'] : ['#80e060', '#fff'], enemy.isBoss ? 40 : 18);
+        if (enemy.isBoss) {
+          stats.bossKills++;
+          /* ТРОФЕЙ БОССА: бесплатная карта ★3 текущей фракции */
+          const pool = POOL_3.filter(id => CARDS[id].faction === faction);
+          if (pool.length) {
+            const gid = pick(pool);
+            inventory[gid] = (inventory[gid] || 0) + 1;
+            discovered.add(gid);
+            setTimeout(() => toast('👑 Трофей босса: «' + CARDS[gid].name + '» добавлена в коллекцию!'), 400);
+          }
+        }
         arenaState.cleared[arenaState.room - 1] = true;
-        arenaState.status = enemy.isBoss ? '🏆 БОСС ПОВЕРЖЕН! +' + fmt(reward) + ' 💎' : 'Победа! +' + fmt(reward) + ' 💎';
-        Object.keys(fighters).forEach(id => { fighterHpState[id] = fighterHp(CARDS[id].rarity) * fighters[id]; });
-        updateArenaUI(); updateHUD(); renderFighters(); checkAchievements();
+        arenaState.status = enemy.isBoss ? '🏆 БОСС ПОВЕРЖЕН! +' + fmt(reward) + ' 💎 + трофей!' : 'Победа! +' + fmt(reward) + ' 💎';
+        reviveFighters();
+        updateArenaUI(); updateHUD(); renderFighters(); renderCollection(); checkAchievements();
         if (arenaAuto) setTimeout(tryStartAutoBattle, 600);
         return;
       }
       if (calcTotalHp() <= 0) {
         arenaState.fighting = false;
-        arenaState.status = 'Поражение. Бойцы восстановлены, враг тоже — усильтесь!';
+        arenaState.status = 'Поражение, но армия цела: бойцы восстановлены. Усильтесь и повторите!';
+        sfx('lose');
         enemy.hp = enemy.maxHp;
-        Object.keys(fighters).forEach(id => { fighterHpState[id] = fighterHp(CARDS[id].rarity) * fighters[id]; });
+        reviveFighters();
         if (arenaAuto) { arenaAuto = false; const chk = $('arenaAutoChk'); if (chk) chk.checked = false; }
         updateArenaUI(); renderFighters();
         return;

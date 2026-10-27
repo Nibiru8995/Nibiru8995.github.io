@@ -1,9 +1,8 @@
 'use strict';
 /* ============================================================
    ДАННЫЕ: АРЕНА (data/arena.js)
-   Пункт 7 ТЗ: HP растёт быстро (×1.6 за этаж), награды — медленно
-   (×1.28). Арена упирается в стену через 5-10 этажей и НЕ является
-   бесконечным источником дохода. Баланс меняем ТОЛЬКО здесь.
+   Арена ВЫГОДНА: награды растут ×1.5 за этаж (HP ×1.6) — стена
+   мягкая, а боссы дают трофей (карту ★3). Баланс меняем ТОЛЬКО здесь.
    ============================================================ */
 
 const ARENA = {
@@ -11,10 +10,11 @@ const ARENA = {
   /* Базовое HP по номеру комнаты */
   roomHp: [100, 180, 320, 550, 1200],
   bossHpMult: 1.5,
-  /* Кривые: HP ×1.6 за этаж, награда ×1.28 (стена на 5-10 этажах) */
+  /* Кривые: HP ×1.6 за этаж, награда ×1.5 (стена мягкая) */
   hpGrowth: 1.6,
-  rewardBase: [40, 55, 75, 100, 150],
-  rewardGrowth: 1.28,
+  rewardBase: [80, 120, 170, 230, 330],
+  rewardGrowth: 1.5,
+  bossRewardMult: 3,
   bossNames: ['Владыка Бездны', 'Кровавый Титан', 'Древний Ужас', 'Пожиратель Миров', 'Тёмный Владыка', 'Король Мёртвых'],
   enemyNames: {
     undead: 'Скелет-стражник', demon: 'Одержимый легионер',
@@ -32,6 +32,6 @@ function arenaEnemyHp(floor, room) {
 function arenaReward(floor, room) {
   const isBoss = room === ARENA.roomsPerFloor;
   let rew = Math.round(ARENA.rewardBase[room - 1] * Math.pow(ARENA.rewardGrowth, floor - 1));
-  if (isBoss) rew = Math.round(rew * 2.2);
+  if (isBoss) rew = Math.round(rew * ARENA.bossRewardMult);
   return rew;
 }

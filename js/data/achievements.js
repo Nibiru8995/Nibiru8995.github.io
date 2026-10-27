@@ -13,7 +13,7 @@ const ACHIEVEMENTS = [
   { id: 'roll_1000',    name: 'Палец-кристалл',           desc: 'Сделать 1000 круток за Эпоху',          check: () => runRolls >= 1000 },
   { id: 'place_15',     name: 'Гид по могилам',           desc: 'Поставить 15 карт на Алтарь за Эпоху',  check: () => stats.placed >= 15 },
   { id: 'grid_25',      name: 'Застройщик',               desc: 'Иметь 25 карт на Алтаре одновременно',  check: () => cardsOnGrid() >= 25 },
-  { id: 'altar_5',      name: 'Расширитель',              desc: 'Расширить Алтарь до 5×5',               check: () => playableSize >= 5 },
+  { id: 'altar_5',      name: 'Расширитель',              desc: 'Начать Эпоху 3 — поле само вырастет до 5×5', check: () => epoch >= 3 },
   { id: 'rich_1m',      name: 'Кристальный магнат',       desc: 'Иметь 1 000 000 💎 разом',              check: () => crystals >= 1e6 },
   { id: 'rich_100m',    name: 'Скупой рыцарь',            desc: 'Иметь 100 000 000 💎 разом',            check: () => crystals >= 1e8 },
   { id: 'first_death',  name: 'Первый в очереди на смерть', desc: 'Потерять бойца на Арене',             check: () => stats.arenaDeaths >= 1 },
@@ -29,5 +29,12 @@ const ACHIEVEMENTS = [
   { id: 'syn_12',       name: 'Синергетик-теоретик',      desc: 'Активировать 12 уникальных пар синергий одновременно', check: () => currentDiversity() >= 12 },
   { id: 'hour_1',       name: 'Зачем мы это делаем?',     desc: 'Играть 1 час суммарно',                 check: () => gameTime >= 3600 },
   { id: 'cleaner',      name: 'Чистильщик',               desc: 'Удалить 10 карт с Алтаря',              check: () => stats.deleted >= 10 },
-  { id: 'floor_10',     name: 'Ветеран этажей',           desc: 'Достичь 10 этажа Арены',                check: () => stats.floorMax >= 10 }
+  { id: 'floor_10',     name: 'Ветеран этажей',           desc: 'Достичь 10 этажа Арены',                check: () => stats.floorMax >= 10 },
+  { id: 'relic_1',      name: 'Первый артефакт',          desc: 'Получить Реликвию',                     check: () => RELICS_OWNED.size >= 1 },
+  { id: 'relic_5',      name: 'Коллекционер древностей',  desc: 'Собрать 5 Реликвий',                    check: () => RELICS_OWNED.size >= 5 },
+  { id: 'omen_10',      name: 'Ловец знамений',           desc: 'Собрать 10 Знамений на Алтаре',         check: () => (stats.omens || 0) >= 10 },
+  { id: 'omen_50',      name: 'Око Бездны',               desc: 'Собрать 50 Знамений на Алтаре',         check: () => (stats.omens || 0) >= 50 },
+  { id: 'mil_3',        name: 'Веха за вехой',            desc: 'Выполнить все 3 вехи за один забег',    check: () => milestoneIdx >= 3 },
+  { id: 'free_10',      name: 'Бесплатный сыр',           desc: 'Получить 10 бесплатных круток с вех',    check: () => (stats.freeRolls || 0) >= 10 },
+  { id: 'speed_4',      name: 'Скользящее время',         desc: 'Поиграть на ускорении ×4',              check: () => stats.speedUsed >= 1 }
 ];

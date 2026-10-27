@@ -1,0 +1,147 @@
+'use strict';
+/* ============================================================
+   FX (render/fx.js) — canvas-слой частиц ПОВЕРХ интерфейса.
+   Всплески при установке карт, конфетти Эпох, лучи ★5-дропа,
+   всплывающие цифры наград, тлеющие угольки в меню.
+   Требует реальный canvas (в тестовой песочнице отключается сам).
+   Настройка: fxOn (мета).
+   ============================================================ */
+
+let fxCanvas = null, fxCtx = null, fxParts = [], fxTexts = [], fxOn = true;
+
+function fxInit() {
+  try {
+    fxCanvas = document.getElementById('fxCanvas');
+    if (!fxCanvas) return;
+    fxCtx = fxCanvas.getContext('2d');
+    if (!fxCtx || !fxCtx.setTransform) { fxCanvas = null; fxCtx = null; return; }
+    fxResize();
+    window.addEventListener('resize', fxResize);
+    requestAnimationFrame(fxLoop);
+  } catch (e) { fxCanvas = null; fxCtx = null; }
+}
+function fxResize() {
+  if (!fxCanvas) return;
+  fxCanvas.width = window.innerWidth || 800;
+  fxCanvas.height = window.innerHeight || 600;
+}
+function fxOK() { return !!fxCtx && fxOn; }
+
+/* Всплеск квадратиков-частиц (пиксель-вайб) */
+function fxBurst(x, y, colors, n, speed, life) {
+  if (!fxOK()) return;
+  n = n || 18; speed = speed || 3.2; life = life || 42;
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, v = speed * (0.35 + Math.random() * 0.9);
+    fxParts.push({
+      x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1.2,
+      g: 0.09, life, maxLife: life, s: 2 + Math.random() * 3,
+      col: colors[(Math.random() * colors.length) | 0]
+    });
+  }
+}
+/* Всплывающий текст (+123 💎) */
+function fxFloat(x, y, text, color, size) {
+  if (!fxOK()) return;
+  fxTexts.push({ x, y, text, color: color || '#ffd34d', size: size || 18, life: 80, maxLife: 80 });
+}
+/* Конфетти сверху экрана */
+function fxConfetti(n) {
+  if (!fxOK()) return;
+  const cols = ['#c9a227', '#e8c060', '#a070b0', '#80e060', '#80e0ff', '#ff6b6b', '#fff'];
+  const W = fxCanvas.width;
+  n = n || 90;
+  for (let i = 0; i < n; i++) {
+    fxParts.push({
+      x: Math.random() * W, y: -10 - Math.random() * 120,
+      vx: (Math.random() - 0.5) * 2.2, vy: 1.5 + Math.random() * 2.6, g: 0.03,
+      life: 160 + Math.random() * 80, maxLife: 220, s: 2.5 + Math.random() * 3.5,
+      col: cols[(Math.random() * cols.length) | 0]
+    });
+  }
+}
+/* Ударная волна (кольцо) */
+function fxShockwave(x, y, color) {
+  if (!fxOK()) return;
+  for (let i = 0; i < 26; i++) {
+    const a = (i / 26) * Math.PI * 2;
+    fxParts.push({ x, y, vx: Math.cos(a) * 7, vy: Math.sin(a) * 7, g: 0, life: 34, maxLife: 34, s: 3.5, col: color || '#e8c060', ring: true });
+  }
+}
+/* Лучи для ★5-дропа */
+function fxBeams(x, y, colors) {
+  if (!fxOK()) return;
+  colors = colors || ['#fff', '#e8c060', '#c9a227'];
+  for (let i = 0; i < 14; i++) {
+    const a = Math.random() * Math.PI * 2, v = 5 + Math.random() * 6;
+    fxParts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: -0.02, life: 55, maxLife: 55, s: 3 + Math.random() * 4, col: colors[i % colors.length], beam: true });
+  }
+  fxBurst(x, y, colors, 30, 4, 60);
+}
+/* Угольки в главном меню */
+function fxMenuEmbers() {
+  if (!fxOK()) return;
+  const W = fxCanvas.width, H = fxCanvas.height;
+  for (let i = 0; i < 2; i++) {
+    fxParts.push({
+      x: Math.random() * W, y: H + 8, vx: (Math.random() - 0.5) * 0.7, vy: -(0.5 + Math.random() * 1.1),
+      g: -0.004, life: 240, maxLife: 240, s: 1.5 + Math.random() * 2.5,
+      col: Math.random() < 0.7 ? '#ff8c3a' : '#e8c060'
+    });
+  }
+}
+
+/* Центр DOM-элемента → всплеск */
+function fxFxAt(el, colors, n) {
+  if (!fxOK() || !el || !el.getBoundingClientRect) return;
+  const b = el.getBoundingClientRect();
+  fxBurst(b.left + b.width / 2, b.top + b.height / 2, colors, n);
+}
+/* Центр клетки грида */
+function fxAtCell(r, c, colors, n, kind) {
+  if (!fxOK()) return;
+  const n0 = playableSize, st = gridStart();
+  const cell = gridEl.children[(r - st) * n0 + (c - st)];
+  if (!cell) return;
+  const b = cell.getBoundingClientRect();
+  const x = b.left + b.width / 2, y = b.top + b.height / 2;
+  if (kind === 'wave') fxShockwave(x, y, colors && colors[0]);
+  else fxBurst(x, y, colors || ['#e8c060', '#c9a227', '#fff'], n, kind === 'big' ? 5 : 3.2);
+}
+
+let fxLastEmber = 0;
+function fxLoop(now) {
+  if (fxCtx) {
+    fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
+    /* угольки в меню */
+    if (document.getElementById('menu') && document.getElementById('menu').classList.contains('show')) {
+      if (now - fxLastEmber > 90) { fxMenuEmbers(); fxLastEmber = now; }
+    }
+    for (let i = fxParts.length - 1; i >= 0; i--) {
+      const p = fxParts[i];
+      p.life--;
+      if (p.life <= 0) { fxParts.splice(i, 1); continue; }
+      p.x += p.vx; p.y += p.vy; p.vy += p.g;
+      const a = Math.min(1, p.life / (p.maxLife * 0.5));
+      fxCtx.globalAlpha = a;
+      fxCtx.fillStyle = p.col;
+      const s = p.ring ? p.s * (p.life / p.maxLife) + 0.5 : p.s;
+      fxCtx.fillRect(p.x - s / 2, p.y - s / 2, s, s);
+    }
+    for (let i = fxTexts.length - 1; i >= 0; i--) {
+      const t = fxTexts[i];
+      t.life--; t.y -= 0.8;
+      if (t.life <= 0) { fxTexts.splice(i, 1); continue; }
+      fxCtx.globalAlpha = Math.min(1, t.life / (t.maxLife * 0.6));
+      fxCtx.font = 'bold ' + t.size + 'px monospace';
+      fxCtx.textAlign = 'center';
+      fxCtx.strokeStyle = 'rgba(0,0,0,0.8)';
+      fxCtx.lineWidth = 3;
+      fxCtx.strokeText(t.text, t.x, t.y);
+      fxCtx.fillStyle = t.color;
+      fxCtx.fillText(t.text, t.x, t.y);
+    }
+    fxCtx.globalAlpha = 1;
+  }
+  requestAnimationFrame(fxLoop);
+}

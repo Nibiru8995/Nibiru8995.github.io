@@ -2,12 +2,23 @@
 /* ============================================================
    ЛОГИКА: ЭКОНОМИКА (logic/economy.js)
    Доход карт: парные синергии с ЗАТУХАНИЕМ повторов (анти-спам),
-   «Хор синергий» за разнообразие, формации, фракционные механики.
-   Цена крутки — rollCost(). Рендер отсюда не вызывается.
+   «Хор синергий» за разнообразие, формации, фракционные механики,
+   АРМИЯ нежити (непрерывные цепи) и уникальные механики ★4/★5
+   (SPECIALS в data/cards.js). Рендер отсюда не вызывается.
    ============================================================ */
 
 const NEI4 = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 const NEI8 = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1], [1, -1], [1, 1]];
+
+/* Контекст расчёта (заполняется в computeIncome, читается factionMult) */
+let INC_CTX = { uniquePairs: 0, c4Cells: [], hasC9: false, armyMult: {} };
+
+/* Активный временный буст (Жнец «Жатва», Вехи, Ускорение): ставит logic */
+function activeAltBuff() {
+  if (altBuff && altBuff.until > gameTime) return altBuff; /* gameTime — единое игровое время (скорость ×2/×4 учтена) */
+  if (altBuff) { altBuff.mult = 1; altBuff.label = ''; }
+  return altBuff || { mult: 1, until: 0, label: '' };
+}
 
 function rebuildPlayableMask() {
   playableMask = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(false));
@@ -57,12 +68,25 @@ function formation(r, c) {
   return m;
 }
 
-/* ---------------- ФРАКЦИОННЫЕ МЕХАНИКИ ---------------- */
+/* ---------------- ФРАКЦИОННЫЕ МЕХАНИКИ + спец-механики ★4/★5 ---------------- */
+function radius2(r, c) {
+  const res = [];
+  for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) {
+    if (!dr && !dc) continue;
+    const nr = r + dr, nc = c + dc;
+    if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE && grid[nr][nc]) res.push({ r: nr, c: nc, item: grid[nr][nc] });
+  }
+  return res;
+}
+
 function factionMult(r, c, card, item) {
   const mech = FACTION_INFO[faction].mechanic;
   if (mech === 'chain') {
-    const nUndead = getNeighbors(r, c).filter(n => CARDS[n.item.cardId].faction === 'undead').length;
-    let m = 1 + 0.06 * nUndead;
+    /* «Скованный Смертью» (★5): рядом с ним цепь считается в радиусе 2 */
+    const longChain = getNeighbors(r, c).some(n => n.item.cardId === 'u11');
+    const src = longChain ? radius2(r, c) : getNeighbors(r, c);
+    const nUndead = src.filter(n => CARDS[n.item.cardId].faction === 'undead').length;
+    let m = 1 + 0.08 * nUndead;
     let nearAnchor = false, radius2Count = 0;
     for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) {
       const nr = r + dr, nc = c + dc;
@@ -82,14 +106,43 @@ function factionMult(r, c, card, item) {
       const formMult = (o + d) >= 8 ? 3.0 : d >= 4 ? 2.2 : o >= 4 ? 2.0 : 1.0;
       return formMult * (1 + 0.15 * (o + d));
     }
-    return getNeighbors(r, c).some(n => n.item.cardId === 'c4') ? 1.15 : 1;
-  }
-  if (mech === 'cycle') {
-    let m = 1 + (item.predBuff || 0);
-    if (card.id === 'b7') m *= 1 + 0.25 * getNeighbors(r, c).filter(n => CARDS[n.item.cardId].faction === 'beast').length;
+    let m = getNeighbors(r, c).some(n => n.item.cardId === 'c4') ? 1.15 : 1;
+    /* «Верховный Жрец» (★4): аура Алтарей достаёт до 2-го круга (+7.5%) */
+    if (INC_CTX.hasC9 && m === 1) {
+      const twoAway = INC_CTX.c4Cells.some(([ar, ac]) => Math.abs(ar - r) <= 2 && Math.abs(ac - c) <= 2) &&
+        !INC_CTX.c4Cells.some(([ar, ac]) => Math.abs(ar - r) <= 1 && Math.abs(ac - c) <= 1);
+      if (twoAway) m = 1.075;
+    }
+    /* «Инквизитор» (★4): +25% за каждую уникальную пару на поле */
+    if (card.id === 'c8') m *= Math.min(5, 1 + 0.25 * INC_CTX.uniquePairs);
     return m;
   }
-  if (mech === 'chaos') return item.mutBuff || 1;
+  if (mech === 'cycle') {
+    let m = 1 + (item.predBuff || 0) + (item.hydraBuff || 0) + (item.grifBuff || 0);
+    if (card.id === 'b7') m *= 1 + 0.25 * getNeighbors(r, c).filter(n => CARDS[n.item.cardId].faction === 'beast').length;
+    /* «Гидра» (★4): +10% за соседа-хищника */
+    if (card.id === 'b9') m *= 1 + 0.10 * getNeighbors(r, c).filter(n => isPredator(CARDS[n.item.cardId])).length;
+    /* «Василиск» (★4): +10% за окаменевшего соседа (зверь ниже редкостью) */
+    if (card.id === 'b8') m *= 1 + 0.10 * getNeighbors(r, c).filter(n => {
+      const pc = CARDS[n.item.cardId];
+      return pc.faction === 'beast' && pc.rarity < card.rarity;
+    }).length;
+    return m;
+  }
+  if (mech === 'chaos') {
+    let m = item.mutBuff || 1;
+    const nb = getNeighbors(r, c);
+    /* «Адский Рыцарь» (★4): +6% за соседа-демона */
+    if (card.id === 'd8') m *= 1 + 0.06 * nb.filter(n => CARDS[n.item.cardId].faction === 'demon').length;
+    /* «Князь Тьмы» (★5): +10% за демона в радиусе 2 */
+    if (card.id === 'd10') m *= 1 + 0.10 * radius2(r, c).filter(n => CARDS[n.item.cardId].faction === 'demon').length;
+    /* «Кузня Хаоса» Балрога: накопленный бафф */
+    if (card.id === 'd9' && item.balrBuff) m *= item.balrBuff;
+    /* «Голод» (★5): +40% за соседа-демона, соседи теряют 10% */
+    if (card.id === 'd11') m *= 1 + 0.40 * nb.filter(n => CARDS[n.item.cardId].faction === 'demon').length;
+    else if (nb.some(n => n.item.cardId === 'd11')) m *= 0.9;
+    return m;
+  }
   return 1;
 }
 
@@ -97,6 +150,21 @@ function factionMult(r, c, card, item) {
 function computeIncome() {
   const usage = {};           // pairIndex -> число активаций
   const cellActs = {};        // 'r,c' -> [{pair, factor}]
+
+  /* Спец-флаги ★4/★5: Лич (снятие затухания), Голос Пустоты, Глаз Бездны */
+  let hasLich = false, hasVoice = false, hasEye = false;
+  const lichAdj = new Set();
+  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
+    const it = grid[r][c]; if (!it) continue;
+    if (it.cardId === 'u8') {
+      hasLich = true;
+      lichAdj.add(r + ',' + c);
+      getNeighbors(r, c).forEach(n => lichAdj.add(n.r + ',' + n.c));
+    }
+    else if (it.cardId === 'c11') hasVoice = true;
+    else if (it.cardId === 'c10') hasEye = true;
+  }
+
   for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
     const it = grid[r][c]; if (!it) continue;
     /* прямые соседи вправо и вниз, чтобы звено считалось один раз */
@@ -107,15 +175,59 @@ function computeIncome() {
       if (!pair) continue;
       const idx = SYNERGY_PAIRS.indexOf(pair);
       usage[idx] = (usage[idx] || 0) + 1;
-      const factor = SYN_DR[Math.min(usage[idx] - 1, SYN_DR.length - 1)];
+      let factor = SYN_DR[Math.min(usage[idx] - 1, SYN_DR.length - 1)];
       const key = r + ',' + c, key2 = nr + ',' + nc;
+      /* «Лич» (★4): звенья рядом с ним НЕ затухают */
+      if (hasLich && (lichAdj.has(key) || lichAdj.has(key2))) factor = 1;
+      /* «Голос Пустоты» (★5): затухание у культистов не ниже ×0.5 */
+      else if (hasVoice && CARDS[it.cardId].faction === 'cultist' && CARDS[grid[nr][nc].cardId].faction === 'cultist')
+        factor = Math.max(0.5, factor);
       (cellActs[key] = cellActs[key] || []).push({ pair, factor });
       (cellActs[key2] = cellActs[key2] || []).push({ pair, factor });
     }
   }
   const uniquePairs = Object.keys(usage).length;
-  const diversityMult = 1 + Math.min(DIVERSITY_CAP, DIVERSITY_BONUS * uniquePairs);
+  /* «Глаз Бездны» (★5): Хор вдвое сильнее; «Око Культиста» (реликвия): +2% за пару */
+  const divBonus = (DIVERSITY_BONUS + (hasRelic('eye') ? 0.02 : 0)) * (hasEye ? 2 : 1);
+  const divCap = DIVERSITY_CAP * (hasEye ? 2 : 1);
+  const diversityMult = 1 + Math.min(divCap, divBonus * uniquePairs);
   const sealMult = 1 + 0.25 * sealLv.rich;
+
+  /* Контекст для factionMult: уникальные пары, клетки Алтарей, Жрец */
+  INC_CTX.uniquePairs = uniquePairs;
+  INC_CTX.c4Cells = [];
+  INC_CTX.hasC9 = false;
+  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
+    const it = grid[r][c]; if (!it) continue;
+    if (it.cardId === 'c4') INC_CTX.c4Cells.push([r, c]);
+    else if (it.cardId === 'c9') INC_CTX.hasC9 = true;
+  }
+
+  /* АРМИЯ нежити: бонус за размер непрерывной компоненты (BFS по 4-соседству) */
+  INC_CTX.armyMult = {};
+  let armyBest = 0;
+  if (FACTION_INFO[faction].mechanic === 'chain') {
+    const compId = {};
+    for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
+      const it = grid[r][c];
+      if (!it || CARDS[it.cardId].faction !== 'undead') continue;
+      if (compId[r + ',' + c]) continue;
+      /* BFS новой компоненты */
+      const cells = [], q = [[r, c]];
+      compId[r + ',' + c] = 1;
+      while (q.length) {
+        const [cr, cc] = q.pop(); cells.push([cr, cc]);
+        getNeighbors(cr, cc).forEach(n => {
+          if (CARDS[n.item.cardId].faction !== 'undead' || compId[n.r + ',' + n.c]) return;
+          compId[n.r + ',' + n.c] = 1; q.push([n.r, n.c]);
+        });
+      }
+      const am = Math.min(2, 1 + 0.015 * (cells.length - 1));
+      if (cells.length > armyBest) armyBest = cells.length;
+      cells.forEach(([cr, cc]) => { INC_CTX.armyMult[cr + ',' + cc] = am; });
+    }
+  }
+
   const perCell = {};
   let total = 0;
   for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
@@ -127,12 +239,16 @@ function computeIncome() {
       if (a.pair.kind === 'flat') flat += a.pair.value * it.stacks * a.factor;
       else mult *= 1 + (a.pair.value - 1) * a.factor;
     });
-    const val = (card.baseRate * it.stacks * mult + flat) * factionMult(r, c, card, it) * formation(r, c);
+    const val = (card.baseRate * it.stacks * mult + flat) * factionMult(r, c, card, it) * formation(r, c) * (INC_CTX.armyMult[r + ',' + c] || 1);
     perCell[r + ',' + c] = val;
     total += val;
   }
   total *= diversityMult * sealMult;
-  incomeCache = { total, uniquePairs, perCell, pairUsage: usage, diversityMult };
+  /* «Свеча Забвения» (реликвия): +10% дохода */
+  total *= 1 + (hasRelic('candle') ? 0.10 : 0);
+  /* «Жнец Душ» (★4): периодический буст «Жатва» на весь доход */
+  total *= activeAltBuff().mult;
+  incomeCache = { total, uniquePairs, perCell, pairUsage: usage, diversityMult, armyBest, armyMultOf: INC_CTX.armyMult };
   return total;
 }
 
