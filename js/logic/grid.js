@@ -9,7 +9,9 @@
 
 function linked(a, b) { return SYNERGY_PAIRS.some(p => pairApplies(a, b, p)); }
 
-/* Подсветка клеток при выборе карты */
+/* Подсветка клеток при выборе карты.
+   У культистов (фидбек 3) звено живо только в ритуале — подсвечиваем
+   клетки рядом с Алтарём/ритуалом, иначе игрок поставит «в пустоту». */
 function hintClass(r, c) {
   if (!placingMode || !pendingCard) return '';
   const p = CARDS[pendingCard]; const it = grid[r][c];
@@ -19,7 +21,14 @@ function hintClass(r, c) {
     return '';
   }
   const ns = getNeighbors(r, c);
-  return ns.some(n => linked(p, CARDS[n.item.cardId])) ? 'good-spot' : '';
+  if (!ns.some(n => linked(p, CARDS[n.item.cardId]))) return '';
+  if (FACTION_INFO[faction].mechanic === 'formation' && p.faction === 'cultist') {
+    /* рядом с ритуалом (в т.ч. с самим Алтарём) — живое звено; иначе звено будет мертво */
+    if (INC_CTX.ritual.size === 0) return 'syn-hint'; /* Алтаря на поле нет ещё — не пугаем игрока */
+    const nearRitual = ns.some(n => INC_CTX.ritual.has(n.r + ',' + n.c));
+    return nearRitual ? 'good-spot' : 'dead-spot';
+  }
+  return 'good-spot';
 }
 
 function cancelSelection() {

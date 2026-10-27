@@ -3,16 +3,15 @@
    ЛОГИКА: ГАЧА (logic/gacha.js)
    Пункт 6 ТЗ: пул зависит от Эпохи (старт — только ★1/★3),
    pity-система 20/80. Пункт 11 ТЗ: моно-фракция — гача выдаёт
-   ТОЛЬКО карты текущей фракции. Спрайтов нет — только эмодзи.
+   ТОЛЬКО карты текущей фракции.
+   РЕЛИКВИИ 2.0 (фидбек 7-8): с Эпохи 2 каждая крутка с шансом 2%
+   приносит РЕЛИКВИЮ вместо карты (гарантия за 30 круток без неё).
    ============================================================ */
 
 /* Шансы: 45% ★1, 50% ★3, 4% ★4, 1% ★5 (если редкость открыта).
-   Понижение ★4 (пункт 10 ТЗ): базовый шанс 4% (было 9-10%),
-   pity ★4 поднят с 10 до 20 — фактическая доля ★4 упала примерно с ~15% до ~8%.
-   Позже пул разбавится картами поддержки — баланс пересмотрим.
-   «Череп Владыки» (реликвия): малый pity 20 → 15. */
+   Понижение ★4: базовый шанс 4%, pity ★4 = 20. */
 function unlockedRarities() { return epochRarities(epoch); }
-function pity4Max() { return hasRelic('skull') ? 15 : 20; }
+function pity4Max() { return 20; }
 
 function rollRarity() {
   const unlocked = unlockedRarities();
@@ -30,10 +29,9 @@ function rollRarity() {
   else if (hitSmallPity) t = best; /* малый pity на ранних Эпохах даёт ★3 */
   else t = r < 45 ? 1 : 3;
 
-  /* Счётчики сбрасываются, когда гарантия сработала по своей шкале.
-     ★5 из гачи приносит РЕЛИКВИЮ (пока есть несобранные) */
+  /* Счётчики сбрасываются, когда гарантия сработала по своей шкале */
   if (t >= 4 || hitSmallPity) pity4 = 0;
-  if (t === 5 || hitBigPity) { pity5 = 0; if (t === 5) grantRandomRelic(); }
+  if (t === 5 || hitBigPity) pity5 = 0;
   return t;
 }
 
@@ -53,12 +51,15 @@ function rollOne() {
 }
 
 /* Сыграть count круток. free=true — крутка за счёт вехи (без денег).
-   Возвращает {cards: [id, ...]} */
+   Возвращает {cards: [id, ...], relics: [id, ...]} */
 function performRolls(count, free) {
   const cost = free ? 0 : rollCost() * count;
   if (crystals < cost) return null;
   crystals -= cost;
-  const cards = [];
-  for (let i = 0; i < count; i++) cards.push(rollOne());
-  return { cards };
+  const cards = [], relics = [];
+  for (let i = 0; i < count; i++) {
+    if (relicRollDue()) relics.push(rollRelicId());
+    else { relicPity++; cards.push(rollOne()); }
+  }
+  return { cards, relics };
 }

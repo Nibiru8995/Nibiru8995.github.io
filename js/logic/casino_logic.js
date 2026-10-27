@@ -52,17 +52,7 @@ function rec(game, net) {
   o.net += net;
   if (net < 0) stats.casinoLost += -net;
   sfx(net > 0 ? 'win' : 'lose');
-  if (net > 0) {
-    /* «Кости Игрока» (реликвия): выигрыши +10% сверху */
-    if (hasRelic('dice')) {
-      const bonus = Math.round(net * 0.10);
-      crystals += bonus;
-      toast('🎲 Кости Игрока: +' + fmt(bonus) + ' 💎 сверху');
-    }
-    /* Крупный выигрыш может принести РЕЛИКВИЮ */
-    if (net >= MIN_BET * 20 && Math.random() < 0.15) grantRandomRelic();
-    updateHUD();
-  }
+  if (net > 0) updateHUD();
 }
 
 /* Проверка ставки (все игры казино) */

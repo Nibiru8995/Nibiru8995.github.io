@@ -27,23 +27,21 @@ function epochResetSummary() {
 /* ---------------- Подготовка нового забега внутри выбранной фракции ---------------- */
 function doEpochUp(newFaction) {
   let gain = epochSealsGain(epoch);
-  /* «Корона Забытых» (реликвия): +25% печатей */
-  if (hasRelic('crown')) gain = Math.round(gain * 1.25);
   seals += gain; sealsTotal += gain;
   epoch++;
   maxEpoch = Math.max(maxEpoch, epoch);
   faction = newFaction;
-  /* Реликвии за Эпохи 3 / 5 / 7 */
-  if (epoch === 3 || epoch === 5 || epoch === 7) setTimeout(() => grantRandomRelic(), 900);
   /* Шоу Эпохи */
   sfx('epoch');
   fxConfetti(130);
   fxShockwave(window.innerWidth / 2, window.innerHeight / 2, '#e8c060');
 
-  /* Сброс забега. Поле растёт АВТОМАТИЧЕСКИ (бесплатно) до размера Эпохи */
-  const baseCr = 2500 * (hasRelic('bag') ? 2 : 1);
+  /* Сброс забега. Поле растёт АВТОМАТИЧЕСКИ (бесплатно) до размера Эпохи.
+     РЕЛИКВИИ 2.0: реликвии ВЕЧНЫЕ, но расстановка по столбцам сбрасывается
+     (геометрия поля другая) */
+  const baseCr = 2500;
   crystals = baseCr + (sealLv.impulse > 0 ? 2500 * Math.pow(2, sealLv.impulse) : 0);
-  grid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
+  relicSlots = {};
   playableSize = epochMaxSize(epoch);
   rebuildPlayableMask();
   inventory = {}; pendingCard = null;
@@ -55,10 +53,12 @@ function doEpochUp(newFaction) {
   milestoneIdx = 0; freeRolls = 0;
   omens = []; omenTimer = 60; renderOmens();
 
-  /* Стартовый набор фракции: 2 разных ★1 и 1 ★3 */
+  /* Стартовый набор фракции: 2 разных ★1 и 1 ★3 (у культистов — гарантированный
+     Ритуальный Алтарь: без него их механика не видна) */
   const startR1 = POOL_1.filter(id => CARDS[id].faction === faction);
   const startR3 = POOL_3.filter(id => CARDS[id].faction === faction);
-  const gift = drawDistinct(startR1, 2).concat([pick(startR3)]);
+  const alt = faction === 'cultist' ? 'c4' : pick(startR3);
+  const gift = drawDistinct(startR1, 2).concat([alt]);
   gift.forEach(id => { inventory[id] = (inventory[id] || 0) + 1; discovered.add(id); });
 
   computeIncome();

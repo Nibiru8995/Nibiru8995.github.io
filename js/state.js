@@ -99,7 +99,7 @@ function buildRunSave() {
     playableSize, inventory, fighters, fighterHpState,
     arena: { floor: arenaState.floor, room: arenaState.room, cleared: arenaState.cleared, fallen: arenaState.fallen },
     pity4, pity5, runRolls, runEarned, runTime, sealLv,
-    milestoneIdx, freeRolls
+    milestoneIdx, freeRolls, relicSlots, relicPity
   };
 }
 function saveRun() {
@@ -121,14 +121,20 @@ function loadRun() {
     runRolls = d.runRolls ?? 0; runEarned = d.runEarned ?? 0; runTime = d.runTime ?? 0;
     if (d.sealLv) Object.assign(sealLv, d.sealLv);
     milestoneIdx = d.milestoneIdx ?? 0; freeRolls = d.freeRolls ?? 0;
+    /* РЕЛИКВИИ 2.0: расстановка по столбцам (только валидные реликвии/колонки) */
+    relicSlots = {};
+    if (d.relicSlots) for (const k in d.relicSlots) {
+      const c = +k;
+      if (c >= 0 && c < GRID_SIZE && relicById(d.relicSlots[k])) relicSlots[c] = d.relicSlots[k];
+    }
+    relicPity = d.relicPity ?? 0;
     let need = 3;
     for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++)
       if (grid[r][c]) need = Math.max(need, 2 * Math.max(Math.abs(4 - r), Math.abs(4 - c)) + 1);
     playableSize = clamp(Math.max(playableSize, need), 3, 9);
     rebuildPlayableMask();
-    /* Оффлайн-доход: 50% за время до 1 часа (Реликвия «Часы Времени»: 75% до 2 часов) */
-    const capS = hasRelic('hourglass') ? 7200 : 3600;
-    const rate = hasRelic('hourglass') ? 0.75 : 0.5;
+    /* Оффлайн-доход: 50% за время до 1 часа */
+    const capS = 3600, rate = 0.5;
     const gain = calculateIncome() * Math.min((Date.now() - (d.t || Date.now())) / 1000, capS) * rate;
     if (gain >= 1) {
       crystals += gain; runEarned += gain;
@@ -154,7 +160,8 @@ function loadMeta() {
     if (d.stats) stats = Object.assign(stats, d.stats);
     guideSeen = d.guide || {};
     gameTime = d.totalTime ?? 0;
-    RELICS_OWNED = new Set(d.relics || []);
+    /* РЕЛИКВИИ 2.0: фильтруем id старой системы (candle/ring/…) — валидны только новые */
+    RELICS_OWNED = new Set((d.relics || []).filter(id => relicById(id)));
     soundOn = d.sfx ?? true; musicOn = d.music ?? true;
     fxOn = d.fx ?? true; speedMult = d.speedMult ?? 1;
   } catch (e) { }

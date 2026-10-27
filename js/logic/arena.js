@@ -23,8 +23,7 @@ function arenaDmg() {
     const n = Math.ceil((fighterHpState[id] || 0) / fighterHp(c.rarity));
     d += fighterDmg(c.rarity) * n;
   }
-  /* «Клык Тирана» (реликвия): атака +15% */
-  return Math.round(d * altarPower() * (hasRelic('fang') ? 1.15 : 1));
+  return Math.round(d * altarPower());
 }
 function calcTotalDamage() { return arenaDmg(); }
 function calcTotalHp() {
@@ -79,8 +78,6 @@ function advanceArenaRoom() {
     arenaState.room = 1;
     arenaState.cleared = Array(ARENA.roomsPerFloor).fill(false);
     arenaState.status = 'Этаж ' + arenaState.floor + '. Новые противники!';
-    /* Реликвия за каждые 3 этажа Арены */
-    if (arenaState.floor % 3 === 0) setTimeout(() => grantRandomRelic(), 700);
   }
   arenaState.enemy = generateArenaEnemy(arenaState.floor, arenaState.room);
   updateArenaUI();
@@ -163,7 +160,7 @@ function runArenaCombat() {
       }
       if (enemy.hp <= 0) {
         arenaState.fighting = false; enemy.hp = 0;
-        const reward = Math.round(arenaReward(arenaState.floor, arenaState.room) * (hasRelic('ring') ? 1.15 : 1));
+        const reward = Math.round(arenaReward(arenaState.floor, arenaState.room));
         crystals += reward; runEarned += reward;
         sfx(enemy.isBoss ? 'boss' : 'win');
         fxFxAt($('arenaPanel'), enemy.isBoss ? ['#c9a227', '#fff', '#ff6b6b'] : ['#80e060', '#fff'], enemy.isBoss ? 40 : 18);

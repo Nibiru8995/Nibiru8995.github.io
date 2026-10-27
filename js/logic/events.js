@@ -19,7 +19,7 @@ function tickOmens(dt) {
   if (omens.length !== before) renderOmens();
   if (omenTimer <= 0) {
     spawnOmen();
-    omenTimer = (95 + Math.random() * 55) * (hasRelic('heart') ? 0.75 : 1);
+    omenTimer = 95 + Math.random() * 55;
   }
   /* обратный отсчёт на иконках */
   omens.forEach(o => {
@@ -40,10 +40,7 @@ function spawnOmen() {
       if (!omens.some(o => o.r === r && o.c === c)) open.push([r, c]);
   if (!open.length) return;
   const [r, c] = pick(open);
-  let type;
-  const roll = Math.random();
-  if (roll < 0.14 && unownedRelics().length) type = 'relic';
-  else type = roll < 0.62 ? 'vein' : 'haste';
+  const type = Math.random() < 0.6 ? 'vein' : 'haste';
   omens.push({ r, c, type, until: gameTime + 18 });
   renderOmens();
   sfx('omen');
@@ -56,31 +53,22 @@ function collectOmen(o) {
   if (idx < 0) return;
   omens.splice(idx, 1);
   stats.omens = (stats.omens || 0) + 1;
-  const colors = { vein: ['#80e0ff', '#e8c060', '#fff'], haste: ['#80e060', '#fff', '#e8c060'], relic: ['#c9a227', '#e8c060', '#fff'] }[o.type];
+  const colors = { vein: ['#80e0ff', '#e8c060', '#fff'], haste: ['#80e060', '#fff', '#e8c060'] }[o.type];
   fxAtCell(o.r, o.c, colors, 26, 'wave');
   if (o.type === 'vein') {
-    /* Ребаланс (пункт 6 ТЗ): было +90 сек дохода И ВЕСЬ объём в порог Эпохи (двойная польза).
-       Теперь +45 сек дохода, и только половина уходит в прогресс Эпохи. */
+    /* Ребаланс (пункт 6 ТЗ): +45 сек дохода, и только половина уходит в прогресс Эпохи. */
     const gain = Math.max(400, Math.round(calculateIncome() * 45));
     crystals += gain; runEarned += Math.round(gain * 0.5);
     fxAtCell(o.r, o.c, colors, 0);
     fxFloatFromCell(o.r, o.c, '+' + fmtShort(gain) + ' 💎', '#80e0ff');
     sfx('win');
-  } else if (o.type === 'haste') {
-    /* Ребаланс (пункт 6 ТЗ): было плоское ×3 на 30с — к поздним Эпохам незаметно.
-       Теперь множитель и длительность растут с Эпохой: ×3..×6, 30..60 сек. */
+  } else {
+    /* Ребаланс (пункт 6 ТЗ): множитель и длительность растут с Эпохой: ×3..×6, 30..60 сек. */
     const mult = Math.min(6, 3 + Math.floor((epoch - 1) / 3));
     const dur = Math.min(60, 30 + epoch * 3);
     altBuff = { mult, until: gameTime + dur, label: '⏱ УСКОРЕНИЕ ×' + mult };
     fxFloatFromCell(o.r, o.c, '×' + mult + ' НА ' + dur + 'с', '#80e060');
     sfx('relic');
-  } else {
-    if (!grantRandomRelic()) {
-      /* Все реликвии собраны: компенсация поднята (было ×240, минимум 2000) */
-      const gain = Math.max(3000, Math.round(calculateIncome() * 300));
-      crystals += gain; runEarned += Math.round(gain * 0.5);
-      fxFloatFromCell(o.r, o.c, '+' + fmtShort(gain) + ' 💎', '#e8c060');
-    } else fxFloatFromCell(o.r, o.c, 'РЕЛИКВИЯ!', '#c9a227', 22);
   }
   updateHUD(); saveRun(); checkAchievements();
   renderOmens();
@@ -102,7 +90,7 @@ function renderOmens() {
   if (!layer) return;
   layer.innerHTML = '';
   const n = playableSize, st = gridStart();
-  const meta = { vein: ['💠', 'Жила Бездны'], haste: ['⏱', 'Ускорение'], relic: ['🔮', 'Реликварий'] };
+  const meta = { vein: ['💠', 'Жила Бездны'], haste: ['⏱', 'Ускорение'] };
   omens.forEach(o => {
     const cell = gridEl.children[(o.r - st) * n + (o.c - st)];
     if (!cell) return;
