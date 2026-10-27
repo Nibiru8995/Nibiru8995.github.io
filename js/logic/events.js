@@ -84,13 +84,20 @@ function fxFloatFromCell(r, c, text, color, size) {
   fxFloat(b.left + b.width / 2, b.top, text, color, size);
 }
 
-/* Отрисовка слоя знамений поверх грида */
+/* Отрисовка слоя знамений поверх грида (спрайты + эмодзи-фолбэк) */
+const OMEN_META = {
+  vein:  { icon: '💠', name: 'Жила Бездны', img: 'assets/fx/omen_vein.png' },
+  haste: { icon: '⏱', name: 'Ускорение',  img: 'assets/fx/omen_haste.png' }
+};
+function omenIconHTML(type) {
+  const m = OMEN_META[type];
+  return '<img class="omen-img" src="' + m.img + '" alt="" onerror="cardArtFail(this,\'omen-ic\',\'' + m.icon + '\')">';
+}
 function renderOmens() {
   const layer = document.getElementById('omenLayer');
   if (!layer) return;
   layer.innerHTML = '';
   const n = playableSize, st = gridStart();
-  const meta = { vein: ['💠', 'Жила Бездны'], haste: ['⏱', 'Ускорение'] };
   omens.forEach(o => {
     const cell = gridEl.children[(o.r - st) * n + (o.c - st)];
     if (!cell) return;
@@ -101,8 +108,8 @@ function renderOmens() {
     d.id = 'omen-' + o.r + '-' + o.c;
     d.style.left = (b.left - w.left + b.width / 2 - 21) + 'px';
     d.style.top = (b.top - w.top + b.height / 2 - 21) + 'px';
-    d.innerHTML = '<span class="omen-ic">' + meta[o.type][0] + '</span><span class="omen-sec">18</span>';
-    d.title = meta[o.type][1] + ' — кликни!';
+    d.innerHTML = omenIconHTML(o.type) + '<span class="omen-sec">18</span>';
+    d.title = OMEN_META[o.type].name + ' — кликни!';
     d.onclick = ev => { ev.stopPropagation(); collectOmen(o); };
     layer.appendChild(d);
   });

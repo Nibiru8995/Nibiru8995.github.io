@@ -81,12 +81,14 @@ function openRelics() {
   Object.keys(relicSlots).forEach(col => { usedBy[relicSlots[col]] = +col + 1; });
   $('relicGrid').innerHTML = RELICS.map(r => {
     const own = hasRelic(r.id);
-    return '<div class="relic-card ' + (own ? 'own' : 'locked') + '">' +
-      '<span class="relic-ic">' + (own ? r.icon : '❓') + '</span>' +
+    const mine = r.faction === faction;
+    return '<div class="relic-card ' + (own ? 'own' : 'locked') + (!own && mine ? ' droppable' : '') + '">' +
+      relicArtHTML(r, 'relic-card-img', '') +
       '<span><b>' + (own ? r.name : '???') + '</b> ' + (own ? '★'.repeat(r.rarity) : '') +
+      '<small style="color:#8a7a5a"> · ' + FACTION_INFO[r.faction].name + '</small>' +
       (own ? '<br><small style="color:#8fc87f">✅ ' + r.buff + '</small><br><small style="color:#e08a8a">❌ ' + r.debuff + '</small>' +
-        (usedBy[r.id] ? '<br><small style="color:#c9a227">📍 стоит в столбце ' + usedBy[r.id] + '</small>' : '<br><small>не установлена</small>')
-        : '<small>Источник: гача (Эпоха ' + RELIC_DROP_EPOCH + '+)</small>') + '</span></div>';
+        (usedBy[r.id] ? '<br><small style="color:#c9a227">📍 стоит в столбце ' + usedBy[r.id] + '</small>' : '<br><small>' + (mine ? 'не установлена' : 'другая эпоха') + '</small>')
+        : '<small>' + (mine ? 'Источник: гача (Эпоха ' + RELIC_DROP_EPOCH + '+)' : 'набор другой фракции') + '</small>') + '</span></div>';
   }).join('');
   open_('relicsModal');
 }

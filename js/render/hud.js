@@ -120,6 +120,23 @@ function showCardTooltip(e, card, income, r, c) {
   if (sp) mechLine += '<div class="tt-synergy"><div class="tt-synergy-title">✦ Особенность</div><span style="color:#e8c060">' + sp + '</span></div>';
   /* ФИДБЕК 3+6: культисты — статус ритуала + НАГЛЯДНЫЕ схемы формаций */
   mechLine += cultistTooltipHTML(card, r, c);
+  /* ФИДБЕК 4: звери — РАЦИОН вместо синергий */
+  if (card.diet && DIET_INFO[card.diet]) {
+    mechLine += '<div class="tt-synergy"><div class="tt-synergy-title" style="color:' + DIET_INFO[card.diet].color + '">Рацион: ' + DIET_INFO[card.diet].name + '</div>' +
+      DIET_INFO[card.diet].desc + '</div>';
+  }
+  /* ФИДБЕК 5: демоны — текущие угли Хаоса */
+  if (card.faction === 'demon' && r !== undefined && FACTION_INFO[faction].mechanic === 'chaos') {
+    const it = grid[r][c];
+    if (it) {
+      const em = it.embers || 0;
+      let st = em >= 5 ? '<span style="color:#ff6040">ВЗРЫВ на следующем тике!</span>' :
+        '<span style="color:#ff9030">Углей: ' + em + '/5</span>' + (em < 2 ? ' — нужен толпа (2+ демона рядом)' : '');
+      if (it.boomUntil > gameTime) st += ' · <span style="color:#ff5030">ПЕРЕГРЕВ ×2 (' + Math.ceil(it.boomUntil - gameTime) + 'с)</span>';
+      if (it.mutBuff && it.mutBuff !== 1) st += ' · накоплено ×' + it.mutBuff.toFixed(2);
+      mechLine += '<div class="tt-synergy"><div class="tt-synergy-title">Угли Хаоса</div>' + st + '</div>';
+    }
+  }
   tooltip.innerHTML =
     '<div class="tt-name">' + cardArtHTML(card, 'tt-art', '') + '<span>' + card.name + '</span></div>' +
     '<div class="tt-stars">' + '★'.repeat(card.rarity) + ' · ' + FACTION_INFO[card.faction].name + '</div>' +
@@ -166,19 +183,25 @@ function cultistTooltipHTML(card, r, c) {
     if (card.id === 'c4') {
       const f = INC_CTX.formActive[r + ',' + c];
       status = '<div class="tt-synergy"><div class="tt-synergy-title">Ритуал</div>' +
-        (f ? '<span style="color:#8fc87f">АКТИВНА ФОРМАЦИЯ: ' + f.label + ' (×' + f.mult.toFixed(1) + ')</span>'
+        (f ? '<span style="color:#8fc87f">АКТИВНА ФОРМАЦИЯ: ' + f.label + ' ×' + f.mult.toFixed(1) +
+          (f.keyBonus > 0 ? ' + ключевые +' + f.keyBonus.toFixed(2) + ' = ×' + f.formMult.toFixed(2) : '') + '</span>' +
+          (f.keysUsed && f.keysUsed.length ? '<br><small style="color:#e8c060">Усиливают: ' + f.keysUsed.join(', ') + '</small>' : '')
            : '<span style="color:#e8c060">Формации нет — обложите Алтарь культистами</span>') + '</div>';
     } else {
       const inR = INC_CTX.ritual.has(r + ',' + c);
-      status = '<div class="tt-synergy"><div class="tt-synergy-title">Ритуал</div>' +
-        (inR ? '<span style="color:#8fc87f">✔ В РИТУАЛЕ — звенья живы' + (INC_CTX.formCell[r + ',' + c] ? ' · участник формации (+25%)' : '') + '</span>'
-             : '<span style="color:#e08a8a">✖ ВНЕ РИТУАЛА — звенья МЕРТВЫ. Соедините цепочку культистов с Алтарём</span>') + '</div>';
+      const form = INC_CTX.formCell[r + ',' + c];
+      let inner;
+      if (form) inner = '<span style="color:#8fc87f">✔ В ФОРМАЦИИ «' + form.label + '» — множитель ×' + form.formMult.toFixed(2) + ' (усиливает ритуал' + (RITUAL_KEYS[card.id] ? ' +БОНУС КЛЮЧА' : '') + ')</span>';
+      else if (inR) inner = '<span style="color:#e8c060">В РИТУАЛЕ (вне формации) — множитель ×1.0' + (getNeighbors(r, c).some(n => n.item.cardId === 'c4') ? ' +15% за соседство с Алтарём' : '') + '</span>';
+      else if (INC_CTX.ritualOuter.has(r + ',' + c)) inner = '<span style="color:#a08860">Второй круг (×1.075)</span>';
+      else inner = '<span style="color:#e08a8a">✖ ВНЕ РИТУАЛА — доход почти нулевой (×0.15). Соедините цепочку культистов с Алтарём и постройте формацию</span>';
+      status = '<div class="tt-synergy"><div class="tt-synergy-title">Ритуал</div>' + inner + '</div>';
     }
   }
   const activeKind = card.id === 'c4' && r !== undefined && INC_CTX.formActive[r + ',' + c] ? INC_CTX.formActive[r + ',' + c].kind : null;
   return status + '<div class="tt-synergy"><div class="tt-synergy-title">🔯 Формации ритуала</div>' +
     '<div class="rt-row">' + defs.map(d => '<div class="rt-item" title="' + d.hint + '">' + formationDiagram(d.kind, activeKind) + '<small>' + d.label + '</small></div>').join('') + '</div>' +
-    '<small style="color:#a08860">🔶 Алтарь · фиолетовый — культист · тёмный — пусто</small></div>';
+    '<small style="color:#a08860">🔶 Алтарь · фиолетовый — культист · тёмный — пусто · КЛЮЧЕВЫЕ КАРТЫ (★3 Кровавый Маг, ★4 Жрец/Инквизитор, ★5 Око/Голос) в формации усиливают её множитель</small></div>';
 }
 function roleText(card) {
   return {
@@ -187,6 +210,8 @@ function roleText(card) {
     anchor: '🔱 Якорь — сердце фракционной механики',
     healer: '💚 Поддержка — лечит и стабилизирует',
     burst: '💥 Взрывной — крупный доход в правильной связке',
-    predator: '🦁 Хищник — поедает соседних зверей, получает бафф'
+    predator: '🦁 Хищник — кусает соседних травоядных/падальщиков, растёт на охоте',
+    flora: '🌳 Флора — кормит травоядных и лечит хищников, замыкая круговорот',
+    scav: '🦅 Падальщик — жиреет с каждой чужой смерти рядом'
   }[card.role] || '—';
 }

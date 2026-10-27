@@ -115,8 +115,8 @@ function showDropRelic(relicId) {
   el.className = 'big-card';
   el.style.setProperty('--glow', RELIC_RARITY_COLOR(r.rarity));
   el.style.setProperty('--cardBg', r.rarity === 5 ? '#4a3010' : r.rarity === 4 ? '#3a2040' : '#202a40');
-  el.innerHTML = '<span style="font-size:64px;line-height:1.2;filter:drop-shadow(0 0 12px ' + RELIC_RARITY_COLOR(r.rarity) + ')">' + r.icon + '</span>';
-  $('dropStars').textContent = '★'.repeat(r.rarity) + ' · РЕЛИКВИЯ';
+  el.innerHTML = relicArtHTML(r, 'drop-art', '');
+  $('dropStars').textContent = '★'.repeat(r.rarity) + ' · РЕЛИКВИЯ · ' + FACTION_INFO[r.faction].name;
   $('dropName').textContent = r.name;
   $('dropEffect').innerHTML = '<span style="color:#8fc87f">✅ ' + r.buff + '</span><br><span style="color:#e08a8a">❌ ' + r.debuff + '</span>' +
     '<br><small style="color:#a08860">Ставится в слот столбца Алтаря (Эпоха ' + RELIC_SLOT_EPOCH + '+)</small>';
@@ -165,7 +165,7 @@ function showMulti(cardIds, count, relicIds) {
       }).join('');
     const relRows = relics.map(id => {
       const r = relicById(id);
-      return '<div class="multi-row relic"><span class="mr-art" style="font-size:18px">' + r.icon + '</span>' +
+      return '<div class="multi-row relic">' + relicArtHTML(r, 'mr-art', '') +
         '<span class="mr-name">' + r.name + ' <i>' + '★'.repeat(r.rarity) + ' РЕЛИКВИЯ</i></span><span class="mr-count">×1</span></div>';
     }).join('');
     rev.innerHTML = '<div class="multi-summary">' + rows + relRows + '</div>';
@@ -189,7 +189,7 @@ function showMulti(cardIds, count, relicIds) {
       el.className = 'multi-item relic';
       el.style.setProperty('--glow', RELIC_RARITY_COLOR(r.rarity));
       el.style.setProperty('--cardBg', r.rarity === 5 ? '#4a3010' : '#3a2040');
-      el.innerHTML = '<span class="multi-art" style="font-size:30px;line-height:52px">' + r.icon + '</span>' +
+      el.innerHTML = relicArtHTML(r, 'multi-art', '') +
         '<span class="multi-name">' + r.name + '</span>';
       el.title = '✅ ' + r.buff + '\n❌ ' + r.debuff;
       rev.appendChild(el);
