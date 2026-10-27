@@ -7,22 +7,23 @@
 
 /*
   ЭПОХИ (пункт 1 ТЗ). Разблокировки чередуются:
-  грид/гача/старт-фракция → казино + арена → расширение Алтаря → механика → фракция → ...
+  грид/гача/старт-фракция → арена → Алтарь+★4 → казино → фракция → механика → ...
   threshold — сколько 💎 нужно ЗАРАБОТАТЬ ЗА ТЕКУЩИЙ ЗАБЕГ (runEarned),
   чтобы открыть следующую эпоху. seals — сколько ПЕЧАТЕЙ даёт переход.
+  Баланс: пороги снижены ×1.5 (эпохи короче).
 */
 const EPOCHS = [
   { unlock: 'Алтарь 3×3 + Гача ★1/★3 + фракция «Нежить»',  threshold: 0,             seals: 0 },
-  { unlock: '⚔ Боевая арена',                              threshold: 25000,         seals: 4 },
-  { unlock: '🎰 Казино + расширение Алтаря → 5×5',          threshold: 150000,        seals: 5 },
-  { unlock: 'Новая механика: ★4 в пуле гачи',              threshold: 700000,        seals: 6 },
-  { unlock: 'Фракция «Культисты»',                         threshold: 3000000,       seals: 7 },
-  { unlock: 'Расширение Алтаря → 7×7',                     threshold: 15000000,      seals: 8 },
-  { unlock: 'Новая механика: ★5 в пуле гачи',              threshold: 70000000,      seals: 9 },
-  { unlock: 'Фракция «Звери»',                             threshold: 300000000,     seals: 10 },
-  { unlock: 'Расширение Алтаря → 9×9 (максимум)',          threshold: 1500000000,    seals: 11 },
-  { unlock: 'Фракция «Демоны»',                            threshold: 7000000000,    seals: 12 },
-  { unlock: 'Эпохи Бесконечности: пороги растут ×5',       threshold: 30000000000,   seals: 14 }
+  { unlock: '⚔ Боевая арена',                              threshold: 17000,         seals: 4 },
+  { unlock: 'Алтарь 5×5 + ★4 в пуле гачи',                 threshold: 100000,        seals: 5 },
+  { unlock: '🎰 Казино',                                   threshold: 470000,        seals: 6 },
+  { unlock: 'Фракция «Культисты»',                         threshold: 2000000,       seals: 7 },
+  { unlock: 'Расширение Алтаря → 7×7',                     threshold: 10000000,      seals: 8 },
+  { unlock: 'Новая механика: ★5 в пуле гачи',              threshold: 47000000,      seals: 9 },
+  { unlock: 'Фракция «Звери»',                             threshold: 200000000,     seals: 10 },
+  { unlock: 'Расширение Алтаря → 9×9 (максимум)',          threshold: 1000000000,    seals: 11 },
+  { unlock: 'Фракция «Демоны»',                            threshold: 4700000000,    seals: 12 },
+  { unlock: 'Эпохи Бесконечности: пороги растут ×5',       threshold: 20000000000,   seals: 14 }
 ];
 
 function epochUnlockText(e) { return EPOCHS[Math.min(e, EPOCHS.length) - 1].unlock; }
@@ -52,15 +53,15 @@ function epochMaxSize(e) {
 const ALTAR_COST = { 5: 25000, 7: 2000000, 9: 200000000 };
 
 /* ---- Казино и Боевая арена открываются в РАЗНЫХ Эпохах ----
-   Арена — Эпоха 2 (бой), Казино — Эпоха 3 (развлечения после 5×5). */
-const CASINO_EPOCH = 3;
+   Арена — Эпоха 2 (бой), Казино — Эпоха 4 (после Алтаря 5×5 и ★4). */
+const CASINO_EPOCH = 4;
 const ARENA_EPOCH = 2;
 function epochHasCasino(e) { return e >= CASINO_EPOCH; }
 function epochHasArena(e) { return e >= ARENA_EPOCH; }
 
 function epochRarities(e) {
   const r = [1, 3];
-  if (e >= 4) r.push(4);
+  if (e >= 3) r.push(4); /* ★4 заметно раньше: уже в Эпохе 3 */
   if (e >= 7) r.push(5);
   return r;
 }
