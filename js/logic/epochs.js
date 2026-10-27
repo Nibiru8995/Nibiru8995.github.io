@@ -37,11 +37,14 @@ function doEpochUp(newFaction) {
   fxShockwave(window.innerWidth / 2, window.innerHeight / 2, '#e8c060');
 
   /* Сброс забега. Поле растёт АВТОМАТИЧЕСКИ (бесплатно) до размера Эпохи.
+     ФИКС (фидбек 4): КАРТЫ УБИРАЮТСЯ С ПОЛЯ — раньше грид не очищался и
+     старые карты оставались стоять (и даже приносили доход) в новой Эпохе.
      РЕЛИКВИИ 2.0: реликвии ВЕЧНЫЕ, но расстановка по столбцам сбрасывается
      (геометрия поля другая) */
   const baseCr = 2500;
   crystals = baseCr + (sealLv.impulse > 0 ? 2500 * Math.pow(2, sealLv.impulse) : 0);
-  relicSlots = {};
+  relicSlots = {}; relicPity = 0;
+  grid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
   playableSize = epochMaxSize(epoch);
   rebuildPlayableMask();
   inventory = {}; pendingCard = null;
@@ -65,7 +68,7 @@ function doEpochUp(newFaction) {
   buildGrid();
   cancelSelection();
   renderCollection(); renderFighters(); initArena(); updateHUD(); updateBanner(); updateEpochUI();
-  toast('⚜ ' + FACTION_INFO[faction].epochTitle + ': +' + gain + ' 🔱');
+  toast('⚜ ЭПОХА ' + epoch + ' «' + epochName(epoch) + '» · ' + FACTION_INFO[faction].epochTitle + ': +' + gain + ' 🔱');
   checkAchievements();
   queueFeatureGuides(); /* онбординг: новая фракция/фичи этой Эпохи */
 }

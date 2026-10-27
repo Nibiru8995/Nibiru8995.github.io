@@ -52,20 +52,25 @@ function updateHUD() {
   $('rollAll').querySelector('.cost').textContent = 'макс. круток';
 
   /* Большая кнопка ЭПОХИ над Алтарём: всегда кликабельна —
-     порог достигнут → начать новую, нет → открыть Меню Эпохи */
+     порог достигнут → Вознесение, нет → открыть Меню Эпохи.
+     ФИДБЕК (раунд 4): у Эпох есть имена-темы, кнопка показывает
+     прогресс порога ЗАЛИВКОЙ фона (--pct) и честный текст
+     «НАЧАТЬ ЭПОХУ N» вместо прежнего «начать новую». */
   const p = epochProgress();
   const upBtn = $('epochUpBtn');
   const label = $('epochBtnLabel');
-  if (label) label.textContent = '⚜ ЭПОХА ' + epoch;
+  if (label) label.innerHTML = '⚜ ЭПОХА ' + epoch + ' <small class="ep-name">· ' + epochName(epoch) + '</small>';
   if (canEpochUp()) {
     upBtn.disabled = false;
     upBtn.classList.remove('notready');
     upBtn.classList.add('ready');
-    upBtn.querySelector('.cost').textContent = '⚔ НАЧАТЬ ЭПОХУ ' + (epoch + 1) + ' → +' + epochSealsGain(epoch) + ' 🔱';
+    upBtn.style.setProperty('--pct', '100%');
+    upBtn.querySelector('.cost').textContent = '⚔ НАЧАТЬ ЭПОХУ ' + (epoch + 1) + ' «' + epochName(epoch + 1) + '» → +' + epochSealsGain(epoch) + ' 🔱';
   } else {
     upBtn.disabled = false;
     upBtn.classList.remove('ready');
     upBtn.classList.add('notready');
+    upBtn.style.setProperty('--pct', (Math.floor(p.pct * 100)) + '%');
     upBtn.querySelector('.cost').textContent = fmtShort(p.earned) + ' / ' + fmtShort(p.threshold) + ' 💎 · ' + Math.floor(p.pct * 100) + '%';
   }
   const achvBtnCost = $('achvBtn') && $('achvBtn').querySelector('.cost');

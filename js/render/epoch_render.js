@@ -25,13 +25,13 @@ function renderEpochMenu() {
     const txt = epochUnlockText(e);
     const thr = e === 1 ? 'доступно сразу' : 'порог: ' + fmtShort(epochThreshold(e - 1)) + ' 💎 за забег';
     list += '<div class="epoch-row ' + (unlockedNow ? 'on' : 'off') + (e === epoch ? ' cur' : '') + '">' +
-      '<span class="er-icon">' + icon + '</span><span class="er-txt"><b>Эпоха ' + e + ':</b> ' + txt +
+      '<span class="er-icon">' + icon + '</span><span class="er-txt"><b>Эпоха ' + e + ' «' + epochName(e) + '»:</b> ' + txt +
       '<br><small>' + thr + (unlockedNow ? '' : ' · впереди') + '</small></span></div>';
   }
   const sizeNote = playableSize >= GRID_SIZE ? 'Поле максимального размера (9×9).'
     : 'Размер поля сейчас ' + playableSize + '×' + playableSize + ' · вырастет до ' + epochMaxSize(epoch + 1) + '×' + epochMaxSize(epoch + 1) + ' при переходе в Эпоху ' + (epoch + 1) + ' (бесплатно).';
   $('epochBody').innerHTML =
-    '<div class="res">Текущая Эпоха: <b>' + epoch + '</b> · ' + FACTION_INFO[faction].epochTitle + ' · фракция: <b>' + FACTION_INFO[faction].name + '</b></div>' +
+    '<div class="res">Текущая Эпоха: <b>' + epoch + ' «' + epochName(epoch) + '»</b> · ' + FACTION_INFO[faction].epochTitle + ' · фракция: <b>' + FACTION_INFO[faction].name + '</b></div>' +
     '<div class="goal"><span>Прогресс: ' + fmtShort(p.earned) + ' / ' + fmtShort(p.threshold) + ' 💎</span><i style="width:' + Math.floor(p.pct * 100) + '%"></i><em>' + Math.floor(p.pct * 100) + '%</em></div>' +
     '<div class="up"><b>🧱 Поле Алтаря: ' + playableSize + '×' + playableSize + '</b><br><small>' + sizeNote + '</small></div>' +
     milHtml() +
@@ -45,7 +45,7 @@ function renderEpochMenu() {
     }).join('') + '</div>' +
     '<div class="flavor">Печати остаются навсегда и ускоряют следующие Эпохи. Кристаллы, грид и карты сбрасываются при переходе.</div>' +
     '<div class="btn-row"><button class="btn btn-take" id="epochGoBtn" style="max-width:none" ' + (canEpochUp() ? '' : 'disabled') + '>' +
-    (canEpochUp() ? '⚔ НАЧАТЬ НОВУЮ ЭПОХУ → +' + epochSealsGain(epoch) + ' 🔱' : 'Порог не достигнут (' + Math.floor(p.pct * 100) + '%)') + '</button></div>';
+    (canEpochUp() ? '⚔ НАЧАТЬ ЭПОХУ ' + (epoch + 1) + ' «' + epochName(epoch + 1) + '» → +' + epochSealsGain(epoch) + ' 🔱' : 'Порог не достигнут (' + Math.floor(p.pct * 100) + '%)') + '</button></div>';
 
   $('epochBody').querySelectorAll('[data-seal]').forEach(b => b.onclick = () => { buySeal(b.dataset.seal); renderEpochMenu(); });
   const go = $('epochGoBtn');
@@ -93,16 +93,19 @@ function openRelics() {
   open_('relicsModal');
 }
 
-/* Окно-предупреждение перед сбросом (пункт 1 ТЗ) */
+/* Окно-предупреждение перед сбросом (пункт 1 ТЗ).
+   ФИДБЕК (раунд 4): никакого «начать новую» — только Вознесение
+   в КОНКРЕТНУЮ Эпоху с именем. */
 function confirmEpochUp() {
   const s = epochResetSummary();
   const gain = epochSealsGain(epoch);
   mk('epochWarn',
-    '<h2>⚜ Начать новую Эпоху?</h2>' +
-    '<div class="res">Награда: <b>+' + gain + ' 🔱</b> печатей</div>' +
+    '<h2>⚜ Вознесение: ЭПОХА ' + (epoch + 1) + ' «' + epochName(epoch + 1) + '»</h2>' +
+    '<div class="res">Награда: <b>+' + gain + ' 🔱</b> печатей' +
+    (EPOCHS[Math.min(epoch, EPOCHS.length - 1)] ? ' · откроется: ' + epochUnlockText(epoch + 1) : '') + '</div>' +
     '<div class="warn-cols"><div class="warn-col bad"><b>СБРОСИТСЯ:</b><ul>' + s.reset.map(x => '<li>' + x + '</li>').join('') + '</ul></div>' +
     '<div class="warn-col good"><b>ОСТАНЕТСЯ:</b><ul>' + s.keep.map(x => '<li>' + x + '</li>').join('') + '</ul></div></div>' +
-    '<div class="btn-row"><button class="btn btn-take" id="ewNo">Отмена</button><button class="btn btn-take" id="ewYes" style="background:#4a1010">НАЧАТЬ ЭПОХУ ' + (epoch + 1) + '</button></div>', 600);
+    '<div class="btn-row"><button class="btn btn-take" id="ewNo">Отмена</button><button class="btn btn-take" id="ewYes" style="background:#4a1010">⚔ НАЧАТЬ ЭПОХУ ' + (epoch + 1) + '</button></div>', 600);
   $('ewNo').onclick = () => close_('epochWarn');
   $('ewYes').onclick = () => { close_('epochWarn'); pickFactionAndAscend(); };
   open_('epochWarn');
