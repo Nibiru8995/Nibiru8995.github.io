@@ -18,6 +18,9 @@ function applyFeatureLocks() {
   ['bulkDup', 'bulk1', 'bulkAll'].forEach(id => { const b = $(id); if (b) b.style.display = arenaOn ? '' : 'none'; });
   const cb = $('casinoBtn');
   if (cb) cb.style.display = casinoOn ? '' : 'none';
+  /* v1.2.9: контракты скрыты в обучении/чит-режиме — прогресс там не идёт */
+  const ctb = $('contractsBtn');
+  if (ctb) ctb.style.display = noSave ? 'none' : '';
 }
 
 function updateHUD() {
@@ -83,6 +86,7 @@ function updateHUD() {
   /* Слоты реликвий над Алтарём + большая шкала ритуала (v1.2.6) */
   if (typeof renderRelicSlots === 'function') renderRelicSlots();
   if (typeof renderRitualBar === 'function') renderRitualBar();
+  if (typeof renderContractsBtn === 'function') renderContractsBtn(); /* v1.2.9: бейдж Тёмного Пакта */
 }
 
 function updateBanner() {

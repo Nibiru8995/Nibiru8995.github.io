@@ -25,6 +25,7 @@ function sellDupesOf(id, silent) {
   const gold = n * sellPriceOf(CARDS[id]);
   inventory[id] = keep;
   crystals += gold; incomeExempt += gold;
+  stats.soldGold = (stats.soldGold || 0) + gold; /* v1.2.9: счётчик для контрактов */
   if (!silent) toast('💰 Продано «' + CARDS[id].name + '» ×' + n + ' → +' + fmtShort(gold) + ' 💎 (осталось ' + keep + ')');
   return gold;
 }

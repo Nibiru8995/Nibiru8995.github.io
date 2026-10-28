@@ -54,6 +54,7 @@ function doEpochUp(newFaction) {
   altBuff = { mult: 1, until: 0, label: '' };
   ritualResonance = 0; surgeUntil = 0;
   milestoneIdx = 0; freeRolls = 0;
+  contractsInit(); /* v1.2.9: Тёмный Пакт начинается заново с каждой Эпохой */
   omens = []; omenTimer = 60; renderOmens();
 
   /* Стартовый набор фракции: пара случайных карт + ключ механики + ЗДАНИЕ:

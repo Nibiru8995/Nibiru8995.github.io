@@ -828,3 +828,38 @@ h1 { letter-spacing: 4px; }
   #epochBar .epoch-big-btn { min-height: 38px; }
   .roll-btn { min-height: 34px; }
 }
+
+/* ============================================================
+   v1.2.9 «ТЁМНЫЙ ПАКТ» — контракты, Хроники, Знамение Судьбы
+   ============================================================ */
+
+/* --- Кнопка КОНТРАКТЫ: пактовый акцент (пергамент/золото) --- */
+#contractsBtn { border-color: #7a5a24; box-shadow: inset 0 2px 0 #8a5a2a, 0 0 8px #c9a22733; }
+#contractsBtn .cost { color: #ffe080; }
+
+/* --- Модалка контрактов --- */
+.contract-row { background: linear-gradient(#241608, #120a03); border: 1px solid #4a3020; border-left: 3px solid #c9a227; border-radius: 6px; padding: 8px 10px; margin: 6px 0; display: flex; flex-direction: column; gap: 5px; }
+.contract-top { display: flex; align-items: center; gap: 8px; }
+.cr-icon { font-size: 18px; flex-shrink: 0; filter: drop-shadow(0 0 4px #c9a22766); }
+.cr-text { flex: 1; font-size: 12.5px; color: #f0e0c0; line-height: 1.3; }
+.cr-count { font-size: 12px; font-weight: bold; color: #ffe080; white-space: nowrap; }
+.cr-track { height: 10px; background: #0a0503; border: 1px solid #3a2414; border-radius: 5px; overflow: hidden; }
+.cr-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg, #7a5510, #c9a227 60%, #ffe080); box-shadow: 0 0 6px #c9a22788; transition: width .4s; }
+.cr-reward { font-size: 10.5px; color: #a08860; }
+.cr-progress-line { text-align: center; font-size: 12px; color: #d4c0a0; margin-top: 8px; }
+#contractList { max-height: 46vh; overflow-y: auto; padding: 2px; }
+
+/* --- Хроники Тьмы (в окне достижений) --- */
+#chronBox h3 { font-size: 14px; color: #d4b050; margin: 10px 0 4px; letter-spacing: 1px; }
+.chron-grid { display: flex; flex-direction: column; gap: 5px; margin: 6px 0 10px; }
+.chron-fac { display: grid; grid-template-columns: 76px 1fr 1fr 1fr 1fr; gap: 5px; align-items: center; background: #120a03; border: 1px solid #2a1a0f; border-radius: 5px; padding: 5px 7px; }
+.chron-name { font-size: 11px; font-weight: bold; letter-spacing: 1px; }
+.chron-tier { display: flex; align-items: center; gap: 4px; font-size: 9.5px; color: #a08860; min-width: 0; }
+.chron-tier.done { color: #8fc87f; }
+.chron-r { width: 26px; text-align: center; color: #e8c060; flex-shrink: 0; }
+.chron-bar { flex: 1; height: 6px; background: #0a0503; border-radius: 3px; overflow: hidden; border: 1px solid #3a2414; min-width: 18px; }
+.chron-bar i { display: block; height: 100%; background: linear-gradient(90deg, #7a5510, #ffe080); }
+.chron-val { white-space: nowrap; }
+.chron-rw { white-space: nowrap; color: #d4b050; }
+.chron-tier.done .chron-rw { color: #8fc87f; }
+@media (max-width: 640px) { .chron-fac { grid-template-columns: 60px 1fr 1fr; } .chron-tier:nth-child(n+4) { display: none; } }

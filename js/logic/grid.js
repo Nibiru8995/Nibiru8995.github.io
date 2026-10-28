@@ -153,9 +153,12 @@ function bestStackFor(id) {
     const it = grid[r][c];
     if (!it || it.cardId !== id || it.stacks >= maxStacks()) continue; /* только уже стоящие такие же карты */
     /* v1.2.7: у культистов инкам 0 — приоритет стака = участие в ритуале
-       (стаки в цепи усиливают заряд/выплату, вне цепи — почти ничего) */
+       v1.2.9: приоритет уточнён — ЦЕПЬ > ВНЕШНИЙ КРУГ (служители тоже
+       дают заряд/выплату, а раньше авто-стак их игнорировал) */
     if (cultMech) {
-      const v = INC_CTX.ritual && INC_CTX.ritual.has(r + ',' + c) ? 1 : 0;
+      let v = 0;
+      if (INC_CTX.ritual && INC_CTX.ritual.has(r + ',' + c)) v = 2;
+      else if (INC_CTX.ritualOuter && INC_CTX.ritualOuter.has(r + ',' + c)) v = 1;
       if (v > bv) { bv = v; best = { r, c, v }; }
       continue;
     }

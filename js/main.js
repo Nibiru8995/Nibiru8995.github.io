@@ -34,6 +34,7 @@ function doRolls(count) {
   if (count === 1 && res.relics && res.relics.length === 1) showDropRelic(res.relics[0]);
   else if (count === 1 && res.cards.length === 1) showDrop(res.cards[0]);
   else showMulti(res.cards, count, res.relics);
+  checkContracts(); /* v1.2.9: контракт «крутки» закрывается сразу, без ожидания интервала */
   updateHUD(); checkAchievements();
 }
 
@@ -127,6 +128,8 @@ function startFreshRun() {
   drawDistinct(startR1, 2).concat(startKitFor(faction)).forEach(id => { inventory[id] = (inventory[id] || 0) + 1; discovered.add(id); });
   computeIncome();
   gameStarted = true; noSave = false;
+  contractsInit(); /* v1.2.9: серия контрактов нового забега */
+  checkDailyGift(); /* v1.2.9: первый вход за день — Знамение Судьбы */
   saveRun(); saveMeta();
   refreshAll();
   toast('⚜ ' + FACTION_INFO[faction].epochTitle);
@@ -202,6 +205,7 @@ function startDebugRun(ep, f, rich, keepSave) {
   POOL_4.filter(id => CARDS[id].faction === faction).forEach(id => { inventory[id] = (inventory[id] || 0) + 1; discovered.add(id); });
   computeIncome();
   gameStarted = true;
+  contractsInit(); /* v1.2.9: контракты видны и в чит-режиме (noSave не даёт их исполнить) */
   if (keepSave) { saveRun(); saveMeta(); }
   hideMenu();
   refreshAll();
@@ -274,6 +278,8 @@ function wireEvents() {
     else openEpochMenu();
   });
   $('achvBtn').addEventListener('click', openAchv);
+  /* v1.2.9: Тёмный Пакт — контракты Эпохи */
+  $('contractsBtn').addEventListener('click', openContracts);
 
   /* Казино */
   $('casinoBtn').addEventListener('click', openCasino);
@@ -352,7 +358,7 @@ function wireEvents() {
   /* Клавиши и глобальные события */
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
-      for (const id of ['casinoModal', 'cgModal', 'hub', 'epochWarn', 'factionModal', 'epochModal', 'achvModal', 'dlg', 'dbgModal', 'relicPick', 'relicsModal', 'arenaOverlay']) {
+      for (const id of ['casinoModal', 'cgModal', 'hub', 'epochWarn', 'factionModal', 'epochModal', 'achvModal', 'dlg', 'dbgModal', 'relicPick', 'relicsModal', 'arenaOverlay', 'contractModal']) {
         const m = $(id);
         if (m && m.classList.contains('show')) {
           if (id === 'casinoModal' && casinoSpinning) return;
@@ -369,7 +375,12 @@ function wireEvents() {
   window.addEventListener('beforeunload', () => { saveRun(); saveMeta(); });
   setInterval(saveRun, 5000);
   setInterval(() => {
-    if (gameStarted && !gamePaused) checkAchievements();
+    if (gameStarted && !gamePaused) {
+      checkAchievements();
+      checkContracts();   /* v1.2.9: Тёмный Пакт — прогресс и выдача */
+      checkChronicles();  /* v1.2.9: Хроники Тьмы — вершины коллекции */
+      if ($('contractModal') && $('contractModal').classList.contains('show')) renderContractList();
+    }
   }, 1000);
 }
 
@@ -422,6 +433,7 @@ setInterval(() => {
     loadRun();
     computeIncome();
     refreshAll();
+    checkDailyGift(); /* v1.2.9: Знамение Судьбы — только в реальном забеге */
     initGuidesForSave(); /* открытые фичи не объясняем, незнакомую фракцию — показываем */
     showMenu();
   } else {

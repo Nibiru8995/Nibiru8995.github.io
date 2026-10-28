@@ -84,7 +84,8 @@ function tickBuildings(dt) {
       bldGraveTimer = 0;
       const id = pick(BLD_SUMMON_POOL.bl_grave);
       inventory[id] = (inventory[id] || 0) + 1; discovered.add(id);
-      toast('🪦 Кладбище подняло: <b>' + CARDS[id].name + '</b> (в коллекции)', 'summon', 30);
+      stats.summons = (stats.summons || 0) + 1; /* v1.2.9: для контрактов */
+      toast('🪦 Кладбище подняло: <b>' + CARDS[id].name + '</b> (в коллекции)', 'summon', 45);
       changed = true;
     }
   }
@@ -95,7 +96,8 @@ function tickBuildings(dt) {
       bldGatesTimer = 0;
       const id = pick(BLD_SUMMON_POOL.bl_gates);
       inventory[id] = (inventory[id] || 0) + 1; discovered.add(id);
-      toast('🚪 Врата Ада выпустили: <b>' + CARDS[id].name + '</b> (в коллекции)', 'summon', 30);
+      stats.summons = (stats.summons || 0) + 1; /* v1.2.9: для контрактов */
+      toast('🚪 Врата Ада выпустили: <b>' + CARDS[id].name + '</b> (в коллекции)', 'summon', 45);
       changed = true;
     }
   }
@@ -108,7 +110,7 @@ function tickBuildings(dt) {
       const mult = Math.min(3, 2 + 0.25 * (mounds - 1));
       altBuff.mult = mult; altBuff.until = gameTime + 5;
       altBuff.label = '🗿 ЖАТВА ×' + mult.toFixed(2).replace(/\.?0+$/, '');
-      toast('🗿 Гора костей отдаёт накопленное: доход ×' + mult.toFixed(2).replace(/\.?0+$/, '') + ' на 5 секунд!', 'mound', 25);
+      toast('🗿 Гора костей отдаёт накопленное: доход ×' + mult.toFixed(2).replace(/\.?0+$/, '') + ' на 5 секунд!', 'mound', 40);
       updateHUD();
     }
   }

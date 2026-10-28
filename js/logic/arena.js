@@ -308,6 +308,7 @@ function endBattle(win) {
       showBossTrophy(reward);
     }
     arenaState.cleared[arenaState.room - 1] = true;
+    stats.roomsWon = (stats.roomsWon || 0) + 1; /* v1.2.9: счётчик для контрактов */
     arenaState.status = (enemy && enemy.isBoss ? '🏆 БОСС ПОВЕРЖЕН! +' + fmt(reward) + ' 💎' :
       (enemy && enemy.isElite ? 'Элита разбита! +' : 'Победа! +') + fmt(reward) + ' 💎') +
       (arenaStreak > 1 ? ' · Серия ×' + streakMult.toFixed(2) : '');

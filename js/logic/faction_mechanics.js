@@ -227,7 +227,7 @@ function balrogTick() {
     t.item.lastMut = gameTime;
     it.balrBuff = Math.min(3, (it.balrBuff || 1) + 0.05);
     fxAtCell(t.r, t.c, ['#ff8030', '#ffd34d', '#ff4010'], 10);
-    toast('🌋 Балрог поджёг ' + CARDS[t.item.cardId].name + ': +2 угля (' + t.item.embers + '/5)', 'balrog', 20);
+    toast('🌋 Балрог поджёг ' + CARDS[t.item.cardId].name + ': +2 угля (' + t.item.embers + '/5)', 'balrog', 30);
     changed = true;
   }
   if (changed) { computeIncome(); renderGrid(); updateHUD(); }
@@ -384,7 +384,7 @@ function beastCycleTick() {
       b.predator.it.predBuff = Math.min(cap, (b.predator.it.predBuff || 0) + gain);
       b.predator.it.hunger = 1;
       fxFloatFromCell(b.predator.r, b.predator.c, '+' + Math.round(gain * 100) + '% СЫТ', '#ffd34d');
-      toast(b.predator.card.name + ' сожрал ' + eaten + ': +' + Math.round(gain * 100) + '% дохода хищнику', 'pred', 12);
+      toast(b.predator.card.name + ' сожрал ' + eaten + ': +' + Math.round(gain * 100) + '% дохода хищнику', 'pred', 20);
     } else {
       b.predator.it.hunger = 1;
     }
@@ -516,14 +516,14 @@ function demonEmberTick() {
       it.mutBuff = Math.min(4, (it.mutBuff || 1) * buffVal);
       fxAtCell(r, c, ['#ffd34d', '#ff8030', '#fff'], 16, 'big');
       fxFloatFromCell(r, c, 'ХАОС ×' + it.mutBuff.toFixed(2), '#ff9030');
-      toast('🔥 ' + card.name + ' взорвался под контролем: БАФФ ×' + it.mutBuff.toFixed(2), 'demon', 12);
+      toast('🔥 ' + card.name + ' взорвался под контролем: БАФФ ×' + it.mutBuff.toFixed(2), 'demon', 25);
     } else {
       const roll = Math.random();
       if (roll < 0.65 || disciplined) {
         it.mutBuff = Math.min(4, (it.mutBuff || 1) * 1.25);
         fxAtCell(r, c, ['#ffd34d', '#ff8030', '#fff'], 16, 'big');
         fxFloatFromCell(r, c, 'ХАОС ×' + it.mutBuff.toFixed(2), '#ff9030');
-        toast('🔥 ' + card.name + ' взорвался Хаосом: БАФФ ×' + it.mutBuff.toFixed(2), 'demon', 12);
+        toast('🔥 ' + card.name + ' взорвался Хаосом: БАФФ ×' + it.mutBuff.toFixed(2), 'demon', 25);
       } else if (roll < 0.90 && !disciplined) {
         /* Превращение в другого демона той же редкости */
         const sameRarity = POOLS[card.rarity].filter(id => CARDS[id].faction === 'demon' && !CARDS[id].isBuilding && id !== card.id);
@@ -533,18 +533,18 @@ function demonEmberTick() {
         discovered.add(newId);
         fxAtCell(r, c, ['#c030c0', '#ff40ff', '#fff'], 18, 'big');
         fxFloatFromCell(r, c, 'ПРЕВРАЩЕНИЕ', '#ff60ff');
-        toast('🔥 ' + oldName + ' превратился в ' + CARDS[newId].name + '!', 'demon', 12);
+        toast('🔥 ' + oldName + ' превратился в ' + CARDS[newId].name + '!', 'demon', 25);
       } else if (glacier) {
         /* Ледник: перегрев невозможен — взрыв гаснет в тихий бафф */
         it.mutBuff = Math.min(4, (it.mutBuff || 1) * 1.15);
         fxFloatFromCell(r, c, 'ТИХИЙ БАФФ ×' + it.mutBuff.toFixed(2), '#c0e0ff');
-        toast('❄️ Ледник остудил взрыв ' + card.name + ': ×' + it.mutBuff.toFixed(2), 'demon', 12);
+        toast('❄️ Ледник остудил взрыв ' + card.name + ': ×' + it.mutBuff.toFixed(2), 'demon', 25);
       } else {
         /* Перегрев: угли сгорают в чистую мощь — ×2 на 12 сек */
         it.boomUntil = gameTime + 12;
         fxAtCell(r, c, ['#ff4010', '#ffb060', '#fff'], 22, 'big');
         fxFloatFromCell(r, c, 'ПЕРЕГРЕВ ×2', '#ff5030');
-        toast('🔥 ' + card.name + ' перегрелся: ×2 на 12 секунд!', 'demon', 12);
+        toast('🔥 ' + card.name + ' перегрелся: ×2 на 12 секунд!', 'demon', 25);
       }
     }
     /* Взрыв кормит соседей — Пепельный Тиран (радиус 2), Гончая Ада (радиус 3) */

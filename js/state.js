@@ -98,6 +98,14 @@ let stats = {
 /* --- Достижения --- */
 let achDone = {};
 
+/* --- v1.2.9: Хроники Тьмы (разовые вершины коллекции) + ежедневный дар ---
+   chron: ключи вида 'undead3' / 'undeadB' / 'undead4' / 'undead5' — вечные.
+   lastDaily: локальная дата последнего «Знамения Судьбы».
+   contracts: серия «Тёмного Пакта» — живёт в сохранении ЗАБЕГА (сброс на Эпохе). */
+let chron = {};
+let lastDaily = '';
+let contracts = { list: [], used: [], done: 0, nextAt: 0, pact: false };
+
 /* --- Онбординг фич/фракций (вечный): какие подсказки уже показаны --- */
 let guideSeen = {};
 
@@ -118,7 +126,8 @@ function buildRunSave() {
     pity4, pity5, runRolls, runEarned, runTime, sealLv,
     milestoneIdx, freeRolls, relicSlots, relicPity,
     relics: [...RELICS_OWNED],
-    ritualResonance, surgeUntil
+    ritualResonance, surgeUntil,
+    contracts: { list: contracts.list, used: contracts.used, done: contracts.done, nextAt: contracts.nextAt, pact: contracts.pact } /* v1.2.9: Тёмный Пакт */
   };
 }
 function saveRun() {
@@ -142,6 +151,7 @@ function loadRun() {
     if (d.sealLv) Object.assign(sealLv, d.sealLv);
     milestoneIdx = d.milestoneIdx ?? 0; freeRolls = d.freeRolls ?? 0;
     ritualResonance = d.ritualResonance ?? 0; surgeUntil = d.surgeUntil ?? 0;
+    if (typeof contractsRestore === 'function') contractsRestore(d.contracts); /* v1.2.9: валидация внутри */
     /* РЕЛИКВИИ v1.2.5: владение живёт В ЗАБЕГЕ (сброс при смене Эпохи) */
     RELICS_OWNED = new Set((d.relics || []).filter(id => relicById(id)));
     /* РЕЛИКВИИ 2.0: расстановка по столбцам (только валидные реликвии/колонки) */
@@ -169,6 +179,7 @@ function loadRun() {
 
 function buildMetaSave() {
   return { seals, sealsTotal, maxEpoch, disc: [...discovered], achDone, stats, totalTime: gameTime, guide: guideSeen,
+    chron, lastDaily, /* v1.2.9: Хроники Тьмы + дата ежедневного дара */
     sfx: soundOn, music: musicOn, fx: fxOn, speedMult };
 }
 function saveMeta() {
@@ -183,6 +194,8 @@ function loadMeta() {
     if (d.stats) stats = Object.assign(stats, d.stats);
     guideSeen = d.guide || {};
     gameTime = d.totalTime ?? 0;
+    chron = (d.chron && typeof d.chron === 'object') ? d.chron : {}; /* v1.2.9 */
+    lastDaily = d.lastDaily || '';                                  /* v1.2.9 */
     /* Реликвии больше НЕ хранятся в мета (v1.2.5: расходник забега) */
     soundOn = d.sfx ?? true; musicOn = d.music ?? true;
     fxOn = d.fx ?? true; speedMult = d.speedMult ?? 1;

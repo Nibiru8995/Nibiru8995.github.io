@@ -118,7 +118,7 @@ function updateEpochUI() {
 /* ---------------- Достижения + общая статистика ---------------- */
 function openAchv() {
   mk('achvModal',
-    '<h2>🏅 Достижения</h2><div class="res" id="achvCnt"></div><div id="achvBody"></div>' +
+    '<h2>🏅 Достижения</h2><div class="res" id="achvCnt"></div><div id="chronBox"></div><div id="achvBody"></div>' +
     '<div class="flavor">Способ получения всегда известен заранее. Наград нет — только слава и коллекция.</div>' +
     '<div id="statsBox"></div>' +
     '<div class="btn-row"><button class="btn btn-take" id="achvX">Закрыть</button></div>', 550);
@@ -128,12 +128,36 @@ function openAchv() {
 }
 function renderAchvList() {
   $('achvCnt').innerHTML = 'Получено: <b>' + achvCount() + ' / ' + ACHIEVEMENTS.length + '</b>';
+  renderChronicles(); /* v1.2.9: Хроники Тьмы — вершины коллекции */
   $('achvBody').innerHTML = ACHIEVEMENTS.map(a => {
     const done = !!achDone[a.id];
     return '<div class="achv-row ' + (done ? 'done' : '') + '"><span class="achv-icon">' + (done ? '🏅' : '▫️') + '</span>' +
       '<span><b>' + a.name + '</b><br><small>' + a.desc + '</small></span></div>';
   }).join('');
   renderStats();
+}
+
+/* ---------------- v1.2.9: ХРОНИКИ ТЬМЫ — блок в окне достижений ----------------
+   На фракцию: ★3-набор (+2 🔱), здания (+2), ★4 (+3), ★5 (+5). Разовые. */
+function renderChronicles() {
+  const box = $('chronBox'); if (!box) return;
+  let rows = '';
+  FACTION_KEYS.forEach(f => {
+    const parts = CHRON_TIERS.map(t => {
+      const list = chronCards(f, t.r);
+      const have = list.filter(id => discovered.has(id)).length;
+      const done = !!chron[f + t.r];
+      return '<div class="chron-tier' + (done ? ' done' : '') + '" title="' + FACTION_INFO[f].name + ' · ' + t.name + ': ' + have + '/' + list.length + '">' +
+        '<span class="chron-r">' + (t.r === 'B' ? '🏛' : '★'.repeat(+t.r)) + '</span>' +
+        '<span class="chron-bar"><i style="width:' + (list.length ? Math.floor(have / list.length * 100) : 0) + '%"></i></span>' +
+        '<span class="chron-val">' + have + '/' + list.length + '</span>' +
+        '<span class="chron-rw">' + (done ? '✔ +' + t.reward + ' 🔱' : '+' + t.reward + ' 🔱') + '</span></div>';
+    }).join('');
+    rows += '<div class="chron-fac"><span class="chron-name" style="color:' + FACTION_INFO[f].color + '">' + FACTION_INFO[f].name + '</span>' + parts + '</div>';
+  });
+  box.innerHTML = '<h3>📖 Хроники Тьмы — вершины коллекции</h3>' +
+    '<div class="res">За ПОЛНОЕ открытие набора фракции — разовые печати. Награды уже полученные отмечены ✔.</div>' +
+    '<div class="chron-grid">' + rows + '</div>';
 }
 
 /* ---------------- Статистика (внутри Достижений, пункт 5 ТЗ) ---------------- */
