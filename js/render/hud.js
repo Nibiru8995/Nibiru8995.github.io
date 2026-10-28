@@ -10,8 +10,10 @@
 function applyFeatureLocks() {
   const arenaOn = epochHasArena(epoch);
   const casinoOn = epochHasCasino(epoch);
-  const arenaPanel = $('arenaPanel'), fightersPanel = $('fightersPanel');
-  if (arenaPanel) arenaPanel.style.display = arenaOn ? '' : 'none';
+  /* v1.2.7: арена — компактный док под гридом + оверлей «поле боя» */
+  const arenaDock = $('arenaDock'), arenaOverlay = $('arenaOverlay'), fightersPanel = $('fightersPanel');
+  if (arenaDock) arenaDock.style.display = arenaOn ? '' : 'none';
+  if (arenaOverlay) arenaOverlay.classList.toggle('hidden-feature', !arenaOn);
   if (fightersPanel) fightersPanel.style.display = arenaOn ? '' : 'none';
   ['bulkDup', 'bulk1', 'bulkAll'].forEach(id => { const b = $(id); if (b) b.style.display = arenaOn ? '' : 'none'; });
   const cb = $('casinoBtn');
@@ -160,7 +162,7 @@ function showCardTooltip(e, card, income, r, c) {
     '<div class="tt-name">' + cardArtHTML(card, 'tt-art', '') + '<span>' + card.name + '</span></div>' +
     '<div class="tt-stars">' + starsOf(card.rarity) + ' · ' + FACTION_INFO[card.faction].name + (card.isBuilding ? ' · постройка' : '') + '</div>' +
     (FACTION_INFO[faction].mechanic === 'formation' && card.faction === 'cultist' && !card.isBuilding
-      ? '<div class="tt-income" style="color:#c9a227">Дохода нет — вклад в ритуал: ' + (r !== undefined && INC_CTX.ritualCellSpeed && INC_CTX.ritualCellSpeed[r + ',' + c] ? '⚡ +' + INC_CTX.ritualCellSpeed[r + ',' + c].toFixed(2) + '/с заряда' : 'в ритуале') + '</div>'
+      ? '<div class="tt-income" style="color:#c9a227">Дохода нет — вклад в ритуал: ' + (r !== undefined && INC_CTX.ritualCellSpeed && INC_CTX.ritualCellSpeed[r + ',' + c] ? '⚡ +' + INC_CTX.ritualCellSpeed[r + ',' + c].toFixed(2) + '/с заряда' : 'в ритуале') + (r !== undefined && grid[r] && grid[r][c] && grid[r][c].stacks > 1 ? ' · стак ×' + grid[r][c].stacks : '') + '</div>'
       : '<div class="tt-income">Прирост: +' + (income !== undefined ? income.toFixed(2) : card.baseRate.toFixed(2)) + '/сек</div>') +
     mechLine + linksHtml +
     '<div class="tt-flavor">«' + card.flavor + '»</div>';
@@ -168,14 +170,14 @@ function showCardTooltip(e, card, income, r, c) {
   moveTooltip(e);
 }
 
-/* ------- Ритуал культистов в тултипе (v1.2.6: скорости формаций) -------
+/* ------- Ритуал культистов в тултипе (v1.2.7: формации без пустых клеток) -------
    Схема — мини-грид: 🔶 алтарь (золотой), фиолетовый — культист,
    тёмный — пустая клетка. Активная формация подсвечена. */
 function formationDiagram(kind, activeKind) {
   const cellsDef = {
-    cross:  { size: 3, cult: [[0, 1], [1, 0], [2, 1], [1, 2]], empty: [[0, 0], [0, 2], [2, 0], [2, 2]] },
+    cross:  { size: 3, cult: [[0, 1], [1, 0], [2, 1], [1, 2]], empty: [] },
     square: { size: 3, cult: [[0, 0], [0, 1], [0, 2], [1, 0], [1, 2], [2, 0], [2, 1], [2, 2]], empty: [] },
-    diamond:{ size: 5, cult: [[0, 2], [2, 0], [2, 4], [4, 2]], empty: [[1, 1], [1, 2], [1, 3], [2, 1], [2, 3], [3, 1], [3, 2], [3, 3]] }
+    diamond:{ size: 5, cult: [[0, 2], [2, 0], [2, 4], [4, 2], [1, 1], [1, 2], [1, 3], [2, 1], [2, 3], [3, 1], [3, 2], [3, 3]], empty: [] }
   };
   const def = cellsDef[kind];
   const mid = (def.size - 1) / 2;
@@ -193,9 +195,9 @@ function formationDiagram(kind, activeKind) {
 function cultistTooltipHTML(card, r, c) {
   if (card.faction !== 'cultist') return '';
   const defs = [
-    { kind: 'cross', label: 'Крест ×1.5', hint: '4 по сторонам, диагонали пусты — скорость заряда ×1.5' },
-    { kind: 'square', label: 'Квадрат ×1.75', hint: 'все 8 соседей — скорость ×1.75' },
-    { kind: 'diamond', label: 'Ромб ×2.0', hint: '4 вершины ромба (дистанция 2), внутренние пусты — скорость ×2' }
+    { kind: 'cross', label: 'Крест ×1.7', hint: '4 по сторонам Алтаря — скорость ×1.7 (пустые клетки не нужны)' },
+    { kind: 'square', label: 'Кольцо ×2.0', hint: 'все 8 соседей Алтаря — скорость ×2.0' },
+    { kind: 'diamond', label: 'Ромб ×2.6', hint: 'кольцо + 4 вершины (12 карт) — скорость ×2.6' }
   ];
   let status = '';
   if (r !== undefined && c !== undefined && FACTION_INFO[faction].mechanic === 'formation') {
@@ -204,21 +206,24 @@ function cultistTooltipHTML(card, r, c) {
       const f = INC_CTX.formActive[r + ',' + c];
       status = '<div class="tt-synergy"><div class="tt-synergy-title">Ритуал</div>' +
         (f ? '<span style="color:#8fc87f">АКТИВНАЯ ФОРМАЦИЯ: ' + f.label + ' — скорость ×' + f.formMult.toFixed(2) + '</span>'
-           : '<span style="color:#e8c060">Формации нет — обложите Алтарь культистами (шкала копится медленнее, но НЕ тает)</span>') + '</div>';
+           : '<span style="color:#e8c060">Формации нет — обложите Алтарь культистами (шкала копится медленнее, но НЕ тает)</span>') + '</div>' +
+        '<small style="color:#a08860">Стаки усиливают вклад клетки: заряд ×(1+0.35/стак), выплата +10%/стак</small>';
     } else {
       const form = INC_CTX.formCell[r + ',' + c];
       const cs = (INC_CTX.ritualCellSpeed && INC_CTX.ritualCellSpeed[r + ',' + c]) || 0;
+      const outer = INC_CTX.ritualOuter && INC_CTX.ritualOuter.has(r + ',' + c);
       let inner;
       if (form) inner = '<span style="color:#8fc87f">✔ В ФОРМАЦИИ «' + form.label + '» — вклад ⚡' + cs.toFixed(2) + '/с (умножен формацией)</span>';
       else if (inR) inner = '<span style="color:#e8c060">В РИТУАЛЕ — вклад ⚡' + cs.toFixed(2) + '/с заряда</span>';
-      else inner = '<span style="color:#a08860">Ждёт: поставьте в цепь от Алтаря (шкала при этом не теряется)</span>';
+      else if (outer) inner = '<span style="color:#80e0c0">ВНЕШНИЙ КРУГ (служитель по диагонали от цепи): +5% выплаты и +заряд ритуалу. Стаки усиливают вдвое</span>';
+      else inner = '<span style="color:#a08860">Ждёт: поставьте в цепь от Алтаря (прямо) или по диагонали от неё (внешний круг)</span>';
       status = '<div class="tt-synergy"><div class="tt-synergy-title">Ритуал</div>' + inner + '</div>';
     }
   }
   const activeKind = RITUAL_SOURCES[card.id] && r !== undefined && INC_CTX.formActive[r + ',' + c] ? INC_CTX.formActive[r + ',' + c].kind : null;
   return status + '<div class="tt-synergy"><div class="tt-synergy-title">🔯 Формации ритуала (скорость заряда)</div>' +
     '<div class="rt-row">' + defs.map(d => '<div class="rt-item" title="' + d.hint + '">' + formationDiagram(d.kind, activeKind) + '<small>' + d.label + '</small></div>').join('') + '</div>' +
-    '<small style="color:#a08860">🔶 Алтарь · фиолетовый — культист · тёмный — пусто · Несколько формаций складывают множители · УСИЛИТЕЛИ (Маг/Инквизитор/Жрец/Кости/Хтонь) усиливают ВЫПЛАТУ из любого места ритуала</small>' +
+    '<small style="color:#a08860">🔶 Алтарь · фиолетовый — культист · Несколько формаций складывают множители (до ×3.2) · Пустые клетки больше НЕ нужны · УСИЛИТЕЛИ (Маг/Инквизитор/Жрец/Кости/Хтонь) усиливают ВЫПЛАТУ из любого места ритуала · Цепь растёт ПРЯМО, по диагонали — ВНЕШНИЙ КРУГ: +5% выплаты за каждого служителя</small>' +
     '</div>';
 }
 function roleText(card) {

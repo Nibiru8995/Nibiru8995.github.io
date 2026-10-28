@@ -422,6 +422,9 @@ function updateArenaUI() {
   $('altarBuff').textContent = '✦ Мощь Алтаря: ×' + altarPower().toFixed(2) + ' к урону отрядов (звенья, хор и печати)';
   $('arenaStatus').textContent = arenaState.status;
   $('arenaStatus').className = 'arena-status ' + (arenaState.status.includes('Победа') || arenaState.status.includes('БОСС') ? 'win' : arenaState.status.includes('Поражение') ? 'lose' : '');
+  /* v1.2.7: компактный док виден всегда — дублируем туда краткий статус */
+  const dockStatus = $('arenaDockStatus');
+  if (dockStatus) dockStatus.textContent = arenaState.status || 'Отряд ждёт приказа';
   const btn = $('arenaFightBtn'), retBtn = $('arenaRetreatBtn');
   /* ФИКС «прыжка» арены: кнопка всегда занимает место, показывается через visibility */
   if (arenaState.fighting) { btn.disabled = true; btn.textContent = '⚔ БОЙ ИДЁТ...'; retBtn.classList.add('visible'); }

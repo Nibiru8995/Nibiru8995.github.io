@@ -42,11 +42,24 @@ function drawDistinct(pool, n) {
 }
 
 let toastT = null;
-function toast(t) {
-  const e = $('toast'); if (!e) return;
+/* v1.2.7: АНТИ-СПАМ. toast(текст, ключ, кулдаун_сек):
+   уведомления с одним ключом не всплывают чаще кулдауна —
+   подавленные показываются счётчиком «(×N)» при следующем показе.
+   Возвращает true, если тост реально показан (звук вешаем на это). */
+const toastMem = {};
+function toast(t, key, cd) {
+  const e = $('toast'); if (!e) return false;
+  if (key) {
+    const m = toastMem[key] || (toastMem[key] = { n: 0, until: 0 });
+    const now = Date.now();
+    if (now < m.until) { m.n++; return false; }
+    if (m.n > 0) t += ' <span style="opacity:.7">(ещё ×' + m.n + ')</span>';
+    m.n = 0; m.until = now + (cd || 15) * 1000;
+  }
   e.innerHTML = t; /* допускает <b> и эмодзи-разметку из внутренних тостов игры */
   e.classList.add('show');
   clearTimeout(toastT); toastT = setTimeout(() => e.classList.remove('show'), 2400);
+  return true;
 }
 
 /* Динамическое создание модального окна (как в старом v3) */

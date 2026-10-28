@@ -95,16 +95,17 @@ function formation(r, c) {
   return m;
 }
 
-/* ---------------- РИТУАЛ КУЛЬТИСТОВ (v1.2.6 — РИТУАЛЬНАЯ ЭКОНОМИКА) ----------------
+/* ---------------- РИТУАЛ КУЛЬТИСТОВ (v1.2.7 — ПЕПЕЛ И ПОРЯДОК) ----------------
    У культистов НЕТ ни дохода, ни синергий — вся фракция живёт ВЫПЛАТОЙ
    за проведённый ритуал (двиг — faction_mechanics.js). Здесь строится
-   только ГЕОМЕТРИЯ: цепь ритуала от Алтаря/Хтони + формации.
-   Формация теперь ускоряет ЗАРЯД шкалы: Крест ×1.5 / Квадрат ×1.75 / Ромб ×2.0.
-   НЕСКОЛЬКО формаций складывают свои множители. */
+   только ГЕОМЕТРИЯ: цепь ритуала от Алтаря/Хтони + формации + ВНЕШНИЙ КРУГ.
+   v1.2.7: формации больше не требуют ПУСТЫХ клеток — поле 5×5 вмещает
+   несколько ритуальных узлов, а пространство вне цепи работает:
+   культисты рядом с ритуалом (но вне его) — «служители» ВНЕШНЕГО КРУГА. */
 const FORM_DEFS = [
-  { kind: 'diamond', mult: 2.0, label: 'Ромб' },
-  { kind: 'square',  mult: 1.75, label: 'Квадрат' },
-  { kind: 'cross',   mult: 1.5, label: 'Крест' }
+  { kind: 'diamond', mult: 2.6, label: 'Ромб' },
+  { kind: 'square',  mult: 2.0, label: 'Кольцо' },
+  { kind: 'cross',   mult: 1.7, label: 'Крест' }
 ];
 /* Источники ритуала: здание-Алтарь или хтонь на его месте */
 const RITUAL_SOURCES = { bl_altar: 1, c10: 1, c11: 1 };
@@ -127,21 +128,29 @@ function buildRitualContext() {
       INC_CTX.ritual.add(k); q.push([n.r, n.c]);
     });
   }
+  /* ВНЕШНИЙ КРУГ (v1.2.7): культисты НЕ в цепи, но соседние с ней.
+     Цепь строится только по ПРЯМЫМ сторонам (орто), поэтому служители —
+     это культисты ПО ДИАГОНАЛИ от ритуала: они не тянут цепь на себя,
+     но дают выплате и заряду бонус (двиг — computeRitualEngine). */
+  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
+    const k = r + ',' + c;
+    if (INC_CTX.ritual.has(k) || !isCult(r, c)) continue;
+    if (getNeighbors8(r, c).some(n => INC_CTX.ritual.has(n.r + ',' + n.c))) INC_CTX.ritualOuter.add(k);
+  }
   /* Формации вокруг каждого источника ритуала (множители СКОРОСТИ заряда).
-     Усилители больше НЕ привязаны к формации — они работают из любого места ритуала. */
+     v1.2.7: НИ одна формация не требует пустых клеток:
+     Крест — 4 орто-соседа; Кольцо — все 8 вокруг; Ромб — кольцо + 4 вершины. */
   altars.forEach(([ar, ac]) => {
     const orth = [[-1, 0], [1, 0], [0, -1], [0, 1]].map(([dr, dc]) => [ar + dr, ac + dc]);
-    const diag = [[-1, -1], [-1, 1], [1, -1], [1, 1]].map(([dr, dc]) => [ar + dr, ac + dc]);
-    const r1 = NEI8.map(([dr, dc]) => [ar + dr, ac + dc]);
+    const ring = NEI8.map(([dr, dc]) => [ar + dr, ac + dc]);
     const dia = [[ar - 2, ac], [ar + 2, ac], [ar, ac - 2], [ar, ac + 2]];
-    const diaB = dia.every(([r, c]) => inB(r, c));
     const allCult = list => list.every(([r, c]) => inB(r, c) && isCult(r, c));
-    const allEmpty = list => list.every(([r, c]) => inB(r, c) && !grid[r][c]);
     let found = null;
-    if (diaB && allCult(dia) && allEmpty(r1)) found = { kind: 'diamond', mult: 2.0, label: 'Ромб', cells: dia };
-    else if (allCult(r1)) found = { kind: 'square', mult: 1.75, label: 'Квадрат', cells: r1 };
-    else if (allCult(orth) && allEmpty(diag)) found = { kind: 'cross', mult: 1.5, label: 'Крест', cells: orth };
+    if (allCult(dia) && allCult(ring)) found = Object.assign({}, FORM_DEFS[0], { cells: ring.concat(dia) }); /* Ромб: 12 карт */
+    else if (allCult(ring)) found = Object.assign({}, FORM_DEFS[1], { cells: ring });                        /* Кольцо: 8 карт */
+    else if (allCult(orth)) found = Object.assign({}, FORM_DEFS[2], { cells: orth });                        /* Крест: 4 карты */
     if (!found) return;
+    found = Object.assign({}, found);
     found.formMult = found.mult;
     INC_CTX.formActive[ar + ',' + ac] = found;
     found.cells.forEach(([r, c]) => { INC_CTX.formCell[r + ',' + c] = found; });

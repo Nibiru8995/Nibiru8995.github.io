@@ -147,10 +147,18 @@ function localInc(r, c) {
 }
 function bestStackFor(id) {
   const hp = cardHp(CARDS[id].rarity);
+  const cultMech = FACTION_INFO[faction].mechanic === 'formation' && CARDS[id].faction === 'cultist' && !CARDS[id].isBuilding;
   let best = null, bv = -1e9;
   for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
     const it = grid[r][c];
     if (!it || it.cardId !== id || it.stacks >= maxStacks()) continue; /* только уже стоящие такие же карты */
+    /* v1.2.7: у культистов инкам 0 — приоритет стака = участие в ритуале
+       (стаки в цепи усиливают заряд/выплату, вне цепи — почти ничего) */
+    if (cultMech) {
+      const v = INC_CTX.ritual && INC_CTX.ritual.has(r + ',' + c) ? 1 : 0;
+      if (v > bv) { bv = v; best = { r, c, v }; }
+      continue;
+    }
     const b0 = localInc(r, c);
     it.stacks++; it.maxHp += hp; it.hp += hp;
     computeIncome();

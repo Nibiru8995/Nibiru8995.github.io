@@ -56,73 +56,119 @@ function tickUndeadGrowth(dt) {
   if (changed) { computeIncome(); updateHUD(); }
 }
 
-/* ============ КУЛЬТИСТЫ: РИТУАЛЬНАЯ ЭКОНОМИКА v1.2.6 ============
+/* ============ КУЛЬТИСТЫ: РИТУАЛЬНАЯ ЭКОНОМИКА v1.2.7 ============
    У культистов НЕТ дохода — есть РИТУАЛ:
    1) Каждый культист в цепи от Алтаря/Хтони — УЧАСТНИК.
-   2) Роль «скорость»: даёт +N к скорости заряда (⚡).
-   3) Роль «усилитель»: слабее в заряде (+0.5), но усиливает ВЫПЛАТУ (💰).
-   4) Формации вокруг источника умножают скорость (Крест ×1.5 / Квадрат ×1.75 / Ромб ×2.0, складываются).
-   5) Обелиск — участникам в его зоне заряд ×1.25; Колодец — выплата +30%.
-   6) Шкала НИКОГДА не тает — зафейлить до конца нельзя: рано или поздно
-      ритуал завершится и заплатит 💎 (даже без формаций, просто медленнее).
-   7) Выплата = порог Эпохи × 0.8% × (0.4 + 0.06×участников) × бонусы. */
+   2) Роль «скорость»: даёт +N к скорости заряда (⚡); роль «усилитель»
+      почти не заряжает, но усиливает ВЫПЛАТУ (💰).
+   3) v1.2.7: СТАКИ усиливают вклад клетки — заряд ×(1+0.35/стак),
+      выплата +10%/стак (до +50%). Застаканные карты = сильный ритуал.
+   4) Формации вокруг источника (без пустых клеток): Крест ×1.7 /
+      Кольцо ×2.0 / Ромб ×2.6; у нескольких Алтарей множители складываются.
+   5) v1.2.7: ВНЕШНИЙ КРУГ — культисты рядом с ритуалом (но вне цепи)
+      работают «служителями»: +5% выплаты и +заряд каждый (стаки ×1.5).
+   6) Обелиск — участникам в его зоне заряд ×1.25; Колодец — выплата +30%.
+   7) Шкала НИКОГДА не тает — зафейлить до конца нельзя.
+   8) v1.2.7 БАЛАНС: базовые вклады 0.25-0.33%/с (было 1.0-1.3), суммарная
+      скорость растёт через КОРЕНЬ (каждый новый участник даёт меньше) и
+      ограничена потолком 15%/с — ритуал больше не «пулемёт».
+   9) Выплата = порог Эпохи × 0.72% × (0.7 + 0.03×участников) × бонусы. */
 const RITUAL_AMPS = { c5: 0.2, c8: 0.3, c9: 0.45, c13: 0.25, c10: 0.6, c11: 0.45 };
-const RITUAL_CELL_SPEED = { c0: 1.0, c1: 1.0, c2: 1.2, c3: 1.0, c6: 1.1, c7: 1.3, c12: 1.0 };
-let RITUAL_ENGINE = { speed: 0, pay: 1, payout: 0, participants: 0, cellSpeed: {}, banner: '' };
+const RITUAL_CELL_SPEED = { c0: 0.25, c1: 0.25, c2: 0.30, c3: 0.25, c6: 0.27, c7: 0.33, c12: 0.25 };
+const RITUAL_AMP_CHARGE = 0.12;   /* усилители заряжают чуть-чуть */
+const RITUAL_SPEED_CAP = 15;      /* %/с — потолок заряда (цикл не короче ~6.7с) */
+const RITUAL_OUTER_SPEED = 0.03, RITUAL_OUTER_SPEED_CAP = 0.18;
+const RITUAL_OUTER_PAY = 0.05, RITUAL_OUTER_PAY_CAP = 0.40;
+let RITUAL_ENGINE = { speed: 0, pay: 1, payout: 0, participants: 0, outer: 0, outerPay: 0, cellSpeed: {}, banner: '', capped: false };
 
 function computeRitualEngine() {
-  const E = { speed: 0, pay: 1, payout: 0, participants: 0, cellSpeed: {}, banner: '', ready: false };
+  const E = { speed: 0, pay: 1, payout: 0, participants: 0, outer: 0, outerPay: 0, cellSpeed: {}, banner: '', ready: false, capped: false };
   if (FACTION_INFO[faction].mechanic !== 'formation') return E;
   const B = INC_CTX.bld || { obelisk: {}, wells: 0 };
   /* Формационный множитель: 1 + Σ(множитель−1) по всем активным формациям */
   let formMult = 1, forms = 0;
   for (const k in INC_CTX.formActive) { formMult += INC_CTX.formActive[k].formMult - 1; forms++; }
+  formMult = Math.min(3.2, formMult);
   /* Глобальные ритуальные реликвии (культистские) */
   const rel = ritualRelicMods();
   let payBonus = 0, bannerParts = [];
   if (forms) bannerParts.push('формации ×' + formMult.toFixed(2));
-  /* Знаменосцы (c3): +10% скорости каждый (кап +30%) */
-  let banners = 0;
   /* Участники: культисты в цепи ритуала (здания — не участники) */
+  let rawSum = 0;
+  const rawCell = {};
   INC_CTX.ritual.forEach(k => {
     const [r, c] = k.split(',').map(Number);
     const it = grid[r][c]; if (!it) return;
     const card = CARDS[it.cardId];
     if (card.isBuilding || card.id === 'bl_altar') return;
     E.participants++;
-    let cellSp = 0;
+    const st = it.stacks || 1;
+    const stSpeed = 1 + 0.35 * (st - 1);          /* стаки усиливают заряд клетки */
+    let raw = 0;
     if (RITUAL_AMPS[card.id]) {
-      cellSp = 0.5; payBonus += RITUAL_AMPS[card.id];
+      raw = RITUAL_AMP_CHARGE * stSpeed;
+      payBonus += RITUAL_AMPS[card.id] + 0.10 * Math.min(5, st - 1); /* стаки усилителя = +выплата */
     } else {
-      cellSp = RITUAL_CELL_SPEED[card.id] || 1.0;
-      if (card.id === 'c1') { /* Сектант: +0.15 за соседа в ритуале */
+      raw = (RITUAL_CELL_SPEED[card.id] || 0.25) * stSpeed;
+      if (card.id === 'c1') { /* Сектант: +бонус за соседа в ритуале */
         const ns = getNeighbors(r, c).filter(n => INC_CTX.ritual.has(n.r + ',' + n.c) && !CARDS[n.item.cardId].isBuilding).length;
-        cellSp += 0.15 * ns;
+        raw += 0.04 * ns;
       }
+      payBonus += 0.10 * Math.min(5, st - 1);      /* стаки участника = +10% выплаты каждый (до +50%) */
     }
     /* Обелиск: заряд участника в его зоне ×1.25 (кап ×1.5) */
     const ob = B.obelisk[k] || 0;
-    if (ob) cellSp *= Math.min(1.5, 1 + 0.25 * ob);
-    E.cellSpeed[k] = cellSp;
-    E.speed += cellSp;
-    if (card.id === 'c3') banners++;
+    if (ob) raw *= Math.min(1.5, 1 + 0.25 * ob);
+    rawCell[k] = raw; rawSum += raw;
   });
-  if (banners) { E.speed *= 1 + Math.min(0.3, 0.10 * banners); bannerParts.push('знамёна +' + Math.round(Math.min(30, 10 * banners)) + '%'); }
-  /* Служка (c12): культисты ВНЕ ритуала рядом с ней дают половину заряда */
+  /* ВНЕШНИЙ КРУГ (v1.2.7): служители вне цепи, но рядом с ней */
+  let outerRaw = 0;
+  INC_CTX.ritualOuter.forEach(k => {
+    const [r, c] = k.split(',').map(Number);
+    const it = grid[r][c]; if (!it) return;
+    if (CARDS[it.cardId].isBuilding) return;
+    E.outer++;
+    const st = it.stacks || 1;
+    const stMult = 1 + 0.5 * (st - 1);
+    outerRaw += RITUAL_OUTER_SPEED * stMult;
+    E.outerPay += RITUAL_OUTER_PAY * stMult;
+    rawCell[k] = RITUAL_OUTER_SPEED * stMult;
+  });
+  outerRaw = Math.min(RITUAL_OUTER_SPEED_CAP, outerRaw);
+  E.outerPay = Math.min(RITUAL_OUTER_PAY_CAP, E.outerPay);
+  if (E.outer) bannerParts.push('внешний круг +' + Math.round(E.outerPay * 100) + '%');
+  payBonus += E.outerPay;
+  /* Служка (c12): культисты ВНЕ ритуала рядом с ней дают ещё заряд */
   for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
     const it = grid[r][c]; if (!it) continue;
     const card = CARDS[it.cardId];
     if (card.faction !== 'cultist' || card.isBuilding) continue;
     if (INC_CTX.ritual.has(r + ',' + c)) continue;
-    if (getNeighbors(r, c).some(n => n.item.cardId === 'c12')) { E.speed += 0.5; E.cellSpeed[r + ',' + c] = 0.5; }
+    if (getNeighbors(r, c).some(n => n.item.cardId === 'c12')) { outerRaw += 0.06; }
+  }
+  /* Знаменосцы (c3): +10% скорости каждый (кап +30%) */
+  let banners = 0;
+  INC_CTX.ritual.forEach(k => { const it = grid[+k.split(',')[0]][+k.split(',')[1]]; if (it && it.cardId === 'c3') banners++; });
+  let bannerMult = 1;
+  if (banners) { bannerMult = 1 + Math.min(0.3, 0.10 * banners); bannerParts.push('знамёна +' + Math.round(Math.min(30, 10 * banners)) + '%'); }
+  /* ИТОГОВАЯ СКОРОСТЬ: корень из суммы вкладов — мягкое насыщение
+     (каждый новый участник даёт меньше прежнего), потолок 15%/с */
+  E.speed = Math.min(RITUAL_SPEED_CAP, 1.2 * Math.sqrt(rawSum + outerRaw) * formMult * rel.speed * bannerMult);
+  E.capped = rawSum + outerRaw > 0 && E.speed >= RITUAL_SPEED_CAP;
+  if (E.capped) bannerParts.push('потолок ⚡');
+  /* Раскладка скорости по клеткам (для бейджей ⚡ на картах) */
+  if (rawSum + outerRaw > 0 && E.speed > 0) {
+    const tot = rawSum + outerRaw;
+    for (const k in rawCell) E.cellSpeed[k] = E.speed * (rawCell[k] / tot);
   }
   /* Колодец: выплата +30% (кап +60%) */
   const wells = B.wells || 0;
   if (wells) { payBonus += Math.min(0.6, 0.3 * wells); bannerParts.push('колодцы +' + Math.round(Math.min(60, 30 * wells)) + '%'); }
-  E.speed *= formMult * rel.speed;
-  E.pay = Math.min(5, (1 + Math.min(3, payBonus)) * rel.pay);
-  /* Выплата: привязана к порогу Эпохи — растёт вместе с игрой */
-  E.payout = Math.round(epochThreshold(epoch) * 0.008 * (0.4 + 0.06 * E.participants) * E.pay);
+  E.pay = Math.min(4, (1 + Math.min(2.5, payBonus)) * rel.pay);
+  /* Выплата: привязана к порогу Эпохи — растёт вместе с игрой.
+     v1.2.7: коэффициент 0.72% (было 0.8%), участники 0.03 (было 0.06),
+     кап выплаты ×4 (было ×5) — ритуалы больше не печатают деньги. */
+  E.payout = Math.round(epochThreshold(epoch) * 0.0072 * (0.7 + 0.03 * Math.min(24, E.participants)) * E.pay);
   E.banner = bannerParts.join(' · ');
   E.ready = INC_CTX.ritual.size > 0;
   return E;
@@ -138,7 +184,8 @@ function ritualChargeTick(dt) {
 }
 
 /* РИТУАЛ ЗАВЕРШЁН: гарантированная выплата 💎. Шкала НЕ тает —
-   полный фейл невозможен, худший случай — медленный цикл. */
+   полный фейл невозможен, худший случай — медленный цикл.
+   v1.2.7: тост с ключом (не чаще раза в 30с, подавленные — «ещё ×N»). */
 function ritualPayout() {
   const E = RITUAL_ENGINE.speed > 0 ? RITUAL_ENGINE : computeRitualEngine();
   const pay = E.payout;
@@ -156,8 +203,7 @@ function ritualPayout() {
     const [ar, ac] = srcKey.split(',').map(Number);
     fxFloatFromCell(ar, ac, '🔥 РИТУАЛ: +' + fmtShort(pay) + ' 💎', '#ffe080', 22);
   }
-  toast('🔥 <b>Ритуал завершён:</b> +' + fmtShort(pay) + ' 💎' + (E.banner ? ' <small>(' + E.banner + ')</small>' : ''));
-  sfx('relic');
+  if (toast('🔥 <b>Ритуал завершён:</b> +' + fmtShort(pay) + ' 💎' + (E.banner ? ' <small>(' + E.banner + ')</small>' : ''), 'ritual', 30)) sfx('relic');
   saveRun(); updateHUD(); checkAchievements();
 }
 
@@ -181,7 +227,7 @@ function balrogTick() {
     t.item.lastMut = gameTime;
     it.balrBuff = Math.min(3, (it.balrBuff || 1) + 0.05);
     fxAtCell(t.r, t.c, ['#ff8030', '#ffd34d', '#ff4010'], 10);
-    toast('🌋 Балрог поджёг ' + CARDS[t.item.cardId].name + ': +2 угля (' + t.item.embers + '/5)');
+    toast('🌋 Балрог поджёг ' + CARDS[t.item.cardId].name + ': +2 угля (' + t.item.embers + '/5)', 'balrog', 20);
     changed = true;
   }
   if (changed) { computeIncome(); renderGrid(); updateHUD(); }
@@ -338,7 +384,7 @@ function beastCycleTick() {
       b.predator.it.predBuff = Math.min(cap, (b.predator.it.predBuff || 0) + gain);
       b.predator.it.hunger = 1;
       fxFloatFromCell(b.predator.r, b.predator.c, '+' + Math.round(gain * 100) + '% СЫТ', '#ffd34d');
-      toast(b.predator.card.name + ' сожрал ' + eaten + ': +' + Math.round(gain * 100) + '% дохода хищнику');
+      toast(b.predator.card.name + ' сожрал ' + eaten + ': +' + Math.round(gain * 100) + '% дохода хищнику', 'pred', 12);
     } else {
       b.predator.it.hunger = 1;
     }
@@ -470,14 +516,14 @@ function demonEmberTick() {
       it.mutBuff = Math.min(4, (it.mutBuff || 1) * buffVal);
       fxAtCell(r, c, ['#ffd34d', '#ff8030', '#fff'], 16, 'big');
       fxFloatFromCell(r, c, 'ХАОС ×' + it.mutBuff.toFixed(2), '#ff9030');
-      toast('🔥 ' + card.name + ' взорвался под контролем: БАФФ ×' + it.mutBuff.toFixed(2));
+      toast('🔥 ' + card.name + ' взорвался под контролем: БАФФ ×' + it.mutBuff.toFixed(2), 'demon', 12);
     } else {
       const roll = Math.random();
       if (roll < 0.65 || disciplined) {
         it.mutBuff = Math.min(4, (it.mutBuff || 1) * 1.25);
         fxAtCell(r, c, ['#ffd34d', '#ff8030', '#fff'], 16, 'big');
         fxFloatFromCell(r, c, 'ХАОС ×' + it.mutBuff.toFixed(2), '#ff9030');
-        toast('🔥 ' + card.name + ' взорвался Хаосом: БАФФ ×' + it.mutBuff.toFixed(2));
+        toast('🔥 ' + card.name + ' взорвался Хаосом: БАФФ ×' + it.mutBuff.toFixed(2), 'demon', 12);
       } else if (roll < 0.90 && !disciplined) {
         /* Превращение в другого демона той же редкости */
         const sameRarity = POOLS[card.rarity].filter(id => CARDS[id].faction === 'demon' && !CARDS[id].isBuilding && id !== card.id);
@@ -487,18 +533,18 @@ function demonEmberTick() {
         discovered.add(newId);
         fxAtCell(r, c, ['#c030c0', '#ff40ff', '#fff'], 18, 'big');
         fxFloatFromCell(r, c, 'ПРЕВРАЩЕНИЕ', '#ff60ff');
-        toast('🔥 ' + oldName + ' превратился в ' + CARDS[newId].name + '!');
+        toast('🔥 ' + oldName + ' превратился в ' + CARDS[newId].name + '!', 'demon', 12);
       } else if (glacier) {
         /* Ледник: перегрев невозможен — взрыв гаснет в тихий бафф */
         it.mutBuff = Math.min(4, (it.mutBuff || 1) * 1.15);
         fxFloatFromCell(r, c, 'ТИХИЙ БАФФ ×' + it.mutBuff.toFixed(2), '#c0e0ff');
-        toast('❄️ Ледник остудил взрыв ' + card.name + ': ×' + it.mutBuff.toFixed(2));
+        toast('❄️ Ледник остудил взрыв ' + card.name + ': ×' + it.mutBuff.toFixed(2), 'demon', 12);
       } else {
         /* Перегрев: угли сгорают в чистую мощь — ×2 на 12 сек */
         it.boomUntil = gameTime + 12;
         fxAtCell(r, c, ['#ff4010', '#ffb060', '#fff'], 22, 'big');
         fxFloatFromCell(r, c, 'ПЕРЕГРЕВ ×2', '#ff5030');
-        toast('🔥 ' + card.name + ' перегрелся: ×2 на 12 секунд!');
+        toast('🔥 ' + card.name + ' перегрелся: ×2 на 12 секунд!', 'demon', 12);
       }
     }
     /* Взрыв кормит соседей — Пепельный Тиран (радиус 2), Гончая Ада (радиус 3) */

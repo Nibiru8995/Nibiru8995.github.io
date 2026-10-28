@@ -258,6 +258,9 @@ function wireEvents() {
   $('arenaFightBtn').addEventListener('click', arenaFightClick);
   $('arenaRetreatBtn').addEventListener('click', arenaRetreat);
   $('arenaAutoChk').addEventListener('change', function () { arenaAuto = this.checked; if (arenaAuto) tryStartAutoBattle(); });
+  /* v1.2.7: оверлей «Поле боя» */
+  $('arenaExpandBtn').addEventListener('click', () => { open_('arenaOverlay'); updateArenaUI(); });
+  $('arenaCloseBtn').addEventListener('click', () => close_('arenaOverlay'));
 
   /* Коллекция */
   $('bulkDup').onclick = () => bulkFight('dup');
@@ -349,7 +352,7 @@ function wireEvents() {
   /* Клавиши и глобальные события */
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
-      for (const id of ['casinoModal', 'cgModal', 'hub', 'epochWarn', 'factionModal', 'epochModal', 'achvModal', 'dlg', 'dbgModal', 'relicPick', 'relicsModal']) {
+      for (const id of ['casinoModal', 'cgModal', 'hub', 'epochWarn', 'factionModal', 'epochModal', 'achvModal', 'dlg', 'dbgModal', 'relicPick', 'relicsModal', 'arenaOverlay']) {
         const m = $(id);
         if (m && m.classList.contains('show')) {
           if (id === 'casinoModal' && casinoSpinning) return;
@@ -362,7 +365,7 @@ function wireEvents() {
     }
   });
   window.addEventListener('contextmenu', e => { if (placingMode || deleteMode || moveMode) { e.preventDefault(); cancelSelection(); } });
-  window.addEventListener('resize', drawSynergies);
+  window.addEventListener('resize', () => { if (typeof applyGridMetrics === 'function') applyGridMetrics(); drawSynergies(); });
   window.addEventListener('beforeunload', () => { saveRun(); saveMeta(); });
   setInterval(saveRun, 5000);
   setInterval(() => {
@@ -383,6 +386,9 @@ setInterval(() => {
     runEarned += credited;
   }
   incomeExempt = 0;
+  /* v1.2.7: САМОВОССТАНОВЛЕНИЕ ОТОБРАЖЕНИЯ — если DOM разошёлся с состоянием
+     («ауры пропали», «карты задвоились»), перерисовываем поле в течение 250мс */
+  if (gameStarted && !gamePaused && typeof gridSignature === 'function' && gridSignature() !== lastRenderSig) renderGrid();
   checkMilestones();
   if (runEarned >= epochThreshold(epoch) && gameStarted && !gamePaused) {
     const upBtn = $('epochUpBtn');

@@ -12,8 +12,8 @@
 </head>
 <body>
 
-<h1><span>Гача-Гриндер 2</span><small>Тёмное Наследие</small></h1>
 <div id="topBar">
+  <span id="brand"><b>ГАЧА-ГРИНДЕР 2</b><small>Тёмное Наследие</small></span>
   <span class="res-chip"><span class="crystal-icon"></span><span id="crystals">2500</span></span>
   <span id="rate">+0/сек</span>
   <span class="res-chip" id="sealsChip" title="Печати: вечная валюта Эпох"><span class="ic">🔱</span><span id="sealsTop">0</span></span>
@@ -38,14 +38,18 @@
     <div id="epochBar">
       <button id="epochUpBtn" class="epoch-big-btn notready"><span id="epochBtnLabel">⚜ ЭПОХА 1</span><span class="cost">0 / 25 тыс 💎 (0%)</span></button>
     </div>
-    <div class="grid-title">⚜ АЛТАРЬ СИНЕРГИЙ ⚜</div>
-    <div class="grid-stats" id="gridStats">Доход: <b>+0/сек</b></div>
-    <div id="ritualBar" style="display:none">
-      <span class="rb-label">🔥 РИТУАЛ</span>
-      <div class="rb-track"><div class="rb-fill" style="width:0%"></div></div>
-      <span class="rb-info"></span>
+    <div id="gridTitleRow">
+      <span class="grid-title">⚜ АЛТАРЬ СИНЕРГИЙ ⚜</span>
+      <span class="grid-stats" id="gridStats">Доход: <b>+0/сек</b></span>
     </div>
-    <div id="relicSlotRow" style="display:none"></div>
+    <div id="ritualRow">
+      <div id="ritualBar" style="display:none">
+        <span class="rb-label">🔥 РИТУАЛ</span>
+        <div class="rb-track"><div class="rb-fill" style="width:0%"></div></div>
+        <span class="rb-info"></span>
+      </div>
+      <div id="relicSlotRow" style="display:none"></div>
+    </div>
     <div id="gridAltar">
       <div id="gridWrap">
         <span class="corner-tl"></span><span class="corner-tr"></span><span class="corner-bl"></span><span class="corner-br"></span>
@@ -62,31 +66,17 @@
       <button class="roll-btn" id="roll1000">×1000<span class="cost">150 тыс</span></button>
       <button class="roll-btn" id="rollAll">НА ВСЕ ДЕНЬГИ<span class="cost">макс. круток</span></button>
     </div>
-    <div id="arenaPanel">
-      <div class="arena-head">
-        <div class="arena-title">✠ КОЛЫБЕЛЬ ВОЙНЫ</div>
-        <div class="arena-floor-row"><span>Этаж <b id="arenaFloorNum">1</b></span><div class="arena-dots" id="roomIndicator"></div></div>
-        <div class="arena-room-header"><span id="arenaRoomText">Комната 1 / 5</span></div>
-      </div>
-      <div class="arena-main-row">
-        <div class="arena-enemy-card">
-          <canvas id="battleCanvas" width="560" height="320"></canvas>
-          <div class="arena-enemy-name" id="arenaMonsterName">Волна приближается</div>
-          <div class="arena-bar-wrap"><div class="arena-bar" id="arenaEnemyBar" style="width:100%;"></div><div class="arena-hp-text" id="arenaEnemyHp">— / —</div></div>
-        </div>
-        <div class="arena-side">
-          <div class="arena-stats"><span>⚔ Атака: <span id="arenaStatAtk" class="hero">0</span></span><span>❤ HP: <span id="arenaStatHp" class="hero">0</span></span><span>⚡ Урон: <span id="arenaStatDmg" class="hero">0</span></span></div>
-          <div class="arena-status" id="altarBuff" style="color:#80e0ff"></div>
-          <div class="arena-fight-row">
-            <button id="arenaFightBtn" style="flex:1;">⚔ В БОЙ</button>
-            <label class="auto-label"><input type="checkbox" id="arenaAutoChk"> Авто</label>
-          </div>
-          <button id="arenaRetreatBtn">↩ Отступить (фарм)</button>
-          <div class="arena-status" id="arenaStatus">Добавьте бойцов и жмите «В БОЙ».</div>
-        </div>
-      </div>
+    <div id="arenaDock" style="display:none">
+      <span class="ad-title">✠ КОЛЫБЕЛЬ ВОЙНЫ</span>
+      <span class="ad-item">Этаж <b id="arenaFloorNum">1</b></span>
+      <div class="arena-dots" id="roomIndicator"></div>
+      <span class="ad-item" id="arenaRoomText">Комната 1 / 5</span>
+      <span id="arenaDockStatus">Отряд ждёт приказа</span>
+      <button id="arenaFightBtn">⚔ В БОЙ</button>
+      <label class="auto-label"><input type="checkbox" id="arenaAutoChk"> Авто</label>
+      <button id="arenaRetreatBtn">↩ Фарм</button>
+      <button class="mini" id="arenaExpandBtn">Поле боя ▾</button>
     </div>
-    <div id="fightersPanel"><div id="fightersHeader">БОЙЦЫ <span id="fightersTotalDmg">Σ 0</span></div><div id="fightersList"></div></div>
   </div>
 
   <div id="rightCol">
@@ -100,11 +90,35 @@
 
 <div id="toast"></div>
 <canvas id="fxCanvas"></canvas>
+
+<!-- v1.2.7: ПОЛЕ БОЯ — оверлей поверх игры, компактный док под Алтарём всегда под рукой -->
+<div class="modal" id="arenaOverlay">
+  <div class="modal-card arena-modal-card">
+    <div class="arena-head2">
+      <span class="arena-title">✠ КОЛЫБЕЛЬ ВОЙНЫ — ПОЛЕ БОЯ</span>
+      <button class="mini" id="arenaCloseBtn">✕ Закрыть</button>
+    </div>
+    <div class="arena-main-row">
+      <div class="arena-enemy-card">
+        <canvas id="battleCanvas" width="560" height="320"></canvas>
+        <div class="arena-enemy-name" id="arenaMonsterName">Волна приближается</div>
+        <div class="arena-bar-wrap"><div class="arena-bar" id="arenaEnemyBar" style="width:100%;"></div><div class="arena-hp-text" id="arenaEnemyHp">— / —</div></div>
+      </div>
+      <div class="arena-side">
+        <div class="arena-stats"><span>⚔ Атака: <span id="arenaStatAtk" class="hero">0</span></span><span>❤ HP: <span id="arenaStatHp" class="hero">0</span></span><span>⚡ Урон: <span id="arenaStatDmg" class="hero">0</span></span></div>
+        <div class="arena-status" id="altarBuff" style="color:#80e0ff"></div>
+        <div class="arena-status" id="arenaStatus">Добавьте бойцов и жмите «В БОЙ».</div>
+        <div id="fightersPanel"><div id="fightersHeader">БОЙЦЫ <span id="fightersTotalDmg">Σ 0</span></div><div id="fightersList"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal show" id="menu" style="z-index:500"><div class="modal-card" style="max-width:340px"><h2 style="font-size:24px">⚜ Гача-Гриндер 2 ⚜</h2><div class="desc">Тёмное Наследие · Эпохи Тьмы</div>
 <button class="btn btn-take" id="menuContinue" style="width:100%;max-width:none">▶ Продолжить</button><button class="btn btn-take" id="menuNew" style="width:100%;max-width:none">✦ Новая игра</button><button class="btn btn-take" id="menuTut" style="width:100%;max-width:none">📖 Обучение</button><button class="btn btn-take" id="menuEpoch" style="width:100%;max-width:none">⚜ Меню Эпохи <small>(печати 🔱, Алтарь)</small></button>
 <div class="flavor">Крутите карты одной фракции, стройте синергии на Алтаре, качайте Эпохи.</div>
 <div class="flavor" id="menuFlavor">Тёмное Наследие · Эпохи Тьмы</div>
-<div class="flavor" style="color:#7a6242">версия 1.2.6 «Кровь Ритуала»</div></div></div>
+<div class="flavor" style="color:#7a6242">версия 1.2.7 «Пепел и Порядок»</div></div></div>
 <div id="tutPanel"><div id="tutText"></div><div id="tutBtns"><span id="tutStep"></span><button class="mini" id="tutExit">Выйти</button><button class="btn btn-take" id="tutNext" style="max-width:120px;padding:5px 10px">Далее</button></div></div>
 <div id="guidePanel"><div id="guideText"></div><div id="guideBtns"><span id="guideStepLbl"></span><button class="mini" id="guideSkip">Пропустить</button><button class="btn btn-take" id="guideNext" style="max-width:120px;padding:5px 10px">Далее</button></div></div>
 <div id="tooltip"></div><div id="selectionBanner"></div>

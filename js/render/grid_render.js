@@ -15,11 +15,15 @@ const banner = document.getElementById('selectionBanner');
 /* Смещение открытого квадрата внутри 9×9-матрицы данных */
 function gridStart() { return Math.floor((GRID_SIZE - playableSize) / 2); }
 
-/* Подгонка сетки под текущий размер: клетки крупнее на малом Алтаре */
+/* Подгонка сетки под текущий размер: клетки крупнее на малом Алтаре.
+   v1.2.7: размер считается от ВЫСОТЫ экрана — интерфейс целиком
+   помещается во вьюпорт без прокрутки страницы. */
 function applyGridMetrics() {
   const n = playableSize;
-  const cap = { 3: 78, 5: 62, 7: 52, 9: 46 }[n] || 46;
-  const sizeExpr = 'min(' + cap + 'px, calc(52vh / ' + n + '), calc((100vw - 120px) / ' + n + '))';
+  const cap = { 3: 82, 5: 74, 7: 62, 9: 52 }[n] || 52;
+  const narrow = window.innerWidth <= 1100;
+  const vhPad = narrow ? 9999 : 300, vwPad = narrow ? 40 : 560;
+  const sizeExpr = 'min(' + cap + 'px, max(40px, calc((100vh - ' + vhPad + 'px) / ' + n + ')), max(40px, calc((100vw - ' + vwPad + 'px) / ' + n + ')))';
   const wrap = $('gridWrap');
   if (wrap) wrap.style.setProperty('--cell-size', sizeExpr);
   gridEl.style.gridTemplateColumns = 'repeat(' + n + ', var(--cell-size))';
@@ -143,20 +147,22 @@ function renderGrid() {
     cell.dataset.r = r; cell.dataset.c = c;
     cell.onclick = () => onCellClick(r, c);
     if (r === 4 && c === 4) cell.classList.add('center-cell');
-    /* ФИДБЕК (раунд 3): аура — подсветка ВСЕХ клеток зоны (вкл. пустые) */
+    /* ФИДБЕК (раунд 3): аура — подсветка ВСЕХ клеток зоны (вкл. пустые).
+       v1.2.7: старый цвет ауры снимаем — иначе клетка «помнит» прошлую ауру. */
     const az = auraMap[r + ',' + c];
     if (az) {
       cell.classList.add('aura-zone');
       if (az.big) cell.classList.add('r2');
       cell.style.setProperty('--auraC', az.color);
-    }
+    } else cell.style.removeProperty('--auraC');
     /* ФИДБЕК 1 (раунд 3): ЯРКАЯ золотая зона Ауры Власти — видно на любых клетках,
        что соседние с Личем попадают под эффект (первые 2 звена без затухания) */
     if (incomeCache.lichZone && incomeCache.lichZone.indexOf(r + ',' + c) >= 0) cell.classList.add('aura-warded');
-    /* РИТУАЛ культистов (фидбек 3): клетки в ритуале и участники формаций.
+    /* РИТУАЛ культистов (фидбек 3): клетки в ритуале, в формациях и ВНЕШНИЙ КРУГ.
        v1.0: живой визуал — мёртвые культисты тускнеют, активный Алтарь
        получает вращающееся кольцо рун, всплеск резонанса — золото. */
     if (INC_CTX.ritual && INC_CTX.ritual.has(r + ',' + c)) cell.classList.add('ritual-cell');
+    else if (INC_CTX.ritualOuter && INC_CTX.ritualOuter.has(r + ',' + c)) cell.classList.add('ritual-outer');
     if (INC_CTX.formCell && INC_CTX.formCell[r + ',' + c]) cell.classList.add('ritual-part');
 
     if (moveMode && moveSource && moveSource.r === r && moveSource.c === c) cell.classList.add('move-source');
@@ -239,6 +245,32 @@ function renderGrid() {
   renderOmens();
   renderRelicSlots();
   renderRitualBar();
+  lastRenderSig = gridSignature(); /* v1.2.7: после рендера запоминаем состояние */
+}
+
+/* ================= v1.2.7: САМОВОССТАНОВЛЕНИЕ ОТОБРАЖЕНИЯ =================
+   «То ауры не отображаются, то карты дублируют» — любой рассинхрон DOM и
+   состояния теперь чинится сам: раз в 250мс сравниваем дешёвую сигнатуру
+   поля с той, что была при последнем рендере; разошлась — перерисовываем. */
+let lastRenderSig = '';
+function gridSignature() {
+  let s = FACTION_INFO[faction].mechanic + '|' + playableSize + '|' + epoch + '|' +
+    (placingMode ? 'P' + pendingCard : '') + (deleteMode ? 'D' : '') + (moveMode ? 'M' : '') +
+    (moveSource ? '@' + moveSource.r + ',' + moveSource.c : '') + '|' +
+    (INC_CTX.ritual ? INC_CTX.ritual.size : 0) + '/' + (INC_CTX.ritualOuter ? INC_CTX.ritualOuter.size : 0) + '/' +
+    Object.keys(INC_CTX.formActive || {}).length + '|' + Object.keys(relicSlots).length + '|';
+  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
+    const it = grid[r][c];
+    if (!it) { s += '.'; continue; }
+    s += it.cardId + 'x' + it.stacks +
+      ',h' + Math.round(it.hp) + '/' + Math.round(it.maxHp) +
+      ',e' + (it.embers || 0) + ',g' + Math.round((it.growBuff || 0) * 100) +
+      ',m' + Math.round((it.mutBuff || 1) * 100) + ',b' + Math.round((it.balrBuff || 1) * 100) +
+      ',p' + Math.round(((it.predBuff || 0) + (it.graze || 0) + (it.floraBuff || 0) + (it.scavBuff || 0)) * 100) +
+      ',y' + Math.round((it.hunger === undefined ? 1 : it.hunger) * 100) +
+      (it.boomUntil > gameTime ? '!' : '');
+  }
+  return s;
 }
 
 /* ---- v1.2.6: АКТИВНОСТЬ ОСОБЕННОСТИ (✦) ----
@@ -340,13 +372,18 @@ function updateGridStats() {
     const am = Math.min(2, 1 + 0.015 * (incomeCache.armyBest - 1));
     extra += ' · Армия: <b>' + incomeCache.armyBest + '</b> (×' + am.toFixed(2) + ')';
   }
-  /* Ритуал культистов v1.2.6: участники · скорость · выплата · заряд */
+  const sig = 'gs|' + countLinks() + '|' + currentDiversity() + '|' + inc.toFixed(2) + '|' + extra;
+  if (updateGridStats._sig === sig) return; /* v1.2.7: не перерисовываем строку каждый кадр */
+  updateGridStats._sig = sig;
+  /* Ритуал культистов v1.2.7: участники · внешний круг · скорость · выплата · заряд */
   if (FACTION_INFO[faction].mechanic === 'formation') {
     const E = RITUAL_ENGINE || computeRitualEngine();
     const forms = Object.keys(INC_CTX.formActive).length;
     const rpct = Math.floor(ritualResonance);
     extra += ' · Ритуал: <b>' + E.participants + '</b>' + (forms ? ' · формаций: <b>' + forms + '</b>' : '') +
-      ' · ⚡<b>' + E.speed.toFixed(1) + '%/с</b> · 💰<b>+' + fmtShort(E.payout) + '</b>' +
+      (E.outer ? ' · внешний круг: <b>' + E.outer + '</b> (+' + Math.round(E.outerPay * 100) + '% 💰)' : '') +
+      ' · ⚡<b>' + E.speed.toFixed(2) + '%/с</b>' + (E.capped ? ' (макс)' : '') +
+      ' · 💰<b>+' + fmtShort(E.payout) + '</b>' +
       ' · Заряд: <b>' + rpct + '%</b>';
   }
   $('gridStats').innerHTML = 'Активных звеньев: <b>' + countLinks() + '</b>' +
@@ -371,7 +408,8 @@ function renderRitualBar() {
   let infoTxt;
   if (E.speed > 0) {
     label.textContent = '🔥 РИТУАЛ';
-    infoTxt = '⚡ ' + E.speed.toFixed(1) + '%/с · 💰 +' + fmtShort(E.payout) + ' 💎 за цикл' + (E.banner ? ' · ' + E.banner : '');
+    infoTxt = '⚡ ' + E.speed.toFixed(2) + '%/с' + (E.capped ? ' (макс)' : '') + ' · 💰 +' + fmtShort(E.payout) + ' 💎 за цикл' +
+      (E.outer ? ' · круг +' + Math.round(E.outerPay * 100) + '%' : '') + (E.banner ? ' · ' + E.banner : '');
   } else if (E.ready) {
     label.textContent = '🔥 РИТУАЛ';
     infoTxt = 'Нет участников — поставьте культистов в цепь от Алтаря (шкала не тает!)';
