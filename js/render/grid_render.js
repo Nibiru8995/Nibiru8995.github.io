@@ -15,10 +15,7 @@ const banner = document.getElementById('selectionBanner');
 /* Смещение открытого квадрата внутри 9×9-матрицы данных */
 function gridStart() { return Math.floor((GRID_SIZE - playableSize) / 2); }
 
-/* Подгонка сетки под текущий размер: клетки крупнее на малом Алтаре.
-   ФИКС «съехал грид» (фидбек 7): --cell-size задаётся на ОБЁРТКЕ #gridWrap,
-   чтобы #grid и слоты реликвий #colSlots (его сиблинг) наследовали
-   ОДНУ переменную — раньше слоты брали корневое значение и колонки разъезжались. */
+/* Подгонка сетки под текущий размер: клетки крупнее на малом Алтаре */
 function applyGridMetrics() {
   const n = playableSize;
   const cap = { 3: 78, 5: 62, 7: 52, 9: 46 }[n] || 46;
@@ -29,18 +26,14 @@ function applyGridMetrics() {
   gridEl.style.gridTemplateRows = 'repeat(' + n + ', var(--cell-size))';
 }
 
-/* Карты, чья механика действует на ОКРУЖЕНИЕ: id -> радиус ауры в клетках.
-   ФИДБЕК (раунд 3, п.1): аура подсвечивает ВСЕ клетки зоны — включая пустые,
-   иначе «не видно, что соседние клетки попадают под эффект».
-   Зона Лича дополнительно получает класс aura-warded (золотая пульсация). */
-const AURA_R = { u8: 1, u10: 2, u11: 2, c4: 1, c9: 2, b8: 1, b9: 2, b10: 1, d8: 1, d9: 1, d10: 2, d11: 1 };
-
-/* Карта зон аур: 'r,c' -> {color, big}. Пересобирается на каждом renderGrid */
+/* Карты/здания, чья механика действует на ОКРУЖЕНИЕ: радиус ауры.
+   Радиусы зданий — BUILDING_AURA (data/buildings.js), карт — здесь.
+   Аура подсвечивает ВСЕ клетки зоны — включая пустые. */
 function buildAuraMap() {
   const map = {};
   for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
     const it = grid[r][c]; if (!it) continue;
-    const R = AURA_R[it.cardId]; if (!R) continue;
+    const R = auraRadiusOf(it.cardId); if (!R) continue;
     const color = FACTION_INFO[CARDS[it.cardId].faction].color;
     for (let dr = -R; dr <= R; dr++) for (let dc = -R; dc <= R; dc++) {
       if (Math.max(Math.abs(dr), Math.abs(dc)) > R) continue;
@@ -67,32 +60,39 @@ function buildGrid() {
   renderGrid();
 }
 
-/* СЛОТЫ РЕЛИКВИЙ у столбцов грида (фидбек 7-8). Открываются на Эпохе 2 */
-function renderColSlots() {
-  const bar = $('colSlots');
-  if (!bar) return;
-  if (epoch < RELIC_SLOT_EPOCH) { bar.style.display = 'none'; return; }
-  bar.style.display = '';
-  bar.style.gridTemplateColumns = gridEl.style.gridTemplateColumns;
-  bar.innerHTML = '';
+/* ================= ПАНЕЛЬ РЕЛИКВИЙ (слева от коллекции, v1.2.5) =================
+   Список столбцов Алтаря: клик по строке — вставить/снять реликвию.
+   Открывается на Эпохе 2 (applyFeatureLocks). */
+function renderRelicPanel() {
+  const panel = $('relicPanel'), list = $('relicPanelList');
+  if (!panel || !list) return;
+  if (epoch < RELIC_SLOT_EPOCH) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
   const st = gridStart();
+  let html = '';
   for (let dc = 0; dc < playableSize; dc++) {
     const c = st + dc;
-    const slot = document.createElement('div');
     const rel = relicAtCol(c);
-    slot.className = 'col-slot' + (rel ? ' filled' : '');
-    slot.dataset.col = c;
     if (rel) {
-      slot.innerHTML = relicArtHTML(rel, 'cs-ic', '') ;
-      slot.title = rel.name + '\n✅ ' + rel.buff + '\n❌ ' + rel.debuff + '\n(клик — снять)';
-      slot.style.setProperty('--relicC', RELIC_RARITY_COLOR(rel.rarity));
+      html += '<div class="rp-row filled" data-col="' + c + '" style="--relicC:' + RELIC_RARITY_COLOR(rel.rarity) + '">' +
+        '<span class="rp-num">Столб ' + (c + 1) + '</span>' +
+        '<span class="rp-ic">' + relicArtHTML(rel, 'rp-img', '') + '</span>' +
+        '<span class="rp-name">' + rel.name + '</span></div>';
     } else {
-      slot.innerHTML = '<span class="cs-plus">+</span>';
-      slot.title = 'Слот реликвии столбца ' + (c + 1) + ' — клик, чтобы вставить реликвию';
+      html += '<div class="rp-row empty" data-col="' + c + '">' +
+        '<span class="rp-num">Столб ' + (c + 1) + '</span>' +
+        '<span class="rp-ic"><span class="rp-plus">+</span></span>' +
+        '<span class="rp-name">пусто — вставить</span></div>';
     }
-    slot.onclick = ev => { ev.stopPropagation(); onColSlotClick(c); };
-    bar.appendChild(slot);
   }
+  const owned = RELICS_OWNED.size;
+  list.innerHTML = html;
+  list.querySelectorAll('.rp-row').forEach(row => {
+    row.onclick = () => onColSlotClick(+row.dataset.col);
+  });
+  /* Заголовок панели: счётчик собранных */
+  panel.querySelector('.relic-panel-sub').textContent =
+    'собрано ' + owned + ' · клик — вставить/снять';
 }
 
 function onColSlotClick(c) {
@@ -185,11 +185,13 @@ function renderGrid() {
       /* РЕЛИКВИИ 3.0: маркер реликвии на карте, стоящей в её столбце (спрайт) */
       const colRel = relicAtCol(c);
       if (colRel && epoch >= RELIC_SLOT_EPOCH) badges += '<span class="anchor-badge relic-mini" style="color:' + RELIC_RARITY_COLOR(colRel.rarity) + '" title="Столбец под реликвией: ' + colRel.name + '">' + relicArtHTML(colRel, 'relic-mini-img', '') + '</span>';
-      if (card.id === 'u10' || card.id === 'c4' || card.id === 'b10' || card.id === 'd10') badges += '<span class="anchor-badge">🔱</span>';
+      /* ЗДАНИЯ: значок постройки + бейдж якоря для Алтаря */
+      if (card.isBuilding) badges += '<span class="anchor-badge" style="color:#e8c060" title="Здание">🏛</span>';
+      if (RITUAL_SOURCES[card.id] !== undefined) badges += '<span class="anchor-badge">🔱</span>';
       /* Уникальная механика ★4/★5 — золотой значок ✦ */
       if (SPECIALS[card.id]) badges += '<span class="anchor-badge" style="color:#e8c060">✦</span>';
-      /* Счётчик перезарядки периодических способностей: Жатва (u9, 30с) и Кузня Хаоса (d9, 20с) */
-      if (card.id === 'u9') badges += '<span class="cd-badge" data-cd="harv"></span>';
+      /* Счётчик перезарядки периодических зданий: ЖАТВА (Гора костей, 30с) и Кузня Хаоса (d9, 20с) */
+      if (card.id === 'bl_mound') badges += '<span class="cd-badge" data-cd="mound"></span>';
       if (card.id === 'd9') badges += '<span class="cd-badge" data-cd="balr"></span>';
       /* ДЕМОНЫ: угли Хаоса (0..5) — оранжевые ромбы */
       if (FACTION_INFO[faction].mechanic === 'chaos' && item.embers > 0)
@@ -213,7 +215,7 @@ function renderGrid() {
       /* v1.0: состояние культиста в ритуале — живое/мёртвое, Алтарь в формации */
       if (FACTION_INFO[faction].mechanic === 'formation' && card.faction === 'cultist') {
         const k = r + ',' + c;
-        if (card.id === 'c4' && INC_CTX.formActive[k]) cardEl.classList.add('altar-active');
+        if (RITUAL_SOURCES[card.id] !== undefined && INC_CTX.formActive[k]) cardEl.classList.add('altar-active');
         else if (!INC_CTX.ritual.has(k) && !INC_CTX.formCell[k] && !INC_CTX.ritualOuter.has(k)) cardEl.classList.add('cult-dead');
       }
       cardEl.addEventListener('mouseenter', e => showCardTooltip(e, card, income, r, c));
@@ -223,9 +225,9 @@ function renderGrid() {
     }
   }
   drawSynergies();
-  renderColSlots();
   updateGridStats();
   renderOmens();
+  renderRelicPanel();
 }
 
 /* SVG-линии: парные синергии + цепи нежити (координаты — по открытым клеткам).
@@ -280,7 +282,7 @@ function drawSynergies() {
 function updateGridStats() {
   const inc = calculateIncome();
   let extra = '';
-  /* Активный буст «Жатва» (Жнец ★4) */
+  /* Активный буст «ЖАТВА» (Гора костей) */
   const b = activeAltBuff();
   if (b.mult > 1) extra += ' · <b style="color:#ffd34d">' + b.label + '</b> (' + Math.max(0, Math.ceil(b.until - gameTime)) + 'с)';
   /* Армия нежити (крупнейшая непрерывная цепь) */
@@ -288,23 +290,24 @@ function updateGridStats() {
     const am = Math.min(2, 1 + 0.015 * (incomeCache.armyBest - 1));
     extra += ' · Армия: <b>' + incomeCache.armyBest + '</b> (×' + am.toFixed(2) + ')';
   }
-  /* Ритуал культистов: размер + активная формация (фидбек 3) + РЕЗОНАНС (v1.0) */
+  /* Ритуал культистов: размер + активная формация + ЗАРЯД (v1.2.5) */
   if (FACTION_INFO[faction].mechanic === 'formation') {
     const inRitual = INC_CTX.ritual ? INC_CTX.ritual.size : 0;
-    let fLabel = '—';
+    let fLabel = '—', formCount = 0;
     for (const k in INC_CTX.formActive) {
       const f = INC_CTX.formActive[k];
-      fLabel = f.label + ' ×' + f.formMult.toFixed(2) + (f.keyBonus > 0 ? ' (ключи +' + f.keyBonus.toFixed(2) + ')' : '');
-      break;
+      fLabel = f.label + ' ×' + f.formMult.toFixed(2);
+      formCount++;
     }
+    if (formCount > 1) fLabel += ' ×' + formCount;
     const rpct = Math.floor(ritualResonance);
     const surgeLeft = Math.max(0, Math.ceil(surgeUntil - gameTime));
     extra += ' · Ритуал: <b style="color:' + (inRitual ? '#c9a227' : '#e08a8a') + '">' + inRitual + '</b> · Формация: <b>' + fLabel + '</b>' +
-      ' · Резонанс: <span class="res-bar"><i style="width:' + rpct + '%"></i></span> <b>' + rpct + '%</b>' +
+      ' · Заряд: <span class="res-bar"><i style="width:' + rpct + '%"></i></span> <b>' + rpct + '%</b>' +
       (surgeLeft ? ' · <b style="color:#ffe080">ВСПЛЕСК ×1.5 (' + surgeLeft + 'с)</b>' : '');
   }
   $('gridStats').innerHTML = 'Активных звеньев: <b>' + countLinks() + '</b>' +
-    ' · Уникальных пар: <b>' + currentDiversity() + '</b> (+' + Math.round((incomeCache.diversityMult - 1) * 100) + '%)' +
+    ' · Уникальных пар: <b>' + currentDiversity() + '</b> (+' + Math.round((incomeCache.diversityMult - 1) * 100) + '% дохода)' +
     ' · Доход: <b>+' + inc.toFixed(2) + '/сек</b>' + extra;
   updateCooldownBadges();
 }
@@ -315,10 +318,10 @@ function updateCooldownBadges() {
   const mech = FACTION_INFO[faction].mechanic;
   qsa('.cd-badge').forEach(el => {
     let txt = '';
-    if (el.dataset.cd === 'harv' && mech === 'chain') {
+    if (el.dataset.cd === 'mound' && typeof bldMoundTimer !== 'undefined') {
       const ab = activeAltBuff();
-      if (ab.mult > 1 && altBuff.label.indexOf('ЖАТВА') >= 0) txt = '⚔ ×' + ab.mult + ' ' + Math.max(0, Math.ceil(altBuff.until - gameTime)) + 'с';
-      else txt = '⚔ ' + Math.max(0, Math.ceil(30 - harvTimer)) + 'с';
+      if (ab.mult > 1 && altBuff.label.indexOf('ЖАТВА') >= 0) txt = '🗿 ×' + ab.mult + ' ' + Math.max(0, Math.ceil(altBuff.until - gameTime)) + 'с';
+      else txt = '🗿 ' + Math.max(0, Math.ceil(30 - bldMoundTimer)) + 'с';
     } else if (el.dataset.cd === 'balr' && mech === 'chaos') {
       txt = '🌋 ' + Math.max(0, Math.ceil(20 - balrTimer)) + 'с';
     }

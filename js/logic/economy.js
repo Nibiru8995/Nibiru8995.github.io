@@ -1,19 +1,20 @@
 'use strict';
 /* ============================================================
    ЛОГИКА: ЭКОНОМИКА (logic/economy.js)
-   Доход карт: парные синергии с ЗАТУХАНИЕМ повторов (анти-спам),
-   «Хор синергий» за разнообразие, формации, фракционные механики,
-   АРМИЯ нежити (непрерывные цепи) и уникальные механики ★4/★5
-   (SPECIALS в data/cards.js). Рендер отсюда не вызывается.
+   Доход карт: парные синергии (повторы одной пары дают всё меньше),
+   бонус за разнообразие, формации, фракционные механики, ЗДАНИЯ
+   (ауры/периодика — data/buildings.js), АРМИЯ нежити и уникальные
+   механики ★4/★5 (SPECIALS в data/cards.js). Рендер отсюда не вызывается.
    ============================================================ */
 
 const NEI4 = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 const NEI8 = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1], [1, -1], [1, 1]];
 
 /* Контекст расчёта (заполняется в computeIncome, читается factionMult/рендер):
-   ritual — клетки в ритуале (цепь от Алтаря), ritualOuter — «Второй круг» c9,
-   formActive — активная формация алтаря, formCell — клетка-участник формации */
-let INC_CTX = { uniquePairs: 0, armyMult: {}, ritual: new Set(), ritualOuter: new Set(), formActive: {}, formCell: {} };
+   ritual — клетки в ритуале, ritualOuter — расширенный круг,
+   formActive — активная формация алтаря, formCell — клетка-участник,
+   bld — ауры зданий (data/buildings.js) */
+let INC_CTX = { uniquePairs: 0, armyMult: {}, ritual: new Set(), ritualOuter: new Set(), formActive: {}, formCell: {}, bld: null, undeadCount: 0 };
 
 /* ------- РЕЛИКВИИ 3.0: движок видов эффектов (фидбек 8) -------
    Слот столбца держит фракционную реликвию. Вид эффекта описан
@@ -94,21 +95,24 @@ function formation(r, c) {
   return m;
 }
 
-/* ---------------- РИТУАЛ КУЛЬТИСТОВ (фидбек 3, усилен раундом 3) ----------------
-   Ритуал = множество клеток, соединённых цепочкой культистов
-   с «Ритуальным Алтарём» (c4). ВНЕ ритуала культист даёт ~ноль (×0.15).
-   Формации Алтаря (Крест/Квадрат/Кольцо/Великий Круг) дают ЧЛЕНАМ
-   ПОЛНЫЙ множитель формации; множитель усиливают КЛЮЧЕВЫЕ КАРТЫ,
-   стоящие В ФОРМАЦИИ: c5 +0.15, c8 +0.3, c9 +0.5, c10 +0.75, c11 +0.4.
-   «Верховный Жрец» (c9) расползает ритуал на одну клетку дальше. */
+/* ---------------- РИТУАЛ КУЛЬТИСТОВ ----------------
+   Ритуал = клетки, соединённые цепочкой культистов с источником:
+   здание «Ритуальный Алтарь» (bl_altar) или ХТОНЬ ★5 (c10/c11),
+   вставшая на его место. ВНЕ ритуала культист даёт почти ноль (×0.15).
+   v1.2.5: БОЛЬШИХ формаций больше нет — ТОЛЬКО малые и средние
+   (Крест/Квадрат/Ромб), зато Алтарей может быть НЕСКОЛЬКО: несколько
+   средних ритуалов сильнее одного. Заряд Ритуала полнеет тем быстрее,
+   чем больше формаций стоит одновременно.
+   Колодец Крови: +0.5 к множителю формаций вокруг + ритуал шире на клетку. */
 const FORM_DEFS = [
-  { kind: 'great',  mult: 4.0, label: 'Великий Круг' },
-  { kind: 'ring',   mult: 3.0, label: 'Кольцо' },
-  { kind: 'square', mult: 2.2, label: 'Квадрат' },
-  { kind: 'cross',  mult: 2.0, label: 'Крест' }
+  { kind: 'diamond', mult: 2.6, label: 'Ромб' },
+  { kind: 'square',  mult: 2.4, label: 'Квадрат' },
+  { kind: 'cross',   mult: 2.2, label: 'Крест' }
 ];
-/* КЛЮЧЕВЫЕ КАРТЫ ритуала: id -> прибавка к множителю формации */
-const RITUAL_KEYS = { c5: 0.15, c8: 0.3, c9: 0.5, c10: 0.75, c11: 0.4 };
+/* КЛЮЧЕВЫЕ КАРТЫ ритуала (усилители): id -> прибавка к множителю формации */
+const RITUAL_KEYS = { c5: 0.2, c8: 0.3, c9: 0.5, c10: 0.75, c11: 0.4, c13: 0.25 };
+/* Источники ритуала: здание-Алтарь или хтонь на его месте */
+const RITUAL_SOURCES = { bl_altar: 0, c10: 0.75, c11: 0.5 };
 function buildRitualContext() {
   INC_CTX.ritual = new Set(); INC_CTX.ritualOuter = new Set();
   INC_CTX.formActive = {}; INC_CTX.formCell = {};
@@ -116,9 +120,10 @@ function buildRitualContext() {
   const inB = (r, c) => r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE;
   const altars = [];
   for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++)
-    if (grid[r][c] && grid[r][c].cardId === 'c4') altars.push([r, c]);
+    if (grid[r][c] && RITUAL_SOURCES[grid[r][c].cardId] !== undefined) altars.push([r, c]);
   if (!altars.length) return;
-  /* BFS от алтарей по культистам (4-соседство) */
+  /* Колодцы: ритуал на поле тянется на одну клетку дальше */
+  const wells = INC_CTX.bld ? INC_CTX.bld.wells : 0;
   const q = altars.slice();
   altars.forEach(([r, c]) => INC_CTX.ritual.add(r + ',' + c));
   for (let i = 0; i < q.length; i++) {
@@ -129,44 +134,51 @@ function buildRitualContext() {
       INC_CTX.ritual.add(k); q.push([n.r, n.c]);
     });
   }
-  /* «Верховный Жрец» (c9): второй круг ритуала */
-  INC_CTX.ritual.forEach(k => {
-    const [r, c] = k.split(',').map(Number);
-    getNeighbors(r, c).forEach(n => {
-      const nk = n.r + ',' + n.c;
-      if (!INC_CTX.ritual.has(nk) && !INC_CTX.ritualOuter.has(nk) && isCult(n.r, n.c)) INC_CTX.ritualOuter.add(nk);
+  /* Верховный Жрец (c9) и Колодец Крови: лишний круг ритуала */
+  const extraRing = wells > 0 || altars.some(([r, c]) => grid[r][c].cardId === 'c9');
+  if (extraRing) {
+    INC_CTX.ritual.forEach(k => {
+      const [r, c] = k.split(',').map(Number);
+      getNeighbors(r, c).forEach(n => {
+        const nk = n.r + ',' + n.c;
+        if (!INC_CTX.ritual.has(nk) && !INC_CTX.ritualOuter.has(nk) && isCult(n.r, n.c)) INC_CTX.ritualOuter.add(nk);
+      });
     });
-  });
-  /* Формации вокруг каждого Алтаря (клетки вне поля ломают узор).
-     КЛЮЧЕВЫЕ КАРТЫ в клетках формации усиливают её множитель.
-     v1.0: новая формация «Ромб» — 4 культиста на вершинах (дистанция 2),
-     внутренние 8 клеток пусты: ×2.35. */
+  }
+  /* Формации вокруг каждого источника ритуала.
+     КЛЮЧЕВЫЕ КАРТЫ в клетках формации усиливают её множитель. */
   altars.forEach(([ar, ac]) => {
     const orth = [[-1, 0], [1, 0], [0, -1], [0, 1]].map(([dr, dc]) => [ar + dr, ac + dc]);
     const diag = [[-1, -1], [-1, 1], [1, -1], [1, 1]].map(([dr, dc]) => [ar + dr, ac + dc]);
     const r1 = NEI8.map(([dr, dc]) => [ar + dr, ac + dc]);
-    const r2 = [];
-    for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++)
-      if (Math.max(Math.abs(dr), Math.abs(dc)) === 2) r2.push([ar + dr, ac + dc]);
     const dia = [[ar - 2, ac], [ar + 2, ac], [ar, ac - 2], [ar, ac + 2]];
-    const b1 = r1.every(([r, c]) => inB(r, c));
     const diaB = dia.every(([r, c]) => inB(r, c));
     const allCult = list => list.every(([r, c]) => inB(r, c) && isCult(r, c));
     const allEmpty = list => list.every(([r, c]) => inB(r, c) && !grid[r][c]);
     let found = null;
-    if (allCult(r2) && allCult(r1)) found = { kind: 'great', mult: 4.0, label: 'Великий Круг', cells: r2.concat(r1) };
-    else if (b1 && allCult(r2) && allEmpty(r1)) found = { kind: 'ring', mult: 3.0, label: 'Кольцо', cells: r2 };
-    else if (diaB && allCult(dia) && allEmpty(r1)) found = { kind: 'diamond', mult: 2.35, label: 'Ромб', cells: dia };
-    else if (allCult(r1)) found = { kind: 'square', mult: 2.2, label: 'Квадрат', cells: r1 };
-    else if (allCult(orth) && allEmpty(diag)) found = { kind: 'cross', mult: 2.0, label: 'Крест', cells: orth };
+    if (diaB && allCult(dia) && allEmpty(r1)) found = { kind: 'diamond', mult: 2.6, label: 'Ромб', cells: dia };
+    else if (allCult(r1)) found = { kind: 'square', mult: 2.4, label: 'Квадрат', cells: r1 };
+    else if (allCult(orth) && allEmpty(diag)) found = { kind: 'cross', mult: 2.2, label: 'Крест', cells: orth };
     if (!found) return;
-    /* Усиление ритуала ключевыми картами, стоящими В ФОРМАЦИИ */
+    /* Усиление ритуала ключевыми картами в формации */
     let keyBonus = 0; const keysUsed = [];
     found.cells.forEach(([r, c]) => {
       const it = grid[r][c]; if (!it) return;
       const b = RITUAL_KEYS[it.cardId];
       if (b) { keyBonus += b; keysUsed.push(CARDS[it.cardId].name); }
     });
+    /* Хтонь-источник и Колодцы усиливают формацию */
+    keyBonus += RITUAL_SOURCES[grid[ar][ac].cardId] || 0;
+    if (INC_CTX.bld) {
+      let w = 0;
+      for (let dr = -3; dr <= 3; dr++) for (let dc = -3; dc <= 3; dc++) {
+        const nr = ar + dr, nc = ac + dc;
+        if (nr < 0 || nr >= GRID_SIZE || nc < 0 || nc >= GRID_SIZE) continue;
+        const it = grid[nr][nc];
+        if (it && it.cardId === 'bl_well' && Math.max(Math.abs(dr), Math.abs(dc)) <= 3) w++;
+      }
+      keyBonus += Math.min(2, w * 0.5);
+    }
     found.keyBonus = Math.min(2.0, keyBonus);
     found.keysUsed = keysUsed;
     found.formMult = found.mult + found.keyBonus;
@@ -188,6 +200,7 @@ function radius2(r, c) {
 
 function factionMult(r, c, card, item) {
   const mech = FACTION_INFO[faction].mechanic;
+  const B = INC_CTX.bld || { grave: {}, obelisk: {}, gates: {}, glacier: {}, pen: {}, pole: {}, spring: {}, pit: {}, wells: 0, mound: 0 };
   if (mech === 'chain') {
     /* «Скованный Смертью» (★5): рядом с ним цепь считается в радиусе 2 */
     const longChain = getNeighbors(r, c).some(n => n.item.cardId === 'u11');
@@ -204,15 +217,23 @@ function factionMult(r, c, card, item) {
     }
     if (card.id === 'u10') m *= 1 + 0.1 * Math.max(0, radius2Count - 1);
     else if (nearAnchor) m *= 1.25;
-    /* v1.2: Псалмопевец — Гимн Легиона: +10% за каждое своё активное звено */
+    /* Псалмопевец: +10% за каждое своё активное звено */
     if (card.id === 'u12') m *= 1 + 0.10 * getNeighbors(r, c).filter(n => findPair(card, CARDS[n.item.cardId])).length;
+    /* v1.2.5: новые ниши + здания */
+    if (card.id === 'u9') m *= 1 + 0.15 * radius2(r, c).filter(n => CARDS[n.item.cardId].faction === 'undead').length; /* Коса */
+    if (card.id === 'u7') m *= 1 + 0.08 * nUndead;                                                                /* Кладка */
+    if (card.id === 'u0') m *= 1 + 0.15 * radius2(r, c).filter(n => CARDS[n.item.cardId].rarity === 5).length;   /* Гарнизон */
+    if (card.id === 'u6') m *= 1 + 0.15 * getNeighbors(r, c).filter(n => { const nc2 = CARDS[n.item.cardId]; return nc2.faction === 'undead' && nc2.rarity === 3; }).length; /* Слёзы */
+    const ga = B.grave[r + ',' + c] || 0;            /* Кладбище: +12% нежити в зоне */
+    if (ga) m *= 1 + 0.12 * Math.min(3, ga);
+    if (B.mound > 0) m *= 1 + 0.03 * INC_CTX.undeadCount; /* Гора костей: +3% за каждую нежить */
     return m;
   }
   if (mech === 'formation') {
-    /* ФИДБЕК (раунд 3): культист ОБЯЗАН стоять в ритуале.
-       Вне ритуала — ×0.15 (≈ ноль). Член формации — ПОЛНЫЙ множитель
-       формации (×2..×4 + ключевые карты). Алтарь в центре — обязателен. */
-    if (card.id === 'c4') {
+    /* Культист ОБЯЗАН стоять в ритуале: вне — ×0.15.
+       Член формации — ПОЛНЫЙ множитель (×2.2..×2.6 + ключевые карты).
+       Источник ритуала — здание Алтаря или ХТОНЬ на его месте. */
+    if (RITUAL_SOURCES[card.id] !== undefined) {
       const f = INC_CTX.formActive[r + ',' + c];
       const n = getNeighbors(r, c).filter(n => INC_CTX.ritual.has(n.r + ',' + n.c)).length;
       return (f ? f.formMult : 1) * (1 + 0.15 * n);
@@ -225,15 +246,24 @@ function factionMult(r, c, card, item) {
       if (form && form.formAdd) m += form.formAdd;
     }
     else if (INC_CTX.ritual.has(k)) {
-      if (getNeighbors(r, c).some(n => n.item.cardId === 'c4')) m = 1.15; /* соседи Алтаря */
-    } else if (INC_CTX.ritualOuter.has(k)) m = 1.075;              /* Второй круг (c9) */
+      if (getNeighbors(r, c).some(n => RITUAL_SOURCES[n.item.cardId] !== undefined)) m = 1.15; /* соседи Алтаря */
+      if (card.id === 'c0') m *= 1.4;                              /* Смирение: в ритуале без формации */
+    } else if (INC_CTX.ritualOuter.has(k)) m = 1.075;              /* лишний круг (c9 / Колодец) */
     else {
       m = 0.15;                                                    /* ВНЕ РИТУАЛА — почти ноль */
-      /* v1.2: «Служка Полой Луны» (c12) рядом — тихий шёпот утешает: ×0.35 */
-      if (getNeighbors(r, c).some(n => n.item.cardId === 'c12')) m = 0.35;
-      /* v1.2: реликвия «Кадило Успокоения» (medic) в столбце — ×0.35 */
+      const ob = B.obelisk[k] || 0;                                /* Чёрный Обелиск: зона теплее */
+      if (ob) m = Math.max(m, 0.45);
+      if (getNeighbors(r, c).some(n => n.item.cardId === 'c12')) m = Math.max(m, 0.45); /* Служка */
       const engM = colEngine(c);
-      if (engM && engM.medic) m = Math.max(m, 0.35);
+      if (engM && engM.medic) m = Math.max(m, 0.6);                /* Кадило */
+    }
+    /* v1.2.5: новые ниши младших культистов + Обелиск в ритуале */
+    if (card.id === 'c1') m *= 1 + 0.10 * getNeighbors(r, c).filter(n => CARDS[n.item.cardId].faction === 'cultist').length;
+    if (card.id === 'c2' && getNeighbors(r, c).some(n => RITUAL_SOURCES[n.item.cardId] !== undefined)) m *= 1.3;
+    if (card.id === 'c3') m *= 1 + 0.10 * radius2(r, c).filter(n => INC_CTX.formCell[n.r + ',' + n.c]).length;
+    if (INC_CTX.formCell[k] || INC_CTX.ritual.has(k)) {
+      const ob = B.obelisk[k] || 0;
+      if (ob) m *= 1 + 0.08 * Math.min(2, ob);
     }
     /* «Инквизитор» (★4): +25% за каждую уникальную пару на поле */
     if (card.id === 'c8') m *= Math.min(5, 1 + 0.25 * INC_CTX.uniquePairs);
@@ -268,8 +298,8 @@ function factionMult(r, c, card, item) {
     return m;
   }
   if (mech === 'chaos') {
-    /* ФИДБЕК 5: УГЛИ ХАОСА — демоны копят угли в толпе и ВЗРЫВАЮТСЯ
-       предсказуемыми результатами (бафф/превращение/перегрев), дебаффов нет. */
+    /* ДЕМОНЫ: УГЛИ — в толпе (2+ рядом) демон копит угли и ВЗРЫВАЕТСЯ
+       предсказуемыми результатами (бафф/превращение/перегрев). */
     let m = (1 + 0.10 * (item.embers || 0)) * (item.mutBuff || 1);
     if (item.boomUntil && item.boomUntil > gameTime) m *= 2;   /* «Перегрев»: ×2 на 12 сек */
     const nb = getNeighbors(r, c);
@@ -289,6 +319,11 @@ function factionMult(r, c, card, item) {
     /* «Голод» (★5): +40% за соседа-демона, соседи теряют 10% */
     if (card.id === 'd11') m *= 1 + 0.40 * nb.filter(n => CARDS[n.item.cardId].faction === 'demon').length;
     else if (nb.some(n => n.item.cardId === 'd11')) m *= 0.9;
+    /* v1.2.5: Мучитель у раскалённых + здания (Врата/Ледник) */
+    if (card.id === 'd12') m *= 1 + 0.12 * nb.filter(n => (n.item.embers || 0) >= 3).length;
+    const ga = B.gates[r + ',' + c] || 0, gl = B.glacier[r + ',' + c] || 0;
+    if (ga) m *= 1 + 0.10 * Math.min(2, ga);
+    if (gl) m *= 1 + 0.08 * Math.min(2, gl);
     return m;
   }
   return 1;
@@ -330,6 +365,18 @@ function computeIncome() {
   rebuildRelicEngine();
   const colR = colRelicMap();
   const wardedUse = {};       // pairIndex -> сколько звеньев пары уже под Аурой Власти (кап 2)
+  const cryptUse = {};        // pairIndex -> звенья под Склепом (кап 2 на пару)
+  const necroUse = {};        // pairIndex -> звенья Некроманта (кап 2 на пару)
+
+  /* v1.2.5: ЗДАНИЯ — ауры + зона Склепа + счётчик нежити (Гора костей) */
+  INC_CTX.bld = buildBuildingAuras();
+  const cryptZone = buildCryptZone();
+  let undeadCount = 0;
+  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
+    const it = grid[r][c];
+    if (it && CARDS[it.cardId].faction === 'undead') undeadCount++;
+  }
+  INC_CTX.undeadCount = undeadCount;
 
   for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
     const it = grid[r][c]; if (!it) continue;
@@ -352,24 +399,37 @@ function computeIncome() {
         continue;
       }
 
-      /* Колонные реликвии (виды): titan — затухание², chain/sun — без затухания */
+      /* Колонные реликвии (виды): titan — повторы², chain/sun — без повторов */
       const e1 = colEngine(c), e2 = colEngine(nc);
       const wardedLink = hasLich && (lichAdj.has(key) || lichAdj.has(key2));
+      const isUndeadPair = cardA.faction === 'undead' && cardB.faction === 'undead';
+      const cryptLink = isUndeadPair && (cryptZone.has(key) || cryptZone.has(key2));   /* Склеп */
+      const necroLink = cardA.id === 'u5' || cardB.id === 'u5';                        /* Тёмная наука Некроманта */
 
       let factor;
       if (wardedLink && (wardedUse[idx] || 0) < 2) {
-        /* «Лич» (★4): первые 2 звена КАЖДОЙ пары не затухают и не жгут слоты (фидбек 2) */
+        /* «Лич» (★4): первые 2 звена КАЖДОЙ пары не слабеют и не жгут слоты */
         wardedUse[idx] = (wardedUse[idx] || 0) + 1;
+        factor = 1;
+      } else if (cryptLink && (cryptUse[idx] || 0) < 2) {
+        /* «Склеп» (здание): звенья нежити в его зоне не слабеют (первые 2 на пару) */
+        cryptUse[idx] = (cryptUse[idx] || 0) + 1;
+        factor = 1;
+      } else if (necroLink && (necroUse[idx] || 0) < 2) {
+        /* «Тёмная наука» Некроманта: его звенья не слабеют */
+        necroUse[idx] = (necroUse[idx] || 0) + 1;
         factor = 1;
       } else {
         usage[idx] = (usage[idx] || 0) + 1;
-        /* Затухание: у нежити своя, ЖЁСТКАЯ кривая (фидбек 2) */
+        /* Повторы: у нежити своя, ЖЁСТКАЯ кривая */
         const curve = (cardA.faction === 'undead' && cardB.faction === 'undead') ? SYN_DR_UNDEAD : SYN_DR;
         factor = curve[Math.min(usage[idx] - 1, curve.length - 1)];
         if ((e1 && e1.decaySq) || (e2 && e2.decaySq)) factor = factor * factor;
         if ((e1 && e1.noDecay) || (e2 && e2.noDecay)) factor = 1;
       }
-      /* «Голос Пустоты» (★5): затухание у культистов не ниже ×0.5 */
+      /* «Костяной Рыцарь»: повтор его пары не слабее ×0.5 */
+      if (cardA.id === 'u4' || cardB.id === 'u4') factor = Math.max(0.5, factor);
+      /* «Голос Пустоты» (★5): повторы у культистов не ниже ×0.5 */
       if (hasVoice && cardA.faction === 'cultist' && cardB.faction === 'cultist')
         factor = Math.max(0.5, factor);
       (cellActs[key] = cellActs[key] || []).push({ pair, factor });
@@ -377,15 +437,15 @@ function computeIncome() {
       linkFactors[lk] = factor;
       if (wardedLink) linkWarded[lk] = 1;
 
-      /* Хор: вес пары (noChoir исключает пару из Хора, choir удваивает) */
+      /* Разнообразие: вес пары (noChoir исключает пару, choir утраивает) */
       let w = 1;
-      if ((e1 && e1.choir) || (e2 && e2.choir)) w = 2;
+      if ((e1 && e1.choir) || (e2 && e2.choir)) w = 3;
       if ((e1 && e1.noChoir) || (e2 && e2.noChoir)) w = 0;
       if (w > 0) pairSeen[idx] = Math.max(pairSeen[idx] || 0, w);
     }
   }
   const uniquePairs = Object.keys(pairSeen).length;
-  /* Хор синергий: взвешенная сумма пар; «Глаз Бездны» (★5) удваивает вклад */
+  /* Разнообразие: взвешенная сумма уникальных пар; «Глаз Бездны» (★5) удваивает вклад */
   let divWeight = 0;
   for (const k in pairSeen) divWeight += pairSeen[k];
   const divBonus = DIVERSITY_BONUS * (hasEye ? 2 : 1);
@@ -450,9 +510,9 @@ function computeIncome() {
     total += val;
   }
   total *= diversityMult * sealMult;
-  /* «Жнец Душ» (★4): периодический буст «Жатва» на весь доход */
+  /* Временный буст всего дохода: ЖАТВА (Гора костей), вехи, Ускорение */
   total *= activeAltBuff().mult;
-  /* v1.0: РЕЗОНАНС РИТУАЛА — всплеск ×1.5 (см. faction_mechanics.js) */
+  /* «Заряд Ритуала» (cultists): ВСПЛЕСК ×1.5 — см. faction_mechanics.js */
   if (surgeUntil > gameTime) total *= 1.5;
   incomeCache = { total, uniquePairs, perCell, pairUsage: usage, diversityMult, armyBest, armyMultOf: INC_CTX.armyMult,
     linkFactors, linkWarded, lichZone: Array.from(lichAdj) };

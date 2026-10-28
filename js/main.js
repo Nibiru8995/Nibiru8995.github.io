@@ -40,7 +40,7 @@ function doRolls(count) {
 /* ---------------- Обучение (фидбек 5: НАГЛЯДНОЕ) ----------------
    Каждый шаг — ОДНО конкретное действие игрока, система проверяет
    его сама (ok-условия). Первую комбинацию игрок собирает РУКАМИ:
-   карта за картой, со стаком, звеном и демонстрацией затухания.
+   карта за картой, со стаком, звеном и демонстрацией слабых повторов.
    Онбординг новых фич — отдельная система logic/guide.js. */
 const TUT_GIVE = l => { l.forEach(([id, n]) => { inventory[id] = (inventory[id] || 0) + n; discovered.add(id); }); renderCollection(); };
 const gridHas = id => grid.some(row => row.some(it => it && it.cardId === id));
@@ -63,17 +63,18 @@ function pairLinkCount(a, b) {
 }
 const TUT = [
   { t: '📖 <b>Обучение.</b> Цикл игры: <b>крутите карты</b> → ставьте на <b>Алтарь</b> → карты приносят 💎/сек → копите порог → <b>Эпоха</b>. Это учебный забег — прогресс не сохранится. Дальше — только ваши действия, система проверит каждый шаг.', n: 1, pre: () => { crystals = 500; updateHUD(); } },
-  { t: '<b>Шаг 1. Гача.</b> Жмите <b>«КРУТКА»</b>, затем «ПРИНЯТЬ». Гача выдаёт карты только вашей фракции. Счётчик гарантии (pity) — над кнопками круток.', hl: '#roll1', ok: () => Object.keys(inventory).length > 0 },
-  { t: '<b>Шаг 2. Карта упала в коллекцию</b> внизу экрана (она подсвечена). Кликните по ней — карта возьмётся «в руку».', hl: () => collSel(Object.keys(inventory)[0]), ok: () => placingMode },
+  { t: '<b>Шаг 1. Гача.</b> Жмите <b>«КРУТКА»</b>, затем «ПРИНЯТЬ». Гача выдаёт карты вашей фракции: ★3 — стандарт, ЗДАНИЯ — постройки с аурами, ★4/★5 — редкость. Счётчик гарантии (pity) — над кнопками круток.', hl: '#roll1', ok: () => Object.keys(inventory).length > 0 },
+  { t: '<b>Шаг 2. Карта упала в коллекцию</b> слева (она подсвечена). Кликните по ней — карта возьмётся «в руку».', hl: () => collSel(Object.keys(inventory)[0]), ok: () => placingMode },
   { t: '<b>Шаг 3. Поставьте карту.</b> Кликните по любой клетке Алтаря. Карта начнёт приносить 💎/сек — счётчик над Алтарём.', hl: '#grid', ok: () => cardsOnGrid() > 0 },
-  { t: '<b>Шаг 4. СТАК — главный секрет Алтаря!</b> Мы выдали <b>«Скелета» ×3</b>. Кликните по Скелету в коллекции (подсвечен).', pre: () => TUT_GIVE([['u0', 3]]), hl: () => collSel('u0'), ok: () => placingMode && pendingCard === 'u0' },
-  { t: '<b>Шаг 5. Стак.</b> Поставьте Скелета на любую свободную клетку, затем кликните ПО ТОЙ ЖЕ клетке ещё <b>ДВАЖДЫ</b> — получится стопка ×3 с ТРОЙНЫМ доходом клетки. Одна клетка держит до ×5 копий одной карты.', hl: '#grid', ok: () => { const it = grid.flat().find(x => x && x.cardId === 'u0'); return !!(it && it.stacks >= 3); } },
-  { t: '<b>Шаг 6. ПЕРВАЯ КОМБИНАЦИЯ!</b> Мы выдали <b>«Костяного Рыцаря»</b> — партнёра Скелета. Выберите его в коллекции (золотая подсветка).', pre: () => TUT_GIVE([['u4', 1]]), hl: () => collSel('u4'), ok: () => placingMode && pendingCard === 'u4' },
-  { t: '<b>Шаг 7. Завершите связку.</b> Кликните по подсвеченной ЗЕЛЁНЫМ клетке рядом со Скелетом. Между картами вспыхнет линия — это синергия, доход обоих вырастет.', hl: '#grid', ok: () => pairLinkCount('u0', 'u4') > 0 },
+  { t: '<b>Шаг 4. ЗДАНИЕ!</b> Мы выдали <b>«Кладбище»</b> — постройку: она сама раз в 12с поднимает бесплатную нежить и усиливает соседей. Выберите её в коллекции и поставьте рядом с картами.', pre: () => TUT_GIVE([['bl_grave', 1]]), hl: () => collSel('bl_grave'), ok: () => gridHas('bl_grave') },
+  { t: '<b>Шаг 5. СТАК — главный секрет Алтаря!</b> Мы выдали <b>«Скелета» ×3</b>. Кликните по Скелету в коллекции (подсвечен).', pre: () => TUT_GIVE([['u0', 3]]), hl: () => collSel('u0'), ok: () => placingMode && pendingCard === 'u0' },
+  { t: '<b>Шаг 6. Стак.</b> Поставьте Скелета на любую свободную клетку, затем кликните ПО ТОЙ ЖЕ клетке ещё <b>ДВАЖДЫ</b> — получится стопка ×3 с ТРОЙНЫМ доходом клетки. Одна клетка держит до ×5 копий одной карты.', hl: '#grid', ok: () => { const it = grid.flat().find(x => x && x.cardId === 'u0'); return !!(it && it.stacks >= 3); } },
+  { t: '<b>Шаг 7. ПЕРВАЯ КОМБИНАЦИЯ!</b> Мы выдали <b>«Костяного Рыцаря»</b> — партнёра Скелета. Выберите его в коллекции (золотая подсветка).', pre: () => TUT_GIVE([['u4', 1]]), hl: () => collSel('u4'), ok: () => placingMode && pendingCard === 'u4' },
+  { t: '<b>Шаг 8. Завершите связку.</b> Кликните по подсвеченной ЗЕЛЁНЫМ клетке рядом со Скелетом. Между картами вспыхнет линия — это синергия, доход обоих вырастет.', hl: '#grid', ok: () => pairLinkCount('u0', 'u4') > 0 },
   { t: '🎉 <b>Первая комбинация собрана!</b> Линия на Алтаре = активное звено. Тултип (наведи мышь) показывает звенья и доход карты.', n: 1 },
-  { t: '<b>Шаг 8. Кокблок повторов.</b> Мы выдали ещё Скелета и Рыцаря. Соберите ВТОРУЮ такую же пару в сторонке и заметьте, что линия стала тусклее.', pre: () => TUT_GIVE([['u0', 1], ['u4', 1]]), hl: '#grid', ok: () => pairLinkCount('u0', 'u4') >= 2 },
-  { t: '⚠️ Видите? Вторая линия <b>бледная</b> — повторы пары затухают: 2-е звено ×0.7, 3-е ×0.45… у нежити — ещё жёстче. <b>Стройте РАЗНЫЕ связки:</b> Хор даёт +4% за каждую уникальную пару.', n: 1 },
-  { t: '<b>Шаг 9. Эпоха.</b> Большая кнопка над Алтарём показывает % порога. Наберёте — она откроет переход в следующую Эпоху (+печати 🔱). Эпохи открывают: Э2 — ⚔ Арену и <b>слоты реликвий у столбцов</b>; Э3 — поле 5×5 и ★4; Э4 — 🎰 Казино; Э5 — Культистов. Поле растёт само.', hl: '#epochUpBtn', n: 1 },
+  { t: '<b>Шаг 9. Повторы слабее.</b> Мы выдали ещё Скелета и Рыцаря. Соберите ВТОРУЮ такую же пару в сторонке и заметьте, что линия стала тусклее.', pre: () => TUT_GIVE([['u0', 1], ['u4', 1]]), hl: '#grid', ok: () => pairLinkCount('u0', 'u4') >= 2 },
+  { t: '⚠️ Видите? Вторая линия <b>бледная</b> — повтор одной и той же пары даёт всё меньше: 2-е звено ×0.7, 3-е ×0.45… у нежити — ещё жёстче. <b>Стройте РАЗНЫЕ связки:</b> за разнообразие весь доход получает +4% за каждую уникальную пару.', n: 1 },
+  { t: '<b>Шаг 10. Эпоха.</b> Большая кнопка над Алтарём показывает % порога. Наберёте — она откроет переход в следующую Эпоху (+печати 🔱). Эпохи открывают: Э2 — ⚔ Арену и <b>реликвии</b>; Э3 — поле 5×5 и ★4; Э4 — 🎰 Казино; Э5 — Культистов. Поле растёт само.', hl: '#epochUpBtn', n: 1 },
   { t: '✅ <b>Готово!</b> Наводитесь на карты — тултип объяснит всё остальное. Новые фичи сами покажут подсказку при открытии. Удачи, Гриндер!', n: 1, last: 1 }
 ];
 let tutI = -1, tutTimer = null;
@@ -122,7 +123,7 @@ function startFreshRun() {
   ritualResonance = 0; surgeUntil = 0;
   milestoneIdx = 0; freeRolls = 0;
   omens = []; omenTimer = 60;
-  const startR1 = POOL_1.filter(id => CARDS[id].faction === faction);
+  const startR1 = POOL_3.filter(id => CARDS[id].faction === faction);
   drawDistinct(startR1, 2).concat(startKitFor(faction)).forEach(id => { inventory[id] = (inventory[id] || 0) + 1; discovered.add(id); });
   computeIncome();
   gameStarted = true; noSave = false;
@@ -193,11 +194,11 @@ function startDebugRun(ep, f, rich, keepSave) {
   ritualResonance = 0; surgeUntil = 0;
   milestoneIdx = 0; freeRolls = 0;
   omens = []; omenTimer = 9999;
-  /* Стартовый набор: 2×★1 + ключ механики фракции + мешок карт для теста механик */
-  const startR1 = POOL_1.filter(id => CARDS[id].faction === faction);
+  /* Стартовый набор: карта механики фракции + ЗДАНИЕ + мешок карт для теста механик */
+  const startR1 = POOL_3.filter(id => CARDS[id].faction === faction);
   drawDistinct(startR1, 2).concat(startKitFor(faction)).forEach(id => { inventory[id] = (inventory[id] || 0) + 3; discovered.add(id); });
-  POOL_1.filter(id => CARDS[id].faction === faction).forEach(id => { inventory[id] = (inventory[id] || 0) + 12; discovered.add(id); });
-  POOL_3.filter(id => CARDS[id].faction === faction).forEach(id => { inventory[id] = (inventory[id] || 0) + 5; discovered.add(id); });
+  POOL_3.filter(id => CARDS[id].faction === faction).forEach(id => { inventory[id] = (inventory[id] || 0) + 12; discovered.add(id); });
+  POOL_B.filter(id => CARDS[id].faction === faction).forEach(id => { inventory[id] = (inventory[id] || 0) + 3; discovered.add(id); });
   POOL_4.filter(id => CARDS[id].faction === faction).forEach(id => { inventory[id] = (inventory[id] || 0) + 1; discovered.add(id); });
   computeIncome();
   gameStarted = true;
@@ -323,7 +324,7 @@ function wireEvents() {
   $('musicToggle').addEventListener('click', () => { musicOn = !musicOn; saveMeta(); if (musicOn) musicStart(); else musicStop(); updateSettingsUI(); });
   $('fxToggle').addEventListener('click', () => { fxOn = !fxOn; saveMeta(); updateSettingsUI(); });
   /* Реликвии */
-  $('relicsBtn').addEventListener('click', openRelics);
+  /* Реликвии v1.2.5: живут во вкладке коллекции «⚒ РЕЛИКВИИ» + панель слева */
   $('resetBtn').addEventListener('click', () => {
     ask('Стереть ВЕСЬ прогресс (включая печати и ачивки)?', () => {
       noSave = true; wipeAll(); location.reload();
@@ -332,8 +333,7 @@ function wireEvents() {
 
   /* Меню */
   $('menuBtn').onclick = () => { saveRun(); saveMeta(); showMenu(); };
-  $('menuFlavor').addEventListener('click', debugSecretClick); /* пасхалка: 3 клика по подзаголовку */
-  $('menuCheat').onclick = openDebugModal; /* видимая кнопка чит-режима */
+  $('menuFlavor').addEventListener('click', debugSecretClick); /* пасхалка: 3 клика по подзаголовку — только курсор выдаёт */
   $('menuContinue').onclick = () => {
     if (!gameStarted) { const ok = loadRun(); gameStarted = true; if (ok) toast('Забег загружен'); refreshAll(); }
     hideMenu();

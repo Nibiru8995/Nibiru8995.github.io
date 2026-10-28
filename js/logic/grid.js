@@ -20,11 +20,19 @@ function hintClass(r, c) {
   const p = CARDS[pendingCard]; const it = grid[r][c];
   const mech = FACTION_INFO[faction].mechanic;
   if (it) {
+    /* ХТОНЬ (c10/c11) может встать НА МЕСТО Ритуального Алтаря */
+    if ((p.id === 'c10' || p.id === 'c11') && it.cardId === 'bl_altar') return 'syn-hint';
     if (it.cardId === pendingCard && it.stacks < maxStacks()) return 'stack-hint';
     if (linked(p, CARDS[it.cardId])) return 'syn-hint';
     return '';
   }
   const ns = getNeighbors(r, c);
+  /* Здание: подсветка — клетки его будущей ауры уже содержат полезное */
+  if (p.isBuilding) {
+    if (p.id === 'bl_altar' && mech === 'formation') return 'good-spot';
+    if (ns.length) return 'good-spot';
+    return '';
+  }
   if (mech === 'cycle' && p.faction === 'beast' && p.diet) {
     /* Рацион: где эта зверюга будет сытa */
     if (p.diet === 'pred') return ns.some(n => isPrey(CARDS[n.item.cardId])) ? 'good-spot' : '';
@@ -81,7 +89,7 @@ function onCellClick(r, c) {
         grid[r][c] = null; stats.deleted++;
         computeIncome(); renderGrid(); renderCollection(); updateHUD();
       };
-      if (CARDS[item.cardId].rarity >= 4 || item.stacks > 1) {
+      if (rarityRank(CARDS[item.cardId].rarity) >= 4 || item.stacks > 1) {
         ask('Удалить навсегда: ' + CARDS[item.cardId].name + ' ×' + item.stacks + '?', doDelete);
       } else doDelete();
       cancelSelection();
@@ -93,13 +101,30 @@ function onCellClick(r, c) {
     if (!playableMask[r][c] || (inventory[pendingCard] || 0) <= 0) return;
     const card = CARDS[pendingCard];
     const hp = cardHp(card.rarity);
+    /* ХТОНЬ (★5) встаёт НА МЕСТО Ритуального Алтаря: Алтарь вернётся в коллекцию */
+    if (item && (card.id === 'c10' || card.id === 'c11') && item.cardId === 'bl_altar') {
+      if (item.stacks > 1) { inventory.bl_altar = (inventory.bl_altar || 0) + item.stacks; }
+      else inventory.bl_altar = (inventory.bl_altar || 0) + 1;
+      grid[r][c] = { cardId: pendingCard, stacks: 1, hp, maxHp: hp,
+        predBuff: 0, mutBuff: 1, embers: 0, hunger: 1, graze: 0, floraBuff: 0, scavBuff: 0, boomUntil: 0, petrCount: 0 };
+      inventory[pendingCard]--;
+      stats.placed++;
+      sfx('epoch');
+      fxAtCell(r, c, ['#c030c0', '#ff40ff', '#fff'], 20, 'big');
+      fxFloatFromCell(r, c, 'ХТОНЬ НА МЕСТЕ АЛТАРЯ', '#ff60ff');
+      toast('👁 <b>Хтонь заняла место Алтаря:</b> ритуал от неё сильнее!');
+      computeIncome();
+      if (inventory[pendingCard] <= 0) { delete inventory[pendingCard]; cancelSelection(); }
+      else { renderGrid(); renderCollection(); updateHUD(); }
+      return;
+    }
     if (item) {
       if (item.cardId !== pendingCard || item.stacks >= maxStacks()) return;
       item.stacks++; item.maxHp += hp; item.hp += hp;
     } else {
       grid[r][c] = { cardId: pendingCard, stacks: 1, hp, maxHp: hp,
         predBuff: 0, mutBuff: 1, embers: 0, hunger: 1, graze: 0, floraBuff: 0, scavBuff: 0, boomUntil: 0, petrCount: 0 };
-      /* v1.1: «Уголёк» (d3) — вечно тлеет: появляется уже с 1 углём Хаоса */
+      /* v1.1: «Уголёк» (d3) — вечно тлеет: появляется уже с 1 углём */
       if (pendingCard === 'd3') grid[r][c].embers = 1;
     }
     stats.placed++;
@@ -141,7 +166,7 @@ function autoStack() {
   if (!invIds.length) { toast('Инвентарь пуст — крутите карты!'); return; }
   if (!cardsOnGrid()) { toast('На Алтаре нет карт — поставьте первую вручную: клик по карте в коллекции'); return; }
   let n = 0;
-  invIds.sort((a, b) => CARDS[b].rarity - CARDS[a].rarity).forEach(id => {
+  invIds.sort((a, b) => rarityRank(CARDS[b].rarity) - rarityRank(CARDS[a].rarity)).forEach(id => {
     while (inventory[id] > 0) {
       const b = bestStackFor(id);
       if (!b) break;

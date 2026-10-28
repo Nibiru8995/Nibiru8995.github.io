@@ -41,16 +41,35 @@ h1 small { display: block; font-size: 9px; letter-spacing: 2px; color: #8a6a4a; 
 #sealsChip { color: #d4b050; }
 #rate { color: #c9a227; font-size: 13px; }
 
-#main { display: flex; gap: 16px; flex: 1; min-height: 0; width: 100%; max-width: 1450px; justify-content: center; align-items: stretch; margin-top: 4px; padding: 0 10px; position: relative; z-index: 2; }
+#main { display: flex; gap: 14px; flex: 1; min-height: 0; width: 100%; max-width: 1620px; justify-content: center; align-items: stretch; margin-top: 4px; padding: 0 10px; position: relative; z-index: 2; }
 
-/* ===== АРЕНА И БОЙЦЫ ===== */
-#arenaCol { width: 300px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; max-height: 100%; filter: brightness(0.92); overflow: hidden; }
-#arenaPanel { background: linear-gradient(#2a1a0f, #150d05); border: 2px solid var(--border2); border-radius: 8px; padding: 10px; box-shadow: inset 0 0 12px #00000088; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;}
-.arena-title { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: #d4b050; text-align: center; font-weight: bold; padding-bottom: 4px; text-shadow: 0 0 10px #c9a22755; }
-#arenaPanel { position: relative; }
+/* ===== ЛЕВАЯ ЗОНА v1.2.5: РЕЛИКВИИ + КОЛЛЕКЦИЯ (сбоку от грида) ===== */
+#leftCol { display: flex; gap: 8px; flex-shrink: 0; max-height: 100%; min-height: 0; }
+/* Панель реликвий — узкая, левее коллекции */
+#relicPanel { width: 168px; flex-shrink: 0; display: flex; flex-direction: column; gap: 4px; background: linear-gradient(#2a1a0f, #150d05); border: 2px solid var(--border2); border-radius: 8px; padding: 8px 6px; box-shadow: inset 0 0 12px #00000088; min-height: 0; filter: brightness(0.95); }
+.relic-panel-title { font-family: 'Philosopher', 'Georgia', serif; font-size: 12px; letter-spacing: 2px; color: #d4b050; text-align: center; text-shadow: 0 0 8px #c9a22755; }
+.relic-panel-sub { font-size: 9px; color: #7a6242; text-align: center; line-height: 1.25; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+#relicPanelList { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; }
+.rp-row { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 4px; background: linear-gradient(#241608, #150d05); border: 1px dashed #4a3020; cursor: pointer; transition: all .12s; min-height: 34px; }
+.rp-row:hover { border-color: #c9a227; box-shadow: 0 0 8px #c9a22744; }
+.rp-row.filled { border-style: solid; border-color: var(--relicC, #c9a227); box-shadow: inset 0 0 6px #00000088, 0 0 6px color-mix(in srgb, var(--relicC, #c9a227) 40%, transparent); }
+.rp-num { font-size: 10px; font-weight: bold; color: #b08040; width: 34px; flex-shrink: 0; }
+.rp-row .rp-ic { width: 20px; height: 20px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.rp-row .rp-ic img { width: 20px; height: 20px; }
+.rp-row .rp-name { flex: 1; font-size: 9px; color: #e0d0b0; line-height: 1.15; overflow: hidden; }
+.rp-row.empty .rp-name { color: #5a4228; font-style: italic; }
+.rp-row .rp-plus { color: #5a4228; font-weight: bold; font-size: 14px; }
+#relicPanelList::-webkit-scrollbar { width: 7px; }
+#relicPanelList::-webkit-scrollbar-thumb { background: linear-gradient(#6a4a2a, #3a2414); border-radius: 4px; }
+
+/* ===== АРЕНА v1.2.5: ПОД ГРИДОМ, ГОРИЗОНТАЛЬНАЯ КОМПОНОВКА ===== */
+#arenaPanel { background: linear-gradient(#2a1a0f, #150d05); border: 2px solid var(--border2); border-radius: 8px; padding: 8px 10px; box-shadow: inset 0 0 12px #00000088; display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; align-self: stretch; width: auto; position: relative; filter: brightness(0.96); }
+.arena-head { display: flex; align-items: center; gap: 10px; }
+.arena-title { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: #d4b050; text-align: center; font-weight: bold; text-shadow: 0 0 10px #c9a22755; white-space: nowrap; }
+.arena-floor-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #d4c0a0; background: #1a0a0a; padding: 3px 8px; border-radius: 4px; border: 1px solid #4a2020; flex: 1; }
+.arena-head .arena-room-header { flex: 0 0 auto; }
 #arenaPanel::before { content: ''; position: absolute; inset: 4px; border: 1px solid #c9a22726; border-radius: 6px; pointer-events: none; z-index: 0; }
 #arenaPanel > * { position: relative; z-index: 1; }
-.arena-floor-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #d4c0a0; background: #1a0a0a; padding: 4px 8px; border-radius: 4px; border: 1px solid #4a2020; }
 .arena-floor-row b { color: #ffe080; }
 .arena-dots { display: flex; gap: 3px; }
 .room-dot { width: 10px; height: 10px; border-radius: 50%; background: #3a2414; border: 1px solid #5a3a20; }
@@ -61,8 +80,11 @@ h1 small { display: block; font-size: 9px; letter-spacing: 2px; color: #8a6a4a; 
 .room-dot.elite { background: #3a2a10; border-color: #c9a227; box-shadow: 0 0 4px #c9a22788; }
 .room-dot.elite.cleared { background: #8a6a10; border-color: #ffe080; }
 .room-dot.boss.current { background: #ff2020; border-color: #ff8080; animation: pulse 0.8s infinite; }
-.arena-room-header { display: flex; justify-content: space-between; align-items: center; background: #150d05; border: 1px solid #4a3020; border-radius: 4px; padding: 4px 8px; font-size: 11px; color: #b08040; }
-.arena-enemy-card { background: radial-gradient(circle at 50% 20%, #3a0a0a, #0a0000); border: 2px solid #8b1a1a; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; box-shadow: inset 0 0 15px #000000cc; }
+.arena-room-header { display: flex; justify-content: space-between; align-items: center; background: #150d05; border: 1px solid #4a3020; border-radius: 4px; padding: 3px 8px; font-size: 11px; color: #b08040; }
+.arena-main-row { display: flex; gap: 8px; align-items: stretch; }
+.arena-enemy-card { background: radial-gradient(circle at 50% 20%, #3a0a0a, #0a0000); border: 2px solid #8b1a1a; border-radius: 6px; padding: 8px; display: flex; flex-direction: column; align-items: center; gap: 5px; position: relative; box-shadow: inset 0 0 15px #000000cc; flex: 1.5; min-width: 0; }
+#battleCanvas { width: 100%; height: auto; display: block; border-radius: 4px; image-rendering: auto; }
+.arena-side { flex: 1; min-width: 190px; display: flex; flex-direction: column; gap: 6px; justify-content: center; }
 .arena-enemy-icon { font-size: 42px; line-height: 1; filter: drop-shadow(0 0 10px #ff2020); transition: transform .08s; }
 .arena-enemy-name { font-size: 13px; font-weight: bold; color: #ffaaaa; text-shadow: 0 0 5px #000; text-align: center; }
 .arena-bar-wrap { width: 100%; height: 14px; background: #1a0a0a; border: 1px solid #5a2020; border-radius: 7px; overflow: hidden; position: relative; }
@@ -84,10 +106,10 @@ h1 small { display: block; font-size: 9px; letter-spacing: 2px; color: #8a6a4a; 
 .auto-label { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #d4c0a0; cursor: pointer; white-space: nowrap; }
 .auto-label input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--gold); cursor: pointer; }
 
-#fightersPanel { background: linear-gradient(#2a1a0f, #150d05); border: 2px solid var(--border2); border-radius: 8px; padding: 8px; box-shadow: inset 0 0 12px #00000088; display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 0; overflow: hidden; }
-#fightersHeader { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent2); text-align: center; font-weight: bold; border-bottom: 1px solid var(--border); padding-bottom: 4px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;}
+#fightersPanel { background: linear-gradient(#2a1a0f, #150d05); border: 2px solid var(--border2); border-radius: 8px; padding: 6px 8px; box-shadow: inset 0 0 12px #00000088; display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; align-self: stretch; max-height: 150px; }
+#fightersHeader { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent2); text-align: center; font-weight: bold; border-bottom: 1px solid var(--border); padding-bottom: 3px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;}
 #fightersHeader span { color: var(--gold); font-size: 10px; }
-#fightersList { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; background: #0a0503; border-radius: 5px; padding: 4px; }
+#fightersList { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; background: #0a0503; border-radius: 5px; padding: 4px; }
 .fighter-row { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 4px; background: linear-gradient(#241608, #150d05); border: 1px solid #3a2414; font-size: 10px; cursor: pointer; transition: all .12s; position: relative; overflow: hidden; flex-shrink: 0; }
 .fighter-row:hover { border-color: var(--accent2); background: #2a1a0e; }
 .fighter-row:hover::after { content: '↩'; position: absolute; right: 4px; color: #ffe080; }
@@ -148,7 +170,7 @@ h1 small { display: block; font-size: 9px; letter-spacing: 2px; color: #8a6a4a; 
 #rollBar #pity { flex-basis: 100%; text-align: center; font-size: 11px; color: #b08040; font-weight: normal; }
 
 /* ===== ГРИД ===== */
-#centerCol { display: flex; flex-direction: column; align-items: center; gap: 5px; flex-shrink: 0; position: relative; max-height: 100%; justify-content: center; }
+#centerCol { display: flex; flex-direction: column; align-items: center; gap: 5px; flex-shrink: 0; position: relative; max-height: 100%; justify-content: flex-start; min-width: 0; }
 .grid-title { font-size: 16px; letter-spacing: 5px; text-transform: uppercase; color: #ffe080; text-shadow: 0 0 12px #c9a227, 0 0 24px #c9a22788; margin-bottom: 2px; font-weight: bold; text-align: center; position: relative; z-index: 3; }
 .grid-stats { font-size: 11px; color: #d4c0a0; margin-bottom: 6px; text-align: center; background: linear-gradient(#2a1a0f, #150d05); border: 1px solid var(--border2); border-radius: 4px; padding: 3px 12px; position: relative; z-index: 3; box-shadow: inset 0 0 8px #00000088; }
 .grid-stats b { color: var(--gold); }
@@ -178,6 +200,7 @@ h1 small { display: block; font-size: 9px; letter-spacing: 2px; color: #8a6a4a; 
 .card:hover { transform: scale(1.05); z-index: 10; }
 .card.in-formation::before { content: '⛓'; position: absolute; top: 1px; left: 2px; font-size: 9px; opacity: .8; }
 .star1 { --glow: #6a5a4a; --cardBg: #3a2a20; }
+.starB { --glow: #9a8a6a; --cardBg: #2e2618; }
 .star3 { --glow: #7080a0; --cardBg: #202a40; }
 .star4 { --glow: #a070b0; --cardBg: #3a2040; }
 .star5 { --glow: #d4b050; --cardBg: #4a3010; }
@@ -230,10 +253,8 @@ h1 small { display: block; font-size: 9px; letter-spacing: 2px; color: #8a6a4a; 
   linear-gradient(rgba(6,3,1,.72), rgba(6,3,1,.88)),
   url('../assets/menu_bg.jpg') center 30% / cover no-repeat #0a0503; }
 #menu .modal-card { box-shadow: 0 0 80px #000000ee, 0 0 40px #c9a22733, inset 0 0 30px #000000aa; }
-/* Чит-режим: секретная строка намекает на кликабельность, кнопка — на видном месте */
-#menuFlavor { cursor: pointer; transition: color .2s, text-shadow .2s; }
-#menuFlavor:hover { color: #ffe080; text-shadow: 0 0 10px #c9a22788; }
-#menuCheat:hover { border-color: #c9a227 !important; box-shadow: 0 0 10px #c9a22744; }
+/* Чит-режим: секрет остаётся секретом — только курсор выдаёт строку */
+#menuFlavor { cursor: pointer; }
 
 /* ===== v1.2: ВЫБОР ТРОФЕЯ БОССА ===== */
 .trophy-list { display: flex; flex-direction: column; gap: 8px; width: 100%; }
@@ -284,16 +305,16 @@ h1 { letter-spacing: 4px; }
 .land-pulse { animation: landPulse .5s ease-out; }
 @keyframes landPulse { 0% { box-shadow: 0 0 0 #c9a22700; } 40% { box-shadow: 0 0 26px #ffd700cc; } 100% { box-shadow: 0 0 0 #c9a22700; } }
 
-/* ===== КОЛЛЕКЦИЯ ===== */
-#collection { width: 100%; max-width: 1450px; min-height: 0; display: flex; flex-direction: column; gap: 4px; background: linear-gradient(#2a1a0f, #150d05); border: 2px solid var(--border2); border-radius: 8px; padding: 6px; box-shadow: inset 0 0 12px #00000088; flex-shrink: 0; margin-top: 8px; overflow: hidden; position: relative; z-index: 2; }
+/* ===== КОЛЛЕКЦИЯ v1.2.5: боковая панель слева от грида ===== */
+#collection { width: 384px; flex-shrink: 0; min-height: 0; display: flex; flex-direction: column; gap: 4px; background: linear-gradient(#2a1a0f, #150d05); border: 2px solid var(--border2); border-radius: 8px; padding: 6px; box-shadow: inset 0 0 12px #00000088; position: relative; z-index: 2; max-height: 100%; filter: brightness(0.95); }
 #collectionHeader { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--accent2); padding: 2px 4px; border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap; gap: 6px; }
 #collectionTabs { display: flex; gap: 6px; flex-wrap: wrap; }
 .coll-tab { padding: 4px 12px; font-size: 11px; cursor: pointer; background: #150d05; border: 1px solid var(--border); color: #8a6a4a; border-radius: 4px; text-transform: uppercase; font-weight: bold; transition: all .15s; }
 .coll-tab:hover:not(.locked) { border-color: var(--accent2); color: #c9a227; }
 .coll-tab.active { background: #3a2414; color: #d4b050; border-color: var(--accent2); box-shadow: inset 0 0 8px #00000088, 0 0 6px #c9a22744; }
 .coll-tab.locked { opacity: .45; cursor: not-allowed; }
-#collectGrid { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; overflow-y: auto; overflow-x: hidden; max-height: 176px; flex: none; background: #0a0503; border-radius: 5px; align-content: flex-start; }
-.coll-card { width: 48px; height: 48px; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; cursor: pointer; border: 1px solid var(--glow); background: radial-gradient(circle, var(--cardBg, #2a1a0f), #0a0503); transition: transform .1s; overflow: hidden; padding: 1px; flex-shrink: 0; }
+#collectGrid { display: flex; flex-wrap: wrap; gap: 5px; padding: 4px; overflow-y: auto; overflow-x: hidden; flex: 1; min-height: 220px; background: #0a0503; border-radius: 5px; align-content: flex-start; }
+.coll-card { width: 54px; height: 54px; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; cursor: pointer; border: 1px solid var(--glow); background: radial-gradient(circle, var(--cardBg, #2a1a0f), #0a0503); transition: transform .1s; overflow: hidden; padding: 1px; flex-shrink: 0; }
 .coll-card:hover { transform: scale(1.1); z-index: 20; }
 .coll-card.selected { outline: 2px solid var(--gold); box-shadow: 0 0 14px var(--gold); transform: scale(1.12); }
 .coll-card .coll-glyph { font-size: 18px; line-height: 1; }
@@ -512,14 +533,18 @@ h1 { letter-spacing: 4px; }
   :root { --cell-size: min(5vh, 50px, calc((100vw - 70px) / 9.6)); }
   .grid-title { font-size: 14px; letter-spacing: 3px; }
 }
-@media (max-width: 1300px) { #main { max-width: 100%; gap: 12px; } #arenaCol { width: 280px; } }
+@media (max-width: 1300px) { #main { max-width: 100%; gap: 12px; } }
 @media (max-width: 1100px) {
   #main { flex-wrap: wrap; overflow: visible; }
-  #arenaCol, #rightCol, #centerCol { width: 100%; max-width: 560px; }
-  #arenaCol { max-height: none; }
+  #leftCol, #rightCol, #centerCol { width: 100%; max-width: 640px; }
+  #leftCol { flex-direction: column; }
+  #collection { width: 100%; max-height: none; }
+  #collectGrid { min-height: 140px; max-height: 220px; }
+  #relicPanel { width: 100%; }
+  #relicPanelList { flex-direction: row; flex-wrap: wrap; max-height: 100px; }
+  .rp-row { flex: 1 1 40%; }
   #rightCol { flex-direction: row; flex-wrap: wrap; overflow: visible; }
   #rightCol > button { width: calc(50% - 4px); min-height: 52px; }
-  #collection { max-width: 100%; }
   #fightersList { max-height: 200px; }
   .warn-cols { grid-template-columns: 1fr; }
   .ups { grid-template-columns: 1fr; }
@@ -527,9 +552,8 @@ h1 { letter-spacing: 4px; }
   .epoch-big-btn { min-height: 50px; }
 }
 #main { align-items: flex-start !important; }
-#arenaCol { max-height: none !important; overflow: visible !important; }
 #fightersPanel { flex: none !important; overflow: hidden; }
-#fightersList { height: 230px; flex: none !important; }
+#fightersList { height: 120px; flex: none !important; }
 
 /* ==================== СПРАЙТЫ КАРТ (assets/cards) ====================
    Пиксель-арт 64×64, масштабирование без размытия (pixelated).

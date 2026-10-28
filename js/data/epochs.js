@@ -19,7 +19,7 @@
   ПОЛЕ растёт АВТОМАТИЧЕСКИ при переходе (бесплатно) — докупать не нужно.
 */
 const EPOCHS = [
-  { name: 'Пробуждение',       unlock: 'Алтарь 3×3 + Гача ★1/★3 + фракция «Нежить»',  threshold: 0,             seals: 0 },
+  { name: 'Пробуждение',       unlock: 'Алтарь 3×3 + Гача ★3 + ЗДАНИЯ + фракция «Нежить»', threshold: 0,  seals: 0 },
   { name: 'Колыбель Войны',    unlock: '⚔ Колыбель Войны — автобатлер + слоты реликвий', threshold: 9000,       seals: 4 },
   { name: 'Кровавые Звёзды',   unlock: 'Поле 5×5 + ★4 в пуле гачи',                    threshold: 32000,         seals: 5 },
   { name: 'Дьявольская Забава', unlock: '🎰 Казино',                                   threshold: 120000,        seals: 6 },
@@ -72,7 +72,7 @@ function epochHasCasino(e) { return e >= CASINO_EPOCH; }
 function epochHasArena(e) { return e >= ARENA_EPOCH; }
 
 function epochRarities(e) {
-  const r = [1, 3];
+  const r = ['B', 3]; /* v1.2.5: Здания + ★3 стандарт */
   if (e >= 3) r.push(4); /* ★4 заметно раньше: уже в Эпохе 3 */
   if (e >= 6) r.push(5); /* ★5 поднят с Э7 на Э6 — гача оживает раньше */
   return r;

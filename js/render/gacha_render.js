@@ -7,7 +7,10 @@
    ============================================================ */
 function playRarityEffect(modalCardEl, bannerEl, rarity) {
   bannerEl.className = 'rarity-banner'; bannerEl.textContent = '';
-  if (rarity === 4) {
+  if (rarity === 'B' || rarity === 1) {
+    bannerEl.textContent = 'ЗДАНИЕ'; bannerEl.classList.add('r4', 'show');
+    modalCardEl.classList.add('rarity4'); spawnSparks(modalCardEl, 'r4', 6);
+  } else if (rarity === 4) {
     bannerEl.textContent = 'РЕДКАЯ КАРТА'; bannerEl.classList.add('r4', 'show');
     modalCardEl.classList.add('rarity4'); spawnSparks(modalCardEl, 'r4', 10);
   } else if (rarity === 5) {
@@ -72,14 +75,16 @@ function showDrop(cardId) {
   el.style.setProperty('--glow', rarityColor(card.rarity));
   el.style.setProperty('--cardBg', rarityBg(card.rarity));
   el.innerHTML = cardArtHTML(card, 'drop-art', '');
-  $('dropStars').textContent = '★'.repeat(card.rarity) + ' · ' + FACTION_INFO[card.faction].name;
+  $('dropStars').textContent = starsOf(card.rarity) + ' · ' + FACTION_INFO[card.faction].name;
   $('dropName').textContent = card.name;
-  $('dropEffect').innerHTML = pairsForCard(card).map(p => p.text).join('<br>') || 'Нет особых синергий.';
+  $('dropEffect').innerHTML = card.isBuilding
+    ? '<span style="color:#e8c060">' + (SPECIALS[card.id] || '') + '</span>'
+    : pairsForCard(card).map(p => p.text).join('<br>') || 'Нет особых синергий.';
   $('dropFlavor').textContent = '«' + card.flavor + '»';
   modalCard.classList.remove('rarity4', 'rarity5');
   playRarityEffect(modalCard, bannerEl, card.rarity);
   /* Звук + canvas-FX по редкости */
-  sfx('drop', card.rarity);
+  sfx('drop', card.isBuilding ? 1 : card.rarity);
   if (card.rarity === 5) { const b = $('dropModalCard').getBoundingClientRect(); fxBeams(b.left + b.width / 2, b.top + b.height / 2); fxConfetti(70); }
   else if (card.rarity === 4) fxFxAt($('dropModalCard'), ['#a070b0', '#e8c060', '#fff'], 26);
   else fxFxAt($('dropModalCard'), ['#7080a0', '#fff'], 12);
@@ -147,7 +152,7 @@ function showMulti(cardIds, count, relicIds) {
   modalCard.classList.remove('rarity4', 'rarity5');
   let has4 = false, has5 = false;
   const my = cardIds;
-  my.forEach(id => { const c = CARDS[id].rarity; if (c === 4) has4 = true; if (c === 5) has5 = true; });
+  my.forEach(id => { const c = rarityRank(CARDS[id].rarity); if (c === 4) has4 = true; if (c === 5) has5 = true; });
   const relics = relicIds || [];
   relics.forEach(id => { const r = relicById(id); if (r.rarity === 4) has4 = true; if (r.rarity === 5) has5 = true; });
 
@@ -156,11 +161,11 @@ function showMulti(cardIds, count, relicIds) {
     /* Сводка для больших круток: группировка по картам + реликвии отдельно */
     const counts = {};
     my.forEach(id => counts[id] = (counts[id] || 0) + 1);
-    const rows = Object.keys(counts).sort((a, b) => CARDS[b].rarity - CARDS[a].rarity || counts[b] - counts[a])
+    const rows = Object.keys(counts).sort((a, b) => rarityRank(CARDS[b].rarity) - rarityRank(CARDS[a].rarity) || counts[b] - counts[a])
       .map(id => {
         const c = CARDS[id];
         return '<div class="multi-row">' + cardArtHTML(c, 'mr-art', 'mr-glyph') +
-          '<span class="mr-name">' + c.name + ' <i>' + '★'.repeat(c.rarity) + '</i></span>' +
+          '<span class="mr-name">' + c.name + ' <i>' + starsOf(c.rarity) + '</i></span>' +
           '<span class="mr-count">×' + counts[id] + '</span></div>';
       }).join('');
     const relRows = relics.map(id => {
@@ -218,7 +223,7 @@ function showMulti(cardIds, count, relicIds) {
     $('multiModal').classList.remove('show');
     my.forEach(id => { inventory[id] = (inventory[id] || 0) + 1; discovered.add(id); });
     renderCollection();
-    const ones = my.filter(id => CARDS[id].rarity === 1);
+    const ones = my.filter(id => CARDS[id].rarity === 'B' || CARDS[id].rarity === 1);
     if (ones.length) flyCard($('multiModalCard'), 'fightersPanel', CARDS[ones[0]], 1);
     ones.forEach(id => addFighter(id, 1));
     gamePaused = false;

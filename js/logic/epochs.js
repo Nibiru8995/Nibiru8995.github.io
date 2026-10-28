@@ -16,7 +16,7 @@ function canEpochUp() { return runEarned >= epochThreshold(epoch); }
 function epochResetSummary() {
   return {
     reset: ['Грид (Алтарь) и карты', 'Инвентарь карт', 'Бойцы и этажи Арены',
-      'Кристаллы 💎', 'Pity-счётчики круток'],
+      'Кристаллы 💎', 'Pity-счётчики круток', 'РЕЛИКВИИ (собранные и расставленные)'],
     keep: ['Достижения 🏅', 'Печати 🔱 и магазин печатей', 'Открытые фишки карт',
       'Доступные фракции и разблокировки Эпох']
   };
@@ -37,13 +37,11 @@ function doEpochUp(newFaction) {
   fxShockwave(window.innerWidth / 2, window.innerHeight / 2, '#e8c060');
 
   /* Сброс забега. Поле растёт АВТОМАТИЧЕСКИ (бесплатно) до размера Эпохи.
-     ФИКС (фидбек 4): КАРТЫ УБИРАЮТСЯ С ПОЛЯ — раньше грид не очищался и
-     старые карты оставались стоять (и даже приносили доход) в новой Эпохе.
-     РЕЛИКВИИ 2.0: реликвии ВЕЧНЫЕ, но расстановка по столбцам сбрасывается
-     (геометрия поля другая) */
+     v1.2.5: РЕЛИКВИИ — расходник забега: сбрасывается и коллекция,
+     и расстановка (эффекты реликвий мощные именно поэтому). */
   const baseCr = 2500;
   crystals = baseCr + (sealLv.impulse > 0 ? 2500 * Math.pow(2, sealLv.impulse) : 0);
-  relicSlots = {}; relicPity = 0;
+  RELICS_OWNED = new Set(); relicSlots = {}; relicPity = 0;
   grid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
   playableSize = epochMaxSize(epoch);
   rebuildPlayableMask();
@@ -58,10 +56,10 @@ function doEpochUp(newFaction) {
   milestoneIdx = 0; freeRolls = 0;
   omens = []; omenTimer = 60; renderOmens();
 
-  /* Стартовый набор фракции (фидбек раунда 3): 2 разных ★1 + гарантированный
-     ключ механики: нежить — Некромант (узел цепей), культисты — Ритуальный Алтарь,
-     звери — готовая цепь Волк+Кабан+Древень, демоны — Кровавый Жрец */
-  const startR1 = POOL_1.filter(id => CARDS[id].faction === faction);
+  /* Стартовый набор фракции: пара случайных карт + ключ механики + ЗДАНИЕ:
+     нежить — Некромант + Кладбище, культисты — Ритуальный Алтарь,
+     звери — готовая цепь + Вольер, демоны — Кровавый Жрец + Яма */
+  const startR1 = POOL_3.filter(id => CARDS[id].faction === faction);
   const gift = drawDistinct(startR1, 2).concat(startKitFor(faction));
   gift.forEach(id => { inventory[id] = (inventory[id] || 0) + 1; discovered.add(id); });
 

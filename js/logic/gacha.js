@@ -8,8 +8,8 @@
    приносит РЕЛИКВИЮ вместо карты (гарантия за 30 круток без неё).
    ============================================================ */
 
-/* Шансы: 45% ★1, 50% ★3, 4% ★4, 1% ★5 (если редкость открыта).
-   Понижение ★4: базовый шанс 4%, pity ★4 = 20. */
+/* Шансы: 45% ЗДАНИЕ, 50% ★3, 4% ★4, 1% ★5 (если открыто).
+   Здания (rarity 'B') — эквивалент бывшей ★1, стандартный мелкий дроп. */
 function unlockedRarities() { return epochRarities(epoch); }
 function pity4Max() { return 20; }
 
@@ -27,10 +27,10 @@ function rollRarity() {
   else if (has4 && (hitSmallPity || r >= 95)) t = 4;
   else if (hitBigPity) t = best;  /* большой pity: лучшая доступная */
   else if (hitSmallPity) t = best; /* малый pity на ранних Эпохах даёт ★3 */
-  else t = r < 45 ? 1 : 3;
+  else t = r < 45 ? 'B' : 3;
 
   /* Счётчики сбрасываются, когда гарантия сработала по своей шкале */
-  if (t >= 4 || hitSmallPity) pity4 = 0;
+  if (t === 4 || t === 5 || hitSmallPity) pity4 = 0;
   if (t === 5 || hitBigPity) pity5 = 0;
   return t;
 }
@@ -41,7 +41,6 @@ function factionPool(t) {
   const own = base.filter(id => CARDS[id].faction === faction);
   return own.length ? own : base;
 }
-
 function rollOne() {
   const t = rollRarity();
   const id = pick(factionPool(t));

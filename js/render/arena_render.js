@@ -89,7 +89,7 @@ function drawBattleBg(ctx) {
 }
 
 function rarityFrameColor(r) {
-  return ({ 1: '#8a8a8a', 3: '#3a7ac0', 4: '#a070b0', 5: '#d4b050' })[r] || '#8a8a8a';
+  return ({ B: '#9a8a6a', 1: '#8a8a8a', 3: '#3a7ac0', 4: '#a070b0', 5: '#d4b050' })[r] || '#8a8a8a';
 }
 
 function drawUnit(ctx, u, imgCache, tNow) {
@@ -357,7 +357,7 @@ function renderBattle() {
 function renderFighters() {
   const list = $('fightersList');
   list.innerHTML = '';
-  const ids = Object.keys(fighters).sort((a, b) => CARDS[b].rarity - CARDS[a].rarity);
+  const ids = Object.keys(fighters).sort((a, b) => rarityRank(CARDS[b].rarity) - rarityRank(CARDS[a].rarity));
   ids.forEach(id => {
     const c = CARDS[id];
     const count = fighters[id];

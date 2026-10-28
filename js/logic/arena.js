@@ -90,7 +90,7 @@ function bulkFight(mode) {
   let n = 0;
   Object.keys(inventory).forEach(id => {
     const c = inventory[id];
-    const k = mode === 'dup' ? c - 1 : mode === 'one' ? (CARDS[id].rarity === 1 ? c : 0) : c;
+    const k = mode === 'dup' ? c - 1 : mode === 'one' ? ((CARDS[id].rarity === 'B' || CARDS[id].rarity === 1) ? c : 0) : c;
     if (k > 0) { addFighter(id, k); n += k; }
   });
   toast(n ? 'В бой отправлено: ' + n : 'Нечего отправлять');

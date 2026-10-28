@@ -64,34 +64,8 @@ function milHtml() {
   return '<h3>🏅 Вехи забега</h3>' + rows;
 }
 
-/* ---------------- Модал Реликвий 2.0 (фидбек 7-8) ----------------
-   Реликвии добываются из гачи (с Э2), ставятся в слоты столбцов.
-   Каждая — мощный бафф + равноценный дебафф на столбик. */
-function openRelics() {
-  const assigned = Object.keys(relicSlots).length;
-  mk('relicsModal',
-    '<h2>⚒ Реликвии</h2>' +
-    '<div class="res">Артефакты из гачи (с Эпохи ' + RELIC_DROP_EPOCH + '). Собрано: <b>' + RELICS_OWNED.size + ' / ' + RELICS.length + '</b> · установлено в столбцы: <b>' + assigned + '</b></div>' +
-    '<div class="res" style="color:#c9a227">Кликните по слоту «+» под нужным СТОЛБЦОМ Алтаря, чтобы вставить реликвию. Слоты открываются на Эпохе ' + RELIC_SLOT_EPOCH + '.</div>' +
-    '<div id="relicGrid"></div>' +
-    '<div class="flavor">Каждая реликвия — мощный бафф и такой же мощный ДЕБАФФ на один столбик грида. Дубликат из гачи превращается в 💎.</div>' +
-    '<div class="btn-row"><button class="btn btn-take" id="relicsX">Закрыть</button></div>', 560);
-  $('relicsX').onclick = () => close_('relicsModal');
-  const usedBy = {};
-  Object.keys(relicSlots).forEach(col => { usedBy[relicSlots[col]] = +col + 1; });
-  $('relicGrid').innerHTML = RELICS.map(r => {
-    const own = hasRelic(r.id);
-    const mine = r.faction === faction;
-    return '<div class="relic-card ' + (own ? 'own' : 'locked') + (!own && mine ? ' droppable' : '') + '">' +
-      relicArtHTML(r, 'relic-card-img', '') +
-      '<span><b>' + (own ? r.name : '???') + '</b> ' + (own ? '★'.repeat(r.rarity) : '') +
-      '<small style="color:#8a7a5a"> · ' + FACTION_INFO[r.faction].name + '</small>' +
-      (own ? '<br><small style="color:#8fc87f">✅ ' + r.buff + '</small><br><small style="color:#e08a8a">❌ ' + r.debuff + '</small>' +
-        (usedBy[r.id] ? '<br><small style="color:#c9a227">📍 стоит в столбце ' + usedBy[r.id] + '</small>' : '<br><small>' + (mine ? 'не установлена' : 'другая эпоха') + '</small>')
-        : '<small>' + (mine ? 'Источник: гача (Эпоха ' + RELIC_DROP_EPOCH + '+)' : 'набор другой фракции') + '</small>') + '</span></div>';
-  }).join('');
-  open_('relicsModal');
-}
+/* ---------------- Реликвии v1.2.5: живут в коллекции (вкладка «⚒ РЕЛИКВИИ»)
+   и в панели слева от неё. Отдельного модала больше нет. ---------------- */
 
 /* Окно-предупреждение перед сбросом (пункт 1 ТЗ).
    ФИДБЕК (раунд 4): никакого «начать новую» — только Вознесение

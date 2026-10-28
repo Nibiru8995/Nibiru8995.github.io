@@ -113,6 +113,7 @@ function buildRunSave() {
     arenaStreak,
     pity4, pity5, runRolls, runEarned, runTime, sealLv,
     milestoneIdx, freeRolls, relicSlots, relicPity,
+    relics: [...RELICS_OWNED],
     ritualResonance, surgeUntil
   };
 }
@@ -137,6 +138,8 @@ function loadRun() {
     if (d.sealLv) Object.assign(sealLv, d.sealLv);
     milestoneIdx = d.milestoneIdx ?? 0; freeRolls = d.freeRolls ?? 0;
     ritualResonance = d.ritualResonance ?? 0; surgeUntil = d.surgeUntil ?? 0;
+    /* РЕЛИКВИИ v1.2.5: владение живёт В ЗАБЕГЕ (сброс при смене Эпохи) */
+    RELICS_OWNED = new Set((d.relics || []).filter(id => relicById(id)));
     /* РЕЛИКВИИ 2.0: расстановка по столбцам (только валидные реликвии/колонки) */
     relicSlots = {};
     if (d.relicSlots) for (const k in d.relicSlots) {
@@ -162,7 +165,7 @@ function loadRun() {
 
 function buildMetaSave() {
   return { seals, sealsTotal, maxEpoch, disc: [...discovered], achDone, stats, totalTime: gameTime, guide: guideSeen,
-    relics: [...RELICS_OWNED], sfx: soundOn, music: musicOn, fx: fxOn, speedMult };
+    sfx: soundOn, music: musicOn, fx: fxOn, speedMult };
 }
 function saveMeta() {
   try { localStorage.setItem(SAVE_META, JSON.stringify(buildMetaSave())); } catch (e) { console.error('saveMeta fail:', e); }
@@ -176,8 +179,7 @@ function loadMeta() {
     if (d.stats) stats = Object.assign(stats, d.stats);
     guideSeen = d.guide || {};
     gameTime = d.totalTime ?? 0;
-    /* РЕЛИКВИИ 2.0: фильтруем id старой системы (candle/ring/…) — валидны только новые */
-    RELICS_OWNED = new Set((d.relics || []).filter(id => relicById(id)));
+    /* Реликвии больше НЕ хранятся в мета (v1.2.5: расходник забега) */
     soundOn = d.sfx ?? true; musicOn = d.music ?? true;
     fxOn = d.fx ?? true; speedMult = d.speedMult ?? 1;
   } catch (e) { }
