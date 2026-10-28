@@ -260,6 +260,8 @@ function wireEvents() {
   });
 
   /* Инструменты */
+  /* v1.2.9.2: Табличка Тьмы — облачный рейтинг + сколько игроков за день */
+  $('leaderboardBtn').addEventListener('click', () => leaderboardOpen());
   $('deleteToolBtn').addEventListener('click', function () {
     deleteMode = !deleteMode; placingMode = false; pendingCard = null; moveMode = false; moveSource = null;
     $('moveToolBtn').classList.remove('active');
@@ -433,6 +435,8 @@ setInterval(() => {
   try { m = sessionStorage.getItem('gg_mode'); sessionStorage.removeItem('gg_mode'); } catch (e) { }
   window.BOOT_MODE = m;
   loadMeta();
+  supaPing(); /* v1.2.9.2: уникальный игрок за день */
+  maybeAskNick(); /* v1.2.9.2: имя для Таблички Тьмы — спрашиваем один раз */
   wireEvents();
   fxInit();
   document.addEventListener('pointerdown', soundUnlock, { once: true });

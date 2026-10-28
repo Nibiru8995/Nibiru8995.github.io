@@ -31,6 +31,7 @@ function doEpochUp(newFaction) {
   epoch++;
   maxEpoch = Math.max(maxEpoch, epoch);
   faction = newFaction;
+  const _runSecsAtEnd = runTime; /* v1.2.9.2: время забега до сброса — для Таблички Тьмы */
   /* Шоу Эпохи */
   sfx('epoch');
   fxConfetti(130);
@@ -70,6 +71,7 @@ function doEpochUp(newFaction) {
   cancelSelection();
   renderCollection(); renderFighters(); initArena(); updateHUD(); updateBanner(); updateEpochUI();
   toast('⚜ ЭПОХА ' + epoch + ' «' + epochName(epoch) + '» · ' + FACTION_INFO[faction].epochTitle + ': +' + gain + ' 🔱');
+  supaSubmit(_runSecsAtEnd, true); /* v1.2.9.2: Вознесение — гарантированная запись (Эпоха выросла) */
   checkAchievements();
   queueFeatureGuides(); /* онбординг: новая фракция/фичи этой Эпохи */
 }
