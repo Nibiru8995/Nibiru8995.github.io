@@ -62,7 +62,7 @@ const ACHIEVEMENTS = [
   { id: 'time_10h',     name: 'Бездна смотрит в ответ',   desc: 'Играть 10 часов суммарно',               check: () => gameTime >= 36000 },
 
   /* --- Пакет v1.0–v1.2 «Голос Тьмы» --- */
-  { id: 'surge_10',     name: 'Камертон Бездны',          desc: 'Дождаться 10 вспышек ритуала', check: () => (stats.surges || 0) >= 10 },
+  { id: 'surge_10',     name: 'Камертон Бездны',          desc: 'Провести 10 ритуалов культистов', check: () => (stats.surges || 0) >= 10 },
   { id: 'diamond_rit',  name: 'Геометр тьмы',             desc: 'Собрать формацию «Ромб» вокруг Алтаря',  check: () => Object.values(INC_CTX.formActive || {}).some(f => f.kind === 'diamond') },
   { id: 'hunt_25',      name: 'Красный пищевой цепи',     desc: 'Хищники Алтаря совершили 25 убийств',    check: () => (stats.predKills || 0) >= 25 },
   { id: 'boom_50',      name: 'Пиротехник легиона',       desc: '50 взрывов Хаоса на Алтаре',             check: () => (stats.demonBooms || 0) >= 50 },

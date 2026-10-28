@@ -1,12 +1,44 @@
 'use strict';
 /* ============================================================
    РЕНДЕР: КОЛЛЕКЦИЯ (render/collection_render.js)
-   Вкладки: открытые фракции + РЕЛИКВИИ (v1.2.5 — реликвии живут
-   здесь, отдельной кнопки больше нет). Фильтр редкостей: Здания/★3+.
+   Вкладки: открытые фракции + РЕЛИКВИИ (жизнь в коллекции,
+   слоты столбов — ряд над гридом). Фильтр редкостей.
+   v1.2.6: ПРОДАЖА ДУБЛИКАТОВ — сток для сотен лишних карт
+   (к середине забега инвентарь раздувался до 300-400 копий).
    Кнопки «в бой» видны только с открытой Ареной.
    ============================================================ */
 
 let relicTabActive = false;
+
+/* ---- СТОК КАРТ: продажа дубликатов (v1.2.6) ----
+   Продаются копии СВЕРХ лимита стека (остаётся 5 на каждый тип).
+   Выручка НЕ идёт в порог Эпохи (incomeExempt) — иначе крутки
+   становились бы бесплатным фармом прогресса. */
+function sellPriceOf(card) {
+  const base = { B: 200, 3: 600, 4: 3000, 5: 12000 }[rarityRank(card.rarity)] || 200;
+  return Math.round(base * (1 + 0.4 * (epoch - 1)));
+}
+function sellDupesOf(id, silent) {
+  const have = inventory[id] || 0, keep = maxStacks();
+  if (have <= keep) return 0;
+  const n = have - keep;
+  const gold = n * sellPriceOf(CARDS[id]);
+  inventory[id] = keep;
+  crystals += gold; incomeExempt += gold;
+  if (!silent) toast('💰 Продано «' + CARDS[id].name + '» ×' + n + ' → +' + fmtShort(gold) + ' 💎 (осталось ' + keep + ')');
+  return gold;
+}
+function sellAllDupes() {
+  let n = 0, gold = 0;
+  Object.keys(inventory).forEach(id => {
+    const have = inventory[id], keep = maxStacks();
+    if (have > keep) { gold += sellDupesOf(id, true); n += have - keep; }
+  });
+  if (!n) { toast('Дубликатов сверх стека ×' + maxStacks() + ' нет — продавать нечего'); return; }
+  toast('💰 Продано карт: ' + n + ' → +' + fmtShort(gold) + ' 💎 (в порог Эпохи НЕ идёт)');
+  sfx('win');
+  computeIncome(); renderCollection(); updateHUD(); saveRun();
+}
 
 function renderCollection() {
   const cont = $('collectGrid');
@@ -84,13 +116,14 @@ function renderCollection() {
   renderActions();
 }
 
-/* ===== Вкладка реликвий: клик по реликвии → выбор столбца ===== */
+/* ===== Вкладка реликвий: клик по реликвии → выбор столба ===== */
 function renderRelicTab(cont) {
   const mine = relicsOfFaction(faction);
   const usedBy = {};
   Object.keys(relicSlots).forEach(col => { usedBy[relicSlots[col]] = +col + 1; });
   $('rarityFilter').style.visibility = 'hidden';
   const st = gridStart(), cols = [];
+  const cultGlobal = FACTION_INFO[faction].mechanic === 'formation';
   for (let dc = 0; dc < playableSize; dc++) cols.push(st + dc);
   cont.innerHTML = mine.map(r => {
     const own = hasRelic(r.id);
@@ -99,11 +132,11 @@ function renderRelicTab(cont) {
       relicArtHTML(r, 'relic-pick-img', '') +
       '<span><b>' + (own ? r.name : '???') + '</b> ' + (own ? '★'.repeat(r.rarity) : '') +
       '<br><small style="color:#8fc87f">✅ ' + (own ? r.buff : 'источник: гача с Эпохи ' + RELIC_DROP_EPOCH) + '</small>' +
-      (own ? '<br><small style="color:#e08a8a">❌ ' + r.debuff + '</small>' +
-        '<br><small style="color:' + (col !== null ? '#c9a227' : '#8a7a5a') + '">' + (col !== null ? '📍 стоит в столбе ' + (col + 1) + ' (клик — снять)' : 'клик — поставить в столб') + '</small>'
+      (own ? '<br><small style="color:' + (col !== null ? '#c9a227' : '#8a7a5a') + '">' + (col !== null ? '📍 стоит в столбе ' + (col + 1) + ' (клик — снять)' : 'клик — поставить в столб') + '</small>' +
+        (cultGlobal ? '<br><small style="color:#c9a227">ритуальная — действует на ВЕСЬ ритуал</small>' : '')
         : '') + '</span></div>';
   }).join('') +
-    (RELICS_OWNED.size === 0 ? '<div class="fighter-empty">Реликвий пока нет — падают из гачи с Эпохи ' + RELIC_DROP_EPOCH + '.<br>Слоты столбов — в панели слева от коллекции.</div>' : '');
+    (RELICS_OWNED.size === 0 ? '<div class="fighter-empty">Реликвий пока нет — падают из гачи с Эпохи ' + RELIC_DROP_EPOCH + '.<br>Слоты столбов — в ряду НАД Алтарём.</div>' : '');
   cont.querySelectorAll('.relic-pick').forEach(el => {
     const id = el.dataset.id;
     if (!hasRelic(id)) return;
@@ -113,9 +146,9 @@ function renderRelicTab(cont) {
       /* Вставить: если свободный столб один — сразу туда, иначе выбор */
       const free = cols.filter(c => !relicSlots[c]);
       if (!free.length) { toast('Все столбы заняты — сначала снимите реликвию'); return; }
-      if (free.length === 1) { placeRelicCol(id, free[0]); return; }
+      if (free.length === 1 || cultGlobal) { placeRelicCol(id, free[0]); return; }
       mk('relicColPick', '<h2>⚒ «' + relicById(id).name + '» — в какой столб?</h2>' +
-        '<div class="res">Бафф и дебафф действуют на весь столб Алтаря.</div>' +
+        '<div class="res">Бафф действует на весь столб Алтаря.</div>' +
         '<div class="btn-row" style="flex-wrap:wrap">' +
         free.map(c => '<button class="btn btn-take" data-col="' + c + '" style="max-width:none;width:auto;min-width:70px">' + (c + 1) + '</button>').join('') +
         '</div>', 480);
@@ -148,20 +181,24 @@ function renderRarityFilter() {
 
 function renderActions() {
   const el = $('cardActions');
+  const dupBtn = '<button id="sellDupesBtn" title="Продать все копии сверх стека ×' + maxStacks() + ' (выручка НЕ двигает порог Эпохи)">💰 Продать дубликаты</button>';
   if (relicTabActive) {
-    el.innerHTML = '<span class="act-hint">Реликвии — мощный бафф и такой же ДЕБАФФ на один столб Алтаря. Живут до конца Эпохи.</span>' +
+    el.innerHTML = '<span class="act-hint">Реликвии — чистый бафф на один столб Алтаря (культовые — на весь ритуал). Живут до конца Эпохи.</span>' +
       '<button id="autoBtn2">🪄 Стак</button>';
   } else if (!placingMode || !pendingCard || !inventory[pendingCard]) {
     el.innerHTML = '<span class="act-hint">Выберите карту: <b style="color:#80e060">зелёная рамка</b> — партнёры по синергии, подсветятся лучшие клетки. ПКМ / Shift+клик — в бой.</span>' +
-      '<button id="autoBtn2">🪄 Стак</button>';
+      dupBtn + '<button id="autoBtn2">🪄 Стак</button>';
   } else {
     const c = CARDS[pendingCard], n = inventory[pendingCard];
+    const extra = n > maxStacks() ? ' <button id="sellThisBtn">💰 продать лишние (' + (n - maxStacks()) + ' → +' + fmtShort((n - maxStacks()) * sellPriceOf(c)) + ' 💎)</button>' : '';
     el.innerHTML = '<b>' + cardArtHTML(c, 'inline-art', '') + ' ' + c.name + '</b> ×' + n +
       ' <button data-n="1">⚔ ×1</button>' + (n > 5 ? '<button data-n="5">⚔ ×5</button>' : '') +
-      (n > 1 ? '<button data-n="' + n + '">⚔ все (' + n + ')</button>' : '') +
-      '<span class="act-hint">или кликните по Алтарю</span><button id="autoBtn2">🪄 Стак</button>';
+      (n > 1 ? '<button data-n="' + n + '">⚔ все (' + n + ')</button>' : '') + extra +
+      '<span class="act-hint">или кликните по Алтарю</span>' + dupBtn + '<button id="autoBtn2">🪄 Стак</button>';
   }
   $('autoBtn2').onclick = autoStack;
   $('autoBtn2').title = 'Уложить карты из инвентаря в существующие стопки на поле';
+  const sd = $('sellDupesBtn'); if (sd) sd.onclick = sellAllDupes;
+  const s1 = $('sellThisBtn'); if (s1) s1.onclick = () => { sellDupesOf(pendingCard); computeIncome(); renderCollection(); updateHUD(); saveRun(); };
   el.querySelectorAll('[data-n]').forEach(b => b.onclick = () => addFighter(pendingCard, +b.dataset.n));
 }

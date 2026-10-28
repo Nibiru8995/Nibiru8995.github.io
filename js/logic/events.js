@@ -56,9 +56,9 @@ function collectOmen(o) {
   const colors = { vein: ['#80e0ff', '#e8c060', '#fff'], haste: ['#80e060', '#fff', '#e8c060'] }[o.type];
   fxAtCell(o.r, o.c, colors, 26, 'wave');
   if (o.type === 'vein') {
-    /* Ребаланс (пункт 6 ТЗ): +45 сек дохода, и только половина уходит в прогресс Эпохи. */
+    /* v1.2.6: +45 сек дохода — целиком ВНЕ порога Эпохи (иначе Эпохи копились слишком быстро). */
     const gain = Math.max(400, Math.round(calculateIncome() * 45));
-    crystals += gain; runEarned += Math.round(gain * 0.5);
+    crystals += gain; incomeExempt += gain;
     fxAtCell(o.r, o.c, colors, 0);
     fxFloatFromCell(o.r, o.c, '+' + fmtShort(gain) + ' 💎', '#80e0ff');
     sfx('win');

@@ -43,24 +43,36 @@ h1 small { display: block; font-size: 9px; letter-spacing: 2px; color: #8a6a4a; 
 
 #main { display: flex; gap: 14px; flex: 1; min-height: 0; width: 100%; max-width: 1620px; justify-content: center; align-items: stretch; margin-top: 4px; padding: 0 10px; position: relative; z-index: 2; }
 
-/* ===== ЛЕВАЯ ЗОНА v1.2.5: РЕЛИКВИИ + КОЛЛЕКЦИЯ (сбоку от грида) ===== */
+/* ===== ЛЕВАЯ ЗОНА v1.2.6: только КОЛЛЕКЦИЯ (панель реликвий убрана —
+   перегружала интерфейс; слоты столбов теперь — ряд НАД Алтарём) ===== */
 #leftCol { display: flex; gap: 8px; flex-shrink: 0; max-height: 100%; min-height: 0; }
-/* Панель реликвий — узкая, левее коллекции */
-#relicPanel { width: 168px; flex-shrink: 0; display: flex; flex-direction: column; gap: 4px; background: linear-gradient(#2a1a0f, #150d05); border: 2px solid var(--border2); border-radius: 8px; padding: 8px 6px; box-shadow: inset 0 0 12px #00000088; min-height: 0; filter: brightness(0.95); }
-.relic-panel-title { font-family: 'Philosopher', 'Georgia', serif; font-size: 12px; letter-spacing: 2px; color: #d4b050; text-align: center; text-shadow: 0 0 8px #c9a22755; }
-.relic-panel-sub { font-size: 9px; color: #7a6242; text-align: center; line-height: 1.25; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
-#relicPanelList { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; }
-.rp-row { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 4px; background: linear-gradient(#241608, #150d05); border: 1px dashed #4a3020; cursor: pointer; transition: all .12s; min-height: 34px; }
-.rp-row:hover { border-color: #c9a227; box-shadow: 0 0 8px #c9a22744; }
-.rp-row.filled { border-style: solid; border-color: var(--relicC, #c9a227); box-shadow: inset 0 0 6px #00000088, 0 0 6px color-mix(in srgb, var(--relicC, #c9a227) 40%, transparent); }
-.rp-num { font-size: 10px; font-weight: bold; color: #b08040; width: 34px; flex-shrink: 0; }
-.rp-row .rp-ic { width: 20px; height: 20px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-.rp-row .rp-ic img { width: 20px; height: 20px; }
-.rp-row .rp-name { flex: 1; font-size: 9px; color: #e0d0b0; line-height: 1.15; overflow: hidden; }
-.rp-row.empty .rp-name { color: #5a4228; font-style: italic; }
-.rp-row .rp-plus { color: #5a4228; font-weight: bold; font-size: 14px; }
-#relicPanelList::-webkit-scrollbar { width: 7px; }
-#relicPanelList::-webkit-scrollbar-thumb { background: linear-gradient(#6a4a2a, #3a2414); border-radius: 4px; }
+/* Слоты реликвий над Алтарём: столб ↔ слот, клик — вставить/снять */
+#relicSlotRow { display: flex; align-items: center; gap: 5px; align-self: stretch; justify-content: center; flex-wrap: wrap; }
+.rsr-title { font-family: 'Philosopher', 'Georgia', serif; font-size: 10px; letter-spacing: 2px; color: #d4b050; margin-right: 4px; }
+.rsr-slot { width: 34px; height: 30px; border-radius: 5px; background: #0d0704; border: 1px dashed #4a3020; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all .12s; }
+.rsr-slot:hover { border-color: #c9a227; box-shadow: 0 0 8px #c9a22755; }
+.rsr-slot.filled { border-style: solid; border-color: var(--relicC, #c9a227); box-shadow: 0 0 7px color-mix(in srgb, var(--relicC, #c9a227) 45%, transparent); }
+.rsr-slot.empty span { color: #5a4228; font-weight: bold; font-size: 14px; }
+.rsr-img { width: 24px; height: 24px; }
+.rsr-note { font-size: 9px; color: #c9a22788; }
+
+/* ===== БОЛЬШАЯ ШКАЛА РИТУАЛА (v1.2.6) — заметность по ТЗ =====
+   Широкая золотая полоса над Алтарём: шиммер + пульс у выплаты */
+#ritualBar { display: flex; align-items: center; gap: 8px; align-self: stretch; padding: 5px 10px;
+  background: linear-gradient(#241505, #120a03); border: 1px solid #c9a22766; border-radius: 8px; box-shadow: inset 0 0 12px #00000088; }
+#ritualBar .rb-label { font-family: 'Philosopher', 'Georgia', serif; font-size: 12px; font-weight: bold; letter-spacing: 2px;
+  color: #ffe080; text-shadow: 0 0 8px #c9a227; flex-shrink: 0; }
+#ritualBar .rb-track { flex: 1; height: 14px; border-radius: 7px; background: #0a0503; border: 1px solid #4a3020; overflow: hidden; position: relative; }
+#ritualBar .rb-fill { height: 100%; border-radius: 7px; transition: width .2s;
+  background: linear-gradient(90deg, #7a5510, #c9a227 60%, #ffe080);
+  box-shadow: 0 0 10px #c9a22799; position: relative; overflow: hidden; }
+#ritualBar .rb-fill::after { content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, #ffffff44 45%, transparent 60%);
+  animation: rbShimmer 1.6s linear infinite; }
+@keyframes rbShimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+#ritualBar.almost { animation: rbPulse .8s ease-in-out infinite alternate; border-color: #ffe080; }
+@keyframes rbPulse { from { box-shadow: inset 0 0 12px #00000088; } to { box-shadow: inset 0 0 12px #00000088, 0 0 14px #ffe080aa; } }
+#ritualBar .rb-info { font-size: 11px; color: #e0d0b0; flex-shrink: 0; max-width: 62%; text-align: right; line-height: 1.2; }
 
 /* ===== АРЕНА v1.2.5: ПОД ГРИДОМ, ГОРИЗОНТАЛЬНАЯ КОМПОНОВКА ===== */
 #arenaPanel { background: linear-gradient(#2a1a0f, #150d05); border: 2px solid var(--border2); border-radius: 8px; padding: 8px 10px; box-shadow: inset 0 0 12px #00000088; display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; align-self: stretch; width: auto; position: relative; filter: brightness(0.96); }
@@ -83,7 +95,7 @@ h1 small { display: block; font-size: 9px; letter-spacing: 2px; color: #8a6a4a; 
 .arena-room-header { display: flex; justify-content: space-between; align-items: center; background: #150d05; border: 1px solid #4a3020; border-radius: 4px; padding: 3px 8px; font-size: 11px; color: #b08040; }
 .arena-main-row { display: flex; gap: 8px; align-items: stretch; }
 .arena-enemy-card { background: radial-gradient(circle at 50% 20%, #3a0a0a, #0a0000); border: 2px solid #8b1a1a; border-radius: 6px; padding: 8px; display: flex; flex-direction: column; align-items: center; gap: 5px; position: relative; box-shadow: inset 0 0 15px #000000cc; flex: 1.5; min-width: 0; }
-#battleCanvas { width: 100%; height: auto; display: block; border-radius: 4px; image-rendering: auto; }
+#battleCanvas { width: 100%; max-width: 440px; height: auto; display: block; border-radius: 4px; image-rendering: auto; }
 .arena-side { flex: 1; min-width: 190px; display: flex; flex-direction: column; gap: 6px; justify-content: center; }
 .arena-enemy-icon { font-size: 42px; line-height: 1; filter: drop-shadow(0 0 10px #ff2020); transition: transform .08s; }
 .arena-enemy-name { font-size: 13px; font-weight: bold; color: #ffaaaa; text-shadow: 0 0 5px #000; text-align: center; }
@@ -217,6 +229,9 @@ h1 small { display: block; font-size: 9px; letter-spacing: 2px; color: #8a6a4a; 
 .card .card-name { font-size: 8px; color: #f0e0c0; text-align: center; line-height: 1; margin-top: 1px; text-shadow: 0 0 3px #000; }
 .card .income-badge { position: absolute; bottom: 4px; left: 1px; font-size: 8px; font-weight: bold; color: #a0e080; background: #0a0503dd; border-radius: 2px; padding: 0 2px; line-height: 1; border: 1px solid #3a5a2a; }
 .card .anchor-badge { position: absolute; top: 1px; right: 2px; font-size: 9px; filter: drop-shadow(0 0 3px #ffd34d); }
+/* ✦-индикатор особенности (v1.2.6): тусклый — не задействована, золотой — активна */
+.card .sp-badge { color: #5a4a30; filter: none; text-shadow: none; }
+.card .sp-badge.on { color: #ffd34d; filter: drop-shadow(0 0 4px #ffd34d); }
 .card .mut-badge { position: absolute; bottom: 4px; right: 1px; font-size: 8px; font-weight: bold; color: #ff8060; background: #2a0a0add; border-radius: 2px; padding: 0 2px; line-height: 1; border: 1px solid #8b3a1a; }
 .card .stack-badge { position: absolute; top: -1px; left: 1px; font-size: 9px; color: #ffe080; text-shadow: 0 0 4px #000; }
 .card .cd-badge { position: absolute; top: 1px; left: 50%; transform: translateX(-50%); font-size: 8px; font-weight: bold; color: #ffd34d; background: #0a0503dd; border: 1px solid #c9a227; border-radius: 2px; padding: 0 2px; line-height: 1.2; white-space: nowrap; text-shadow: 0 0 3px #000; }
@@ -306,7 +321,7 @@ h1 { letter-spacing: 4px; }
 @keyframes landPulse { 0% { box-shadow: 0 0 0 #c9a22700; } 40% { box-shadow: 0 0 26px #ffd700cc; } 100% { box-shadow: 0 0 0 #c9a22700; } }
 
 /* ===== КОЛЛЕКЦИЯ v1.2.5: боковая панель слева от грида ===== */
-#collection { width: 384px; flex-shrink: 0; min-height: 0; display: flex; flex-direction: column; gap: 4px; background: linear-gradient(#2a1a0f, #150d05); border: 2px solid var(--border2); border-radius: 8px; padding: 6px; box-shadow: inset 0 0 12px #00000088; position: relative; z-index: 2; max-height: 100%; filter: brightness(0.95); }
+#collection { width: 420px; flex-shrink: 0; min-height: 0; display: flex; flex-direction: column; gap: 4px; background: linear-gradient(#2a1a0f, #150d05); border: 2px solid var(--border2); border-radius: 8px; padding: 6px; box-shadow: inset 0 0 12px #00000088; position: relative; z-index: 2; max-height: 100%; filter: brightness(0.95); }
 #collectionHeader { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--accent2); padding: 2px 4px; border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap; gap: 6px; }
 #collectionTabs { display: flex; gap: 6px; flex-wrap: wrap; }
 .coll-tab { padding: 4px 12px; font-size: 11px; cursor: pointer; background: #150d05; border: 1px solid var(--border); color: #8a6a4a; border-radius: 4px; text-transform: uppercase; font-weight: bold; transition: all .15s; }
@@ -540,9 +555,8 @@ h1 { letter-spacing: 4px; }
   #leftCol { flex-direction: column; }
   #collection { width: 100%; max-height: none; }
   #collectGrid { min-height: 140px; max-height: 220px; }
-  #relicPanel { width: 100%; }
-  #relicPanelList { flex-direction: row; flex-wrap: wrap; max-height: 100px; }
-  .rp-row { flex: 1 1 40%; }
+  #relicSlotRow { justify-content: flex-start; }
+  #ritualBar .rb-info { max-width: 48%; }
   #rightCol { flex-direction: row; flex-wrap: wrap; overflow: visible; }
   #rightCol > button { width: calc(50% - 4px); min-height: 52px; }
   #fightersList { max-height: 200px; }

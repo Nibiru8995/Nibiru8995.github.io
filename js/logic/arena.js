@@ -299,7 +299,7 @@ function endBattle(win) {
     const streakMult = 1 + Math.min(0.5, 0.05 * (arenaStreak - 1));
     let reward = Math.round(arenaReward(arenaState.floor, arenaState.room) * streakMult);
     if (enemy && enemy.isElite) stats.eliteKills = (stats.eliteKills || 0) + 1;
-    crystals += reward; runEarned += reward;
+    crystals += reward; incomeExempt += reward; /* v1.2.6: награды Арены НЕ двигают порог Эпохи */
     sfx(enemy && enemy.isBoss ? 'boss' : 'win');
     fxFxAt($('arenaPanel'), enemy && enemy.isBoss ? ['#c9a227', '#fff', '#ff6b6b'] : ['#80e060', '#fff'], enemy && enemy.isBoss ? 40 : 18);
     if (enemy && enemy.isBoss) {
@@ -352,11 +352,11 @@ function showBossTrophy(reward) {
       const t = el.dataset.t;
       close_('trophyModal');
       if (t === 'gold') {
-        crystals += bonus; runEarned += Math.round(bonus * 0.5);
+        crystals += bonus; incomeExempt += bonus; /* v1.2.6: трофеи босса — не в порог Эпохи */
         toast('💰 Добыча босса: +' + fmt(bonus) + ' 💎!');
       } else if (t === 'relic') {
         if (avail.length) { grantRelic(pick(avail).id, false); fxConfetti(50); }
-        else { crystals += reward; runEarned += Math.round(reward * 0.5); toast('💰 Компенсация: +' + fmt(reward) + ' 💎'); }
+        else { crystals += reward; incomeExempt += reward; toast('💰 Компенсация: +' + fmt(reward) + ' 💎'); }
       } else {
         freeRolls += 15; stats.freeRolls = (stats.freeRolls || 0) + 15;
         toast('✦ Призыв: +15 БЕСПЛАТНЫХ круток! Кнопка «КРУТКА» — без денег');

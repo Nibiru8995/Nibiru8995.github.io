@@ -2,14 +2,12 @@
 /* ============================================================
    ЛОГИКА: ФРАКЦИОННЫЕ МЕХАНИКИ (logic/faction_mechanics.js)
    Тиковые события, зависящие от фракции:
-   - Нежить: пассивные цепи/армия (economy.js)
-   - Культисты: Заряд Ритуала (полнеет от формаций → ВСПЛЕСК ×1.5)
-   - Звери v1.2.5: тик 2.5с (был 7с), укус 20% — больно и ЧАСТО;
-     хищники ДЕРУТСЯ МЕЖДУ СОБОЙ без добычи (лечение имеет смысл);
-     убийство даёт +120% (было +75%); здания Вольер/Столб/Солончик
-     вплетены в цикл; у каждого хищника своя роль
-   - Демоны: УГЛИ — толпа → взрыв (бафф/превращение/перегрев);
-     здания Яма (угли ×2 + только баффы) и Ледник (без перегрева)
+   - Нежить: цепи/армия (economy.js) + «Медленный рост» Зомби (u1)
+   - Культисты v1.2.6: РИТУАЛЬНАЯ ЭКОНОМИКА — участники в цепи от
+     Алтаря заряжают шкалу (шкала НЕ тает), на 100% ритуал платит 💎;
+     роли: скорость (⚡) и усиление выплаты (💰); формации ускоряют
+   - Звери v1.2.5: тик 2.5с, укус 20%, драки хищников, здания
+   - Демоны: УГЛИ — толпа → взрыв; здания Яма/Ледник
    - ЗДАНИЯ: призыв Кладбища/Врат, ЖАТВА Горы костей (tickBuildings)
    ============================================================ */
 
@@ -19,7 +17,9 @@ function tickFactionMechanics(dt) {
   const mech = FACTION_INFO[faction].mechanic;
   /* Здания тикают у ВСЕХ фракций (у каждой — свои 3 постройки) */
   tickBuildings(dt);
-  if (mech === 'cycle') {
+  if (mech === 'chain') {
+    tickUndeadGrowth(dt); /* «Медленный рост» Зомби (u1) */
+  } else if (mech === 'cycle') {
     beastTimer += dt;
     if (beastTimer >= 2.5) { beastTimer = 0; beastCycleTick(); } /* v1.2.5: тик 2.5с — лес живёт быстро */
   } else if (mech === 'chaos') {
@@ -28,46 +28,137 @@ function tickFactionMechanics(dt) {
     balrTimer += dt;
     if (balrTimer >= 20) { balrTimer = 0; balrogTick(); }
   } else if (mech === 'formation') {
-    /* v1.2.5: ЗАРЯД РИТУАЛА — живая шкала культистов */
+    /* v1.2.6: РИТУАЛЬНАЯ ЭКОНОМИКА — заряд + выплата */
     ritualChargeTick(dt);
   }
 }
 
-/* ---------------- КУЛЬТИСТЫ: ЗАРЯД РИТУАЛА ----------------
-   Пока на поле стоит хотя бы одна формация — шкала полнеет.
-   v1.2.5: НЕСКОЛЬКО формаций заполняют шкалу В N РАЗ БЫСТРЕЕ —
-   игроку выгоднее держать несколько средних ритуалов, чем один.
-   На 100% — ВСПЛЕСК: весь доход ×1.5 на 20 секунд, золотая волна. */
-const CHARGE_FILL_TIME = 75;   /* игровых секунд до полного заряда при ОДНОЙ формации */
-const CHARGE_DECAY_RATE = 2.5; /* %/сек таяния без формаций */
-const SURGE_TIME = 20;         /* секунд всплеска ×1.5 */
-function ritualChargeTick(dt) {
-  const forms = Object.keys(INC_CTX.formActive).length;
-  if (forms > 0) {
-    const before = ritualResonance;
-    ritualResonance = Math.min(100, ritualResonance + dt * (100 / CHARGE_FILL_TIME) * forms);
-    if (before < 100 && ritualResonance >= 100) ritualSurge();
-  } else if (ritualResonance > 0 && surgeUntil <= gameTime) {
-    ritualResonance = Math.max(0, ritualResonance - dt * CHARGE_DECAY_RATE);
+/* ---------------- НЕЖИТЬ: «Медленный рост» Зомби (u1) ----------------
+   Раньше описана, но не работала. Теперь: каждые 20с +6% дохода
+   НАВСЕГДА (до +60%). Прогресс виден на бейдже карты. */
+const GROW_STEP = 20, GROW_GAIN = 0.06, GROW_CAP = 0.6;
+function tickUndeadGrowth(dt) {
+  let changed = false;
+  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
+    const it = grid[r][c]; if (!it || it.cardId !== 'u1') continue;
+    it.growT = (it.growT || 0) + dt;
+    if (it.growT >= GROW_STEP) {
+      it.growT -= GROW_STEP;
+      const before = it.growBuff || 0;
+      it.growBuff = Math.min(GROW_CAP, before + GROW_GAIN);
+      if (it.growBuff > before) {
+        fxAtCell(r, c, ['#7ec97e', '#c0ffb0'], 6);
+        fxFloatFromCell(r, c, 'РОСТ +' + Math.round(it.growBuff * 100) + '%', '#8fc87f');
+      }
+      changed = true;
+    }
   }
+  if (changed) { computeIncome(); updateHUD(); }
 }
-function ritualSurge() {
-  surgeUntil = gameTime + SURGE_TIME;
+
+/* ============ КУЛЬТИСТЫ: РИТУАЛЬНАЯ ЭКОНОМИКА v1.2.6 ============
+   У культистов НЕТ дохода — есть РИТУАЛ:
+   1) Каждый культист в цепи от Алтаря/Хтони — УЧАСТНИК.
+   2) Роль «скорость»: даёт +N к скорости заряда (⚡).
+   3) Роль «усилитель»: слабее в заряде (+0.5), но усиливает ВЫПЛАТУ (💰).
+   4) Формации вокруг источника умножают скорость (Крест ×1.5 / Квадрат ×1.75 / Ромб ×2.0, складываются).
+   5) Обелиск — участникам в его зоне заряд ×1.25; Колодец — выплата +30%.
+   6) Шкала НИКОГДА не тает — зафейлить до конца нельзя: рано или поздно
+      ритуал завершится и заплатит 💎 (даже без формаций, просто медленнее).
+   7) Выплата = порог Эпохи × 0.8% × (0.4 + 0.06×участников) × бонусы. */
+const RITUAL_AMPS = { c5: 0.2, c8: 0.3, c9: 0.45, c13: 0.25, c10: 0.6, c11: 0.45 };
+const RITUAL_CELL_SPEED = { c0: 1.0, c1: 1.0, c2: 1.2, c3: 1.0, c6: 1.1, c7: 1.3, c12: 1.0 };
+let RITUAL_ENGINE = { speed: 0, pay: 1, payout: 0, participants: 0, cellSpeed: {}, banner: '' };
+
+function computeRitualEngine() {
+  const E = { speed: 0, pay: 1, payout: 0, participants: 0, cellSpeed: {}, banner: '', ready: false };
+  if (FACTION_INFO[faction].mechanic !== 'formation') return E;
+  const B = INC_CTX.bld || { obelisk: {}, wells: 0 };
+  /* Формационный множитель: 1 + Σ(множитель−1) по всем активным формациям */
+  let formMult = 1, forms = 0;
+  for (const k in INC_CTX.formActive) { formMult += INC_CTX.formActive[k].formMult - 1; forms++; }
+  /* Глобальные ритуальные реликвии (культистские) */
+  const rel = ritualRelicMods();
+  let payBonus = 0, bannerParts = [];
+  if (forms) bannerParts.push('формации ×' + formMult.toFixed(2));
+  /* Знаменосцы (c3): +10% скорости каждый (кап +30%) */
+  let banners = 0;
+  /* Участники: культисты в цепи ритуала (здания — не участники) */
+  INC_CTX.ritual.forEach(k => {
+    const [r, c] = k.split(',').map(Number);
+    const it = grid[r][c]; if (!it) return;
+    const card = CARDS[it.cardId];
+    if (card.isBuilding || card.id === 'bl_altar') return;
+    E.participants++;
+    let cellSp = 0;
+    if (RITUAL_AMPS[card.id]) {
+      cellSp = 0.5; payBonus += RITUAL_AMPS[card.id];
+    } else {
+      cellSp = RITUAL_CELL_SPEED[card.id] || 1.0;
+      if (card.id === 'c1') { /* Сектант: +0.15 за соседа в ритуале */
+        const ns = getNeighbors(r, c).filter(n => INC_CTX.ritual.has(n.r + ',' + n.c) && !CARDS[n.item.cardId].isBuilding).length;
+        cellSp += 0.15 * ns;
+      }
+    }
+    /* Обелиск: заряд участника в его зоне ×1.25 (кап ×1.5) */
+    const ob = B.obelisk[k] || 0;
+    if (ob) cellSp *= Math.min(1.5, 1 + 0.25 * ob);
+    E.cellSpeed[k] = cellSp;
+    E.speed += cellSp;
+    if (card.id === 'c3') banners++;
+  });
+  if (banners) { E.speed *= 1 + Math.min(0.3, 0.10 * banners); bannerParts.push('знамёна +' + Math.round(Math.min(30, 10 * banners)) + '%'); }
+  /* Служка (c12): культисты ВНЕ ритуала рядом с ней дают половину заряда */
+  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
+    const it = grid[r][c]; if (!it) continue;
+    const card = CARDS[it.cardId];
+    if (card.faction !== 'cultist' || card.isBuilding) continue;
+    if (INC_CTX.ritual.has(r + ',' + c)) continue;
+    if (getNeighbors(r, c).some(n => n.item.cardId === 'c12')) { E.speed += 0.5; E.cellSpeed[r + ',' + c] = 0.5; }
+  }
+  /* Колодец: выплата +30% (кап +60%) */
+  const wells = B.wells || 0;
+  if (wells) { payBonus += Math.min(0.6, 0.3 * wells); bannerParts.push('колодцы +' + Math.round(Math.min(60, 30 * wells)) + '%'); }
+  E.speed *= formMult * rel.speed;
+  E.pay = Math.min(5, (1 + Math.min(3, payBonus)) * rel.pay);
+  /* Выплата: привязана к порогу Эпохи — растёт вместе с игрой */
+  E.payout = Math.round(epochThreshold(epoch) * 0.008 * (0.4 + 0.06 * E.participants) * E.pay);
+  E.banner = bannerParts.join(' · ');
+  E.ready = INC_CTX.ritual.size > 0;
+  return E;
+}
+
+function ritualChargeTick(dt) {
+  RITUAL_ENGINE = computeRitualEngine();
+  INC_CTX.ritualCellSpeed = RITUAL_ENGINE.cellSpeed;
+  if (RITUAL_ENGINE.speed <= 0) return;
+  const before = ritualResonance;
+  ritualResonance = Math.min(100, ritualResonance + dt * RITUAL_ENGINE.speed);
+  if (before < 100 && ritualResonance >= 100) ritualPayout();
+}
+
+/* РИТУАЛ ЗАВЕРШЁН: гарантированная выплата 💎. Шкала НЕ тает —
+   полный фейл невозможен, худший случай — медленный цикл. */
+function ritualPayout() {
+  const E = RITUAL_ENGINE.speed > 0 ? RITUAL_ENGINE : computeRitualEngine();
+  const pay = E.payout;
+  crystals += pay;
   ritualResonance = 0;
   stats.surges = (stats.surges || 0) + 1;
-  /* Шоу: золотая волна по всем клеткам ритуала + текст над Алтарём */
-  let altarKey = null;
+  /* Шоу: золотая волна по клеткам ритуала + текст над источником */
+  let srcKey = null;
   INC_CTX.ritual.forEach(k => {
-    if (!altarKey) altarKey = k;
+    if (!srcKey && RITUAL_SOURCES[grid[+k.split(',')[0]][+k.split(',')[1]]?.cardId]) srcKey = k;
     const [r, c] = k.split(',').map(Number);
     fxAtCell(r, c, ['#e8c060', '#fff8d0', '#c9a227'], 5, 'wave');
   });
-  if (altarKey) {
-    const [ar, ac] = altarKey.split(',').map(Number);
-    fxFloatFromCell(ar, ac, 'РИТУАЛ ×1.5', '#ffe080', 20);
+  if (srcKey) {
+    const [ar, ac] = srcKey.split(',').map(Number);
+    fxFloatFromCell(ar, ac, '🔥 РИТУАЛ: +' + fmtShort(pay) + ' 💎', '#ffe080', 22);
   }
-  toast('🔯 <b>Ритуал вспыхнул:</b> весь доход ×1.5 на ' + SURGE_TIME + ' секунд!');
-  updateHUD();
+  toast('🔥 <b>Ритуал завершён:</b> +' + fmtShort(pay) + ' 💎' + (E.banner ? ' <small>(' + E.banner + ')</small>' : ''));
+  sfx('relic');
+  saveRun(); updateHUD(); checkAchievements();
 }
 
 /* ---------------- НЕЖИТЬ ---------------- */

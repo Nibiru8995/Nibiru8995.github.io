@@ -95,24 +95,19 @@ function formation(r, c) {
   return m;
 }
 
-/* ---------------- РИТУАЛ КУЛЬТИСТОВ ----------------
-   Ритуал = клетки, соединённые цепочкой культистов с источником:
-   здание «Ритуальный Алтарь» (bl_altar) или ХТОНЬ ★5 (c10/c11),
-   вставшая на его место. ВНЕ ритуала культист даёт почти ноль (×0.15).
-   v1.2.5: БОЛЬШИХ формаций больше нет — ТОЛЬКО малые и средние
-   (Крест/Квадрат/Ромб), зато Алтарей может быть НЕСКОЛЬКО: несколько
-   средних ритуалов сильнее одного. Заряд Ритуала полнеет тем быстрее,
-   чем больше формаций стоит одновременно.
-   Колодец Крови: +0.5 к множителю формаций вокруг + ритуал шире на клетку. */
+/* ---------------- РИТУАЛ КУЛЬТИСТОВ (v1.2.6 — РИТУАЛЬНАЯ ЭКОНОМИКА) ----------------
+   У культистов НЕТ ни дохода, ни синергий — вся фракция живёт ВЫПЛАТОЙ
+   за проведённый ритуал (двиг — faction_mechanics.js). Здесь строится
+   только ГЕОМЕТРИЯ: цепь ритуала от Алтаря/Хтони + формации.
+   Формация теперь ускоряет ЗАРЯД шкалы: Крест ×1.5 / Квадрат ×1.75 / Ромб ×2.0.
+   НЕСКОЛЬКО формаций складывают свои множители. */
 const FORM_DEFS = [
-  { kind: 'diamond', mult: 2.6, label: 'Ромб' },
-  { kind: 'square',  mult: 2.4, label: 'Квадрат' },
-  { kind: 'cross',   mult: 2.2, label: 'Крест' }
+  { kind: 'diamond', mult: 2.0, label: 'Ромб' },
+  { kind: 'square',  mult: 1.75, label: 'Квадрат' },
+  { kind: 'cross',   mult: 1.5, label: 'Крест' }
 ];
-/* КЛЮЧЕВЫЕ КАРТЫ ритуала (усилители): id -> прибавка к множителю формации */
-const RITUAL_KEYS = { c5: 0.2, c8: 0.3, c9: 0.5, c10: 0.75, c11: 0.4, c13: 0.25 };
 /* Источники ритуала: здание-Алтарь или хтонь на его месте */
-const RITUAL_SOURCES = { bl_altar: 0, c10: 0.75, c11: 0.5 };
+const RITUAL_SOURCES = { bl_altar: 1, c10: 1, c11: 1 };
 function buildRitualContext() {
   INC_CTX.ritual = new Set(); INC_CTX.ritualOuter = new Set();
   INC_CTX.formActive = {}; INC_CTX.formCell = {};
@@ -120,10 +115,8 @@ function buildRitualContext() {
   const inB = (r, c) => r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE;
   const altars = [];
   for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++)
-    if (grid[r][c] && RITUAL_SOURCES[grid[r][c].cardId] !== undefined) altars.push([r, c]);
+    if (grid[r][c] && RITUAL_SOURCES[grid[r][c].cardId]) altars.push([r, c]);
   if (!altars.length) return;
-  /* Колодцы: ритуал на поле тянется на одну клетку дальше */
-  const wells = INC_CTX.bld ? INC_CTX.bld.wells : 0;
   const q = altars.slice();
   altars.forEach(([r, c]) => INC_CTX.ritual.add(r + ',' + c));
   for (let i = 0; i < q.length; i++) {
@@ -134,19 +127,8 @@ function buildRitualContext() {
       INC_CTX.ritual.add(k); q.push([n.r, n.c]);
     });
   }
-  /* Верховный Жрец (c9) и Колодец Крови: лишний круг ритуала */
-  const extraRing = wells > 0 || altars.some(([r, c]) => grid[r][c].cardId === 'c9');
-  if (extraRing) {
-    INC_CTX.ritual.forEach(k => {
-      const [r, c] = k.split(',').map(Number);
-      getNeighbors(r, c).forEach(n => {
-        const nk = n.r + ',' + n.c;
-        if (!INC_CTX.ritual.has(nk) && !INC_CTX.ritualOuter.has(nk) && isCult(n.r, n.c)) INC_CTX.ritualOuter.add(nk);
-      });
-    });
-  }
-  /* Формации вокруг каждого источника ритуала.
-     КЛЮЧЕВЫЕ КАРТЫ в клетках формации усиливают её множитель. */
+  /* Формации вокруг каждого источника ритуала (множители СКОРОСТИ заряда).
+     Усилители больше НЕ привязаны к формации — они работают из любого места ритуала. */
   altars.forEach(([ar, ac]) => {
     const orth = [[-1, 0], [1, 0], [0, -1], [0, 1]].map(([dr, dc]) => [ar + dr, ac + dc]);
     const diag = [[-1, -1], [-1, 1], [1, -1], [1, 1]].map(([dr, dc]) => [ar + dr, ac + dc]);
@@ -156,32 +138,11 @@ function buildRitualContext() {
     const allCult = list => list.every(([r, c]) => inB(r, c) && isCult(r, c));
     const allEmpty = list => list.every(([r, c]) => inB(r, c) && !grid[r][c]);
     let found = null;
-    if (diaB && allCult(dia) && allEmpty(r1)) found = { kind: 'diamond', mult: 2.6, label: 'Ромб', cells: dia };
-    else if (allCult(r1)) found = { kind: 'square', mult: 2.4, label: 'Квадрат', cells: r1 };
-    else if (allCult(orth) && allEmpty(diag)) found = { kind: 'cross', mult: 2.2, label: 'Крест', cells: orth };
+    if (diaB && allCult(dia) && allEmpty(r1)) found = { kind: 'diamond', mult: 2.0, label: 'Ромб', cells: dia };
+    else if (allCult(r1)) found = { kind: 'square', mult: 1.75, label: 'Квадрат', cells: r1 };
+    else if (allCult(orth) && allEmpty(diag)) found = { kind: 'cross', mult: 1.5, label: 'Крест', cells: orth };
     if (!found) return;
-    /* Усиление ритуала ключевыми картами в формации */
-    let keyBonus = 0; const keysUsed = [];
-    found.cells.forEach(([r, c]) => {
-      const it = grid[r][c]; if (!it) return;
-      const b = RITUAL_KEYS[it.cardId];
-      if (b) { keyBonus += b; keysUsed.push(CARDS[it.cardId].name); }
-    });
-    /* Хтонь-источник и Колодцы усиливают формацию */
-    keyBonus += RITUAL_SOURCES[grid[ar][ac].cardId] || 0;
-    if (INC_CTX.bld) {
-      let w = 0;
-      for (let dr = -3; dr <= 3; dr++) for (let dc = -3; dc <= 3; dc++) {
-        const nr = ar + dr, nc = ac + dc;
-        if (nr < 0 || nr >= GRID_SIZE || nc < 0 || nc >= GRID_SIZE) continue;
-        const it = grid[nr][nc];
-        if (it && it.cardId === 'bl_well' && Math.max(Math.abs(dr), Math.abs(dc)) <= 3) w++;
-      }
-      keyBonus += Math.min(2, w * 0.5);
-    }
-    found.keyBonus = Math.min(2.0, keyBonus);
-    found.keysUsed = keysUsed;
-    found.formMult = found.mult + found.keyBonus;
+    found.formMult = found.mult;
     INC_CTX.formActive[ar + ',' + ac] = found;
     found.cells.forEach(([r, c]) => { INC_CTX.formCell[r + ',' + c] = found; });
   });
@@ -219,6 +180,8 @@ function factionMult(r, c, card, item) {
     else if (nearAnchor) m *= 1.25;
     /* Псалмопевец: +10% за каждое своё активное звено */
     if (card.id === 'u12') m *= 1 + 0.10 * getNeighbors(r, c).filter(n => findPair(card, CARDS[n.item.cardId])).length;
+    /* v1.2.6: «Медленный рост» Зомби (u1) — накопленный бафф (тик в faction_mechanics.js) */
+    if (card.id === 'u1' && item.growBuff) m *= 1 + item.growBuff;
     /* v1.2.5: новые ниши + здания */
     if (card.id === 'u9') m *= 1 + 0.15 * radius2(r, c).filter(n => CARDS[n.item.cardId].faction === 'undead').length; /* Коса */
     if (card.id === 'u7') m *= 1 + 0.08 * nUndead;                                                                /* Кладка */
@@ -230,44 +193,9 @@ function factionMult(r, c, card, item) {
     return m;
   }
   if (mech === 'formation') {
-    /* Культист ОБЯЗАН стоять в ритуале: вне — ×0.15.
-       Член формации — ПОЛНЫЙ множитель (×2.2..×2.6 + ключевые карты).
-       Источник ритуала — здание Алтаря или ХТОНЬ на его месте. */
-    if (RITUAL_SOURCES[card.id] !== undefined) {
-      const f = INC_CTX.formActive[r + ',' + c];
-      const n = getNeighbors(r, c).filter(n => INC_CTX.ritual.has(n.r + ',' + n.c)).length;
-      return (f ? f.formMult : 1) * (1 + 0.15 * n);
-    }
-    const k = r + ',' + c;
-    let m = 1;
-    if (INC_CTX.formCell[k]) {
-      m = INC_CTX.formCell[k].formMult;                            /* член формации — ПОЛНЫЙ множитель */
-      const form = colEngine(c);                                   /* «Око Ритуала»: +0.5 к множителю в столбце */
-      if (form && form.formAdd) m += form.formAdd;
-    }
-    else if (INC_CTX.ritual.has(k)) {
-      if (getNeighbors(r, c).some(n => RITUAL_SOURCES[n.item.cardId] !== undefined)) m = 1.15; /* соседи Алтаря */
-      if (card.id === 'c0') m *= 1.4;                              /* Смирение: в ритуале без формации */
-    } else if (INC_CTX.ritualOuter.has(k)) m = 1.075;              /* лишний круг (c9 / Колодец) */
-    else {
-      m = 0.15;                                                    /* ВНЕ РИТУАЛА — почти ноль */
-      const ob = B.obelisk[k] || 0;                                /* Чёрный Обелиск: зона теплее */
-      if (ob) m = Math.max(m, 0.45);
-      if (getNeighbors(r, c).some(n => n.item.cardId === 'c12')) m = Math.max(m, 0.45); /* Служка */
-      const engM = colEngine(c);
-      if (engM && engM.medic) m = Math.max(m, 0.6);                /* Кадило */
-    }
-    /* v1.2.5: новые ниши младших культистов + Обелиск в ритуале */
-    if (card.id === 'c1') m *= 1 + 0.10 * getNeighbors(r, c).filter(n => CARDS[n.item.cardId].faction === 'cultist').length;
-    if (card.id === 'c2' && getNeighbors(r, c).some(n => RITUAL_SOURCES[n.item.cardId] !== undefined)) m *= 1.3;
-    if (card.id === 'c3') m *= 1 + 0.10 * radius2(r, c).filter(n => INC_CTX.formCell[n.r + ',' + n.c]).length;
-    if (INC_CTX.formCell[k] || INC_CTX.ritual.has(k)) {
-      const ob = B.obelisk[k] || 0;
-      if (ob) m *= 1 + 0.08 * Math.min(2, ob);
-    }
-    /* «Инквизитор» (★4): +25% за каждую уникальную пару на поле */
-    if (card.id === 'c8') m *= Math.min(5, 1 + 0.25 * INC_CTX.uniquePairs);
-    return m;
+    /* v1.2.6: у культистов ДОХОДА НЕТ — вся экономика фракции — выплата
+       за проведённый ритуал (двиг в faction_mechanics.js) */
+    return 0;
   }
   if (mech === 'cycle') {
     /* ФИДБЕК 4: ЗВЕРИ БЕЗ СИНЕРГИЙ. Инкам — исключительно от пищевой цепи:
@@ -512,8 +440,6 @@ function computeIncome() {
   total *= diversityMult * sealMult;
   /* Временный буст всего дохода: ЖАТВА (Гора костей), вехи, Ускорение */
   total *= activeAltBuff().mult;
-  /* «Заряд Ритуала» (cultists): ВСПЛЕСК ×1.5 — см. faction_mechanics.js */
-  if (surgeUntil > gameTime) total *= 1.5;
   incomeCache = { total, uniquePairs, perCell, pairUsage: usage, diversityMult, armyBest, armyMultOf: INC_CTX.armyMult,
     linkFactors, linkWarded, lichZone: Array.from(lichAdj) };
   return total;
@@ -530,8 +456,11 @@ function countLinks() {
 }
 
 /* Мощь Алтаря: бонус к урону Арены от синергий (v1.2: кап 4, сильнее за звено —
-   петля баланса арена↔алтарь: чем богаче ритуал, тем больнее бьют отряды) */
+   петля баланса арена↔алтарь: чем богаче ритуал, тем больнее бьют отряды).
+   v1.2.6: у культистов звеньев нет — мощность растёт от УЧАСТНИКОВ ритуала. */
 function altarPower() {
+  if (FACTION_INFO[faction].mechanic === 'formation')
+    return Math.min(4, 1 + 0.05 * (INC_CTX.ritual ? INC_CTX.ritual.size : 0));
   return Math.min(4, (1 + 0.035 * countLinks()) * incomeCache.diversityMult);
 }
 

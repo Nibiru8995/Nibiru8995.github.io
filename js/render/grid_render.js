@@ -60,39 +60,35 @@ function buildGrid() {
   renderGrid();
 }
 
-/* ================= ПАНЕЛЬ РЕЛИКВИЙ (слева от коллекции, v1.2.5) =================
-   Список столбцов Алтаря: клик по строке — вставить/снять реликвию.
+/* ================= СЛОТЫ РЕЛИКВИЙ НАД АЛТАРЁМ (v1.2.6) =================
+   Отдельная панель слева УБРАНА (перегружала интерфейс). Вместо неё —
+   компактный ряд слотов прямо над гридом: столб ↔ слот, клик — вставить/снять.
+   Реликвии культистов — глобальные (ритуальные): столб не важен.
    Открывается на Эпохе 2 (applyFeatureLocks). */
-function renderRelicPanel() {
-  const panel = $('relicPanel'), list = $('relicPanelList');
-  if (!panel || !list) return;
-  if (epoch < RELIC_SLOT_EPOCH) { panel.style.display = 'none'; return; }
-  panel.style.display = '';
+function renderRelicSlots() {
+  const row = $('relicSlotRow');
+  if (!row) return;
+  if (epoch < RELIC_SLOT_EPOCH) { if (row.style.display !== 'none') row.style.display = 'none'; return; }
+  row.style.display = '';
   const st = gridStart();
-  let html = '';
+  const cultGlobal = FACTION_INFO[faction].mechanic === 'formation';
+  let html = '<div class="rsr-title" title="Реликвии живут до конца Эпохи. Клик — вставить/снять">⚒ СТОЛБА</div>';
   for (let dc = 0; dc < playableSize; dc++) {
     const c = st + dc;
     const rel = relicAtCol(c);
     if (rel) {
-      html += '<div class="rp-row filled" data-col="' + c + '" style="--relicC:' + RELIC_RARITY_COLOR(rel.rarity) + '">' +
-        '<span class="rp-num">Столб ' + (c + 1) + '</span>' +
-        '<span class="rp-ic">' + relicArtHTML(rel, 'rp-img', '') + '</span>' +
-        '<span class="rp-name">' + rel.name + '</span></div>';
+      html += '<div class="rsr-slot filled" data-col="' + c + '" style="--relicC:' + RELIC_RARITY_COLOR(rel.rarity) + '" title="' + rel.name + ' — клик: снять">' +
+        relicArtHTML(rel, 'rsr-img', '') + '</div>';
     } else {
-      html += '<div class="rp-row empty" data-col="' + c + '">' +
-        '<span class="rp-num">Столб ' + (c + 1) + '</span>' +
-        '<span class="rp-ic"><span class="rp-plus">+</span></span>' +
-        '<span class="rp-name">пусто — вставить</span></div>';
+      html += '<div class="rsr-slot empty" data-col="' + c + '" title="Пустой столб — клик: вставить реликвию"><span>+</span></div>';
     }
   }
-  const owned = RELICS_OWNED.size;
-  list.innerHTML = html;
-  list.querySelectorAll('.rp-row').forEach(row => {
-    row.onclick = () => onColSlotClick(+row.dataset.col);
-  });
-  /* Заголовок панели: счётчик собранных */
-  panel.querySelector('.relic-panel-sub').textContent =
-    'собрано ' + owned + ' · клик — вставить/снять';
+  if (cultGlobal) html += '<div class="rsr-note">ритуальные — действуют на весь ритуал</div>';
+  /* рендер вызывается каждый кадр — перестраиваем только при изменениях */
+  if (row.dataset.sig === html) return;
+  row.dataset.sig = html;
+  row.innerHTML = html;
+  row.querySelectorAll('.rsr-slot').forEach(el => { el.onclick = () => onColSlotClick(+el.dataset.col); });
 }
 
 function onColSlotClick(c) {
@@ -106,8 +102,11 @@ function onColSlotClick(c) {
   }
   const avail = unassignedRelics();
   if (!avail.length) { toast('Свободных реликвий нет — они добываются из гачи (с Эпохи ' + RELIC_DROP_EPOCH + ')'); return; }
-  mk('relicPick', '<h2>⚒ Реликвия в столбец ' + (c + 1) + '</h2>' +
-    '<div class="res">Бафф и дебафф подействуют на ВСЮ эту колонку Алтаря.</div>' +
+  const cultGlobal = FACTION_INFO[faction].mechanic === 'formation';
+  mk('relicPick', '<h2>⚒ Реликвия в столб ' + (c + 1) + '</h2>' +
+    '<div class="res">' + (cultGlobal
+      ? 'Реликвии культистов — РИТУАЛЬНЫЕ: усиливают весь ритуал сразу, столб не важен.'
+      : 'Бафф подействует на ВСЮ эту колонку Алтаря.') + '</div>' +
     '<div id="relicPickGrid"></div>' +
     '<div class="btn-row"><button class="btn btn-take" id="relicPickX">Отмена</button></div>', 560);
   $('relicPickX').onclick = () => close_('relicPick');
@@ -115,8 +114,7 @@ function onColSlotClick(c) {
     const r = relicById(id);
     return '<div class="relic-pick" data-id="' + id + '" style="border-color:' + RELIC_RARITY_COLOR(r.rarity) + '">' +
       relicArtHTML(r, 'relic-pick-img', '') + '<span><b>' + r.name + '</b> ' + '★'.repeat(r.rarity) +
-      '<br><small style="color:#8fc87f">✅ ' + r.buff + '</small>' +
-      '<br><small style="color:#e08a8a">❌ ' + r.debuff + '</small></span></div>';
+      '<br><small style="color:#8fc87f">✅ ' + r.buff + '</small></span></div>';
   }).join('');
   $('relicPickGrid').querySelectorAll('.relic-pick').forEach(el => {
     el.onclick = () => {
@@ -160,7 +158,6 @@ function renderGrid() {
        получает вращающееся кольцо рун, всплеск резонанса — золото. */
     if (INC_CTX.ritual && INC_CTX.ritual.has(r + ',' + c)) cell.classList.add('ritual-cell');
     if (INC_CTX.formCell && INC_CTX.formCell[r + ',' + c]) cell.classList.add('ritual-part');
-    if (surgeUntil > gameTime && INC_CTX.ritual && INC_CTX.ritual.has(r + ',' + c)) cell.classList.add('ritual-surge');
 
     if (moveMode && moveSource && moveSource.r === r && moveSource.c === c) cell.classList.add('move-source');
     else if (moveMode && moveSource && !item) cell.classList.add('move-target');
@@ -169,7 +166,7 @@ function renderGrid() {
     const hc = hintClass(r, c);
     if (hc) cell.classList.add(hc);
 
-    if (item) {
+      if (item) {
       const card = CARDS[item.cardId];
       const cardEl = document.createElement('div');
       cardEl.className = 'card star' + card.rarity + ' f-' + card.faction;
@@ -179,20 +176,34 @@ function renderGrid() {
       const damaged = item.hp < item.maxHp - 0.01;
       const hpPct = damaged ? Math.max(0, (item.hp / item.maxHp) * 100) : 100;
       const hpColor = hpPct > 50 ? '#40d040' : hpPct > 20 ? '#e0c040' : '#ff3030';
+      /* v1.2.6: у культистов инкам 0 — бейдж показывает ВКЛАД В РИТУАЛ (⚡) */
+      let badgeTxt = income.toFixed(2);
+      if (FACTION_INFO[faction].mechanic === 'formation' && card.faction === 'cultist' && !card.isBuilding) {
+        const cs = (INC_CTX.ritualCellSpeed && INC_CTX.ritualCellSpeed[r + ',' + c]) || 0;
+        badgeTxt = cs > 0 ? '⚡' + cs.toFixed(2) : '· · ·';
+      }
       let badges = '<span class="faction-dot" style="background:' + FACTION_INFO[card.faction].color + '"></span>' +
         '<span class="card-name">' + card.name + '</span>' +
-        '<span class="income-badge">' + income.toFixed(2) + '</span>';
+        '<span class="income-badge">' + badgeTxt + '</span>';
       /* РЕЛИКВИИ 3.0: маркер реликвии на карте, стоящей в её столбце (спрайт) */
       const colRel = relicAtCol(c);
       if (colRel && epoch >= RELIC_SLOT_EPOCH) badges += '<span class="anchor-badge relic-mini" style="color:' + RELIC_RARITY_COLOR(colRel.rarity) + '" title="Столбец под реликвией: ' + colRel.name + '">' + relicArtHTML(colRel, 'relic-mini-img', '') + '</span>';
       /* ЗДАНИЯ: значок постройки + бейдж якоря для Алтаря */
       if (card.isBuilding) badges += '<span class="anchor-badge" style="color:#e8c060" title="Здание">🏛</span>';
-      if (RITUAL_SOURCES[card.id] !== undefined) badges += '<span class="anchor-badge">🔱</span>';
-      /* Уникальная механика ★4/★5 — золотой значок ✦ */
-      if (SPECIALS[card.id]) badges += '<span class="anchor-badge" style="color:#e8c060">✦</span>';
-      /* Счётчик перезарядки периодических зданий: ЖАТВА (Гора костей, 30с) и Кузня Хаоса (d9, 20с) */
+      if (RITUAL_SOURCES[card.id]) badges += '<span class="anchor-badge">🔱</span>';
+      /* Уникальная механика (SPECIALS): ✦ светится, когда особенность СЕЙЧАС работает —
+         тусклый значок означает, что бонусы карты не задействованы */
+      if (SPECIALS[card.id]) {
+        const sa = specialActive(card, item, r, c);
+        badges += '<span class="anchor-badge sp-badge' + (sa.active ? ' on' : '') + '" title="' +
+          (sa.active ? 'Особенность активна' : 'Особенность не задействована') + ': ' + (SPECIALS[card.id] || '').replace(/"/g, '') + '">✦</span>';
+      }
+      /* Таймерные способности: бейджи перезарядки (v1.2.6: + Зомби-рост, Кладбище, Врата) */
       if (card.id === 'bl_mound') badges += '<span class="cd-badge" data-cd="mound"></span>';
       if (card.id === 'd9') badges += '<span class="cd-badge" data-cd="balr"></span>';
+      if (card.id === 'u1') badges += '<span class="cd-badge" data-cd="grow" data-r="' + r + '" data-c2="' + c + '"></span>';
+      if (card.id === 'bl_grave') badges += '<span class="cd-badge" data-cd="grave"></span>';
+      if (card.id === 'bl_gates') badges += '<span class="cd-badge" data-cd="gates"></span>';
       /* ДЕМОНЫ: угли Хаоса (0..5) — оранжевые ромбы */
       if (FACTION_INFO[faction].mechanic === 'chaos' && item.embers > 0)
         badges += '<span class="ember-badge">' + '◆'.repeat(item.embers) + '</span>';
@@ -212,11 +223,10 @@ function renderGrid() {
       cardEl.innerHTML = (damaged ? '<div class="hp-bar" style="width:' + hpPct + '%;background:' + hpColor + ';color:' + hpColor + ';"></div>' : '') +
         cardArtHTML(card, 'card-art', 'glyph') + badges;
       if (formation(r, c) > 1) cardEl.classList.add('in-formation');
-      /* v1.0: состояние культиста в ритуале — живое/мёртвое, Алтарь в формации */
+      /* v1.2.6: активный источник ритуала — кольцо рун */
       if (FACTION_INFO[faction].mechanic === 'formation' && card.faction === 'cultist') {
         const k = r + ',' + c;
-        if (RITUAL_SOURCES[card.id] !== undefined && INC_CTX.formActive[k]) cardEl.classList.add('altar-active');
-        else if (!INC_CTX.ritual.has(k) && !INC_CTX.formCell[k] && !INC_CTX.ritualOuter.has(k)) cardEl.classList.add('cult-dead');
+        if (RITUAL_SOURCES[card.id] && INC_CTX.formActive[k]) cardEl.classList.add('altar-active');
       }
       cardEl.addEventListener('mouseenter', e => showCardTooltip(e, card, income, r, c));
       cardEl.addEventListener('mousemove', moveTooltip);
@@ -227,7 +237,47 @@ function renderGrid() {
   drawSynergies();
   updateGridStats();
   renderOmens();
-  renderRelicPanel();
+  renderRelicSlots();
+  renderRitualBar();
+}
+
+/* ---- v1.2.6: АКТИВНОСТЬ ОСОБЕННОСТИ (✦) ----
+   Тусклый ✦ = условие особенности не выполнено (карта работает "вхолостую").
+   Золотой ✦ = бонус сейчас капает. Проверки простые и точные. */
+function specialActive(card, item, r, c) {
+  const nb = getNeighbors(r, c), r2 = radius2(r, c);
+  switch (card.id) {
+    case 'u0': return { active: r2.some(n => CARDS[n.item.cardId].rarity === 5) };
+    case 'u1': return { active: (item.growBuff || 0) > 0 };
+    case 'u2': return { active: r2.some(n => n.item.hp < n.item.maxHp - 0.01) };
+    case 'u3': return { active: nb.some(n => n.item.stacks >= 2) };
+    case 'u4': case 'u5': case 'u8': case 'u12':
+      return { active: nb.some(n => !!findPair(card, CARDS[n.item.cardId])) };
+    case 'u6': return { active: nb.some(n => { const q = CARDS[n.item.cardId]; return q.faction === 'undead' && q.rarity === 3; }) };
+    case 'u7': return { active: nb.some(n => CARDS[n.item.cardId].faction === 'undead') };
+    case 'u9': return { active: r2.some(n => CARDS[n.item.cardId].faction === 'undead') };
+    case 'u11': return { active: nb.some(n => CARDS[n.item.cardId].faction === 'undead') };
+    case 'c1': return { active: nb.some(n => CARDS[n.item.cardId].faction === 'cultist') };
+    case 'c2': return { active: nb.some(n => RITUAL_SOURCES[n.item.cardId]) };
+    case 'c3': return { active: radius2(r, c).some(n => INC_CTX.ritual && INC_CTX.ritual.has(n.r + ',' + n.c)) };
+    case 'c12': return { active: nb.some(n => CARDS[n.item.cardId].faction === 'cultist' && !INC_CTX.ritual.has(n.r + ',' + n.c)) };
+    case 'd0': case 'd12': return { active: nb.some(n => (n.item.embers || 0) >= 3) };
+    case 'd1': return { active: nb.some(n => CARDS[n.item.cardId].faction === 'demon') };
+    case 'd2': return { active: (item.harmBuff || 0) > 0 };
+    case 'd6': case 'd8': case 'd10': case 'd14':
+      return { active: (card.id === 'd10' || card.id === 'd14' ? r2 : nb).some(n => CARDS[n.item.cardId].faction === 'demon') };
+    case 'd9': return { active: (item.balrBuff || 1) > 1 || nb.some(n => CARDS[n.item.cardId].faction === 'demon') };
+    case 'd11': return { active: nb.some(n => CARDS[n.item.cardId].faction === 'demon') };
+    case 'd13': return { active: (item.tyrBuff || 1) > 1 };
+    case 'd15': return { active: nb.some(n => CARDS[n.item.cardId].faction === 'demon') };
+    case 'b0': return { active: nb.some(n => CARDS[n.item.cardId].faction === 'beast') };
+    case 'b1': return { active: nb.some(n => n.item.cardId === 'b1' || n.item.cardId === 'b4') };
+    case 'b12': return { active: nb.some(n => CARDS[n.item.cardId].diet === 'herb') };
+    case 'b6': return { active: nb.some(n => isPredator(CARDS[n.item.cardId])) };
+    case 'b8': return { active: nb.some(n => CARDS[n.item.cardId].diet === 'herb' || CARDS[n.item.cardId].diet === 'scav') };
+    case 'b9': return { active: nb.some(n => isPredator(CARDS[n.item.cardId])) };
+    default: return { active: true }; /* здания и остальное — всегда */
+  }
 }
 
 /* SVG-линии: парные синергии + цепи нежити (координаты — по открытым клеткам).
@@ -290,21 +340,14 @@ function updateGridStats() {
     const am = Math.min(2, 1 + 0.015 * (incomeCache.armyBest - 1));
     extra += ' · Армия: <b>' + incomeCache.armyBest + '</b> (×' + am.toFixed(2) + ')';
   }
-  /* Ритуал культистов: размер + активная формация + ЗАРЯД (v1.2.5) */
+  /* Ритуал культистов v1.2.6: участники · скорость · выплата · заряд */
   if (FACTION_INFO[faction].mechanic === 'formation') {
-    const inRitual = INC_CTX.ritual ? INC_CTX.ritual.size : 0;
-    let fLabel = '—', formCount = 0;
-    for (const k in INC_CTX.formActive) {
-      const f = INC_CTX.formActive[k];
-      fLabel = f.label + ' ×' + f.formMult.toFixed(2);
-      formCount++;
-    }
-    if (formCount > 1) fLabel += ' ×' + formCount;
+    const E = RITUAL_ENGINE || computeRitualEngine();
+    const forms = Object.keys(INC_CTX.formActive).length;
     const rpct = Math.floor(ritualResonance);
-    const surgeLeft = Math.max(0, Math.ceil(surgeUntil - gameTime));
-    extra += ' · Ритуал: <b style="color:' + (inRitual ? '#c9a227' : '#e08a8a') + '">' + inRitual + '</b> · Формация: <b>' + fLabel + '</b>' +
-      ' · Заряд: <span class="res-bar"><i style="width:' + rpct + '%"></i></span> <b>' + rpct + '%</b>' +
-      (surgeLeft ? ' · <b style="color:#ffe080">ВСПЛЕСК ×1.5 (' + surgeLeft + 'с)</b>' : '');
+    extra += ' · Ритуал: <b>' + E.participants + '</b>' + (forms ? ' · формаций: <b>' + forms + '</b>' : '') +
+      ' · ⚡<b>' + E.speed.toFixed(1) + '%/с</b> · 💰<b>+' + fmtShort(E.payout) + '</b>' +
+      ' · Заряд: <b>' + rpct + '%</b>';
   }
   $('gridStats').innerHTML = 'Активных звеньев: <b>' + countLinks() + '</b>' +
     ' · Уникальных пар: <b>' + currentDiversity() + '</b> (+' + Math.round((incomeCache.diversityMult - 1) * 100) + '% дохода)' +
@@ -312,8 +355,37 @@ function updateGridStats() {
   updateCooldownBadges();
 }
 
+/* v1.2.6: БОЛЬШАЯ ШКАЛА РИТУАЛА над Алтарём — её невозможно не заметить.
+   Золотая полоса, шиммер, пульс на подходе к выплате. */
+function renderRitualBar() {
+  const bar = $('ritualBar');
+  if (!bar) return;
+  if (FACTION_INFO[faction].mechanic !== 'formation') { if (bar.style.display !== 'none') bar.style.display = 'none'; return; }
+  if (bar.style.display !== '') bar.style.display = '';
+  const E = RITUAL_ENGINE || computeRitualEngine();
+  const pct = Math.min(100, ritualResonance);
+  const fill = bar.querySelector('.rb-fill'), info = bar.querySelector('.rb-info'), label = bar.querySelector('.rb-label');
+  if (!fill || !info) return;
+  fill.style.width = pct + '%';
+  bar.classList.toggle('almost', pct >= 80);
+  let infoTxt;
+  if (E.speed > 0) {
+    label.textContent = '🔥 РИТУАЛ';
+    infoTxt = '⚡ ' + E.speed.toFixed(1) + '%/с · 💰 +' + fmtShort(E.payout) + ' 💎 за цикл' + (E.banner ? ' · ' + E.banner : '');
+  } else if (E.ready) {
+    label.textContent = '🔥 РИТУАЛ';
+    infoTxt = 'Нет участников — поставьте культистов в цепь от Алтаря (шкала не тает!)';
+  } else {
+    label.textContent = '🔥 РИТУАЛ';
+    infoTxt = 'Поставьте Ритуальный Алтарь — без него ритуал не идёт';
+  }
+  if (info.dataset.sig !== infoTxt) { info.dataset.sig = infoTxt; info.innerHTML = infoTxt; }
+}
+
 /* Живые счётчики перезарядки способностей прямо на картах (пункт 5 ТЗ).
-   Патчит текст существующих бейджей каждый кадр — полный рендер поля не нужен. */
+   Патчит текст существующих бейджей каждый кадр — полный рендер поля не нужен.
+   v1.2.6: + Зомби-рост (u1), Кладбище (12с) и Врата Ада (25с) — раньше их
+   таймеры были невидимы. */
 function updateCooldownBadges() {
   const mech = FACTION_INFO[faction].mechanic;
   qsa('.cd-badge').forEach(el => {
@@ -324,6 +396,18 @@ function updateCooldownBadges() {
       else txt = '🗿 ' + Math.max(0, Math.ceil(30 - bldMoundTimer)) + 'с';
     } else if (el.dataset.cd === 'balr' && mech === 'chaos') {
       txt = '🌋 ' + Math.max(0, Math.ceil(20 - balrTimer)) + 'с';
+    } else if (el.dataset.cd === 'grow') {
+      /* Зомби (u1): накопленный рост + время до следующей ступени */
+      const r = +el.dataset.r, c = +el.dataset.c2;
+      const it = grid[r] && grid[r][c];
+      if (it && it.cardId === 'u1') {
+        const pct = Math.round((it.growBuff || 0) * 100);
+        txt = '🧟 +' + pct + '% · ' + Math.max(0, Math.ceil(GROW_STEP - (it.growT || 0))) + 'с';
+      }
+    } else if (el.dataset.cd === 'grave' && typeof bldGraveTimer !== 'undefined') {
+      txt = '🪦 ' + Math.max(0, Math.ceil(12 - bldGraveTimer)) + 'с';
+    } else if (el.dataset.cd === 'gates' && typeof bldGatesTimer !== 'undefined') {
+      txt = '🚪 ' + Math.max(0, Math.ceil(25 - bldGatesTimer)) + 'с';
     }
     if (el.textContent !== txt) el.textContent = txt;
   });

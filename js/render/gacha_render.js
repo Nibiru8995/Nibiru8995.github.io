@@ -79,7 +79,9 @@ function showDrop(cardId) {
   $('dropName').textContent = card.name;
   $('dropEffect').innerHTML = card.isBuilding
     ? '<span style="color:#e8c060">' + (SPECIALS[card.id] || '') + '</span>'
-    : pairsForCard(card).map(p => p.text).join('<br>') || 'Нет особых синергий.';
+    : card.faction === 'cultist'
+      ? '<span style="color:#c9a227">' + (SPECIALS[card.id] || 'Участник ритуала') + '</span><br><small style="color:#a08860">У культистов нет дохода и синергий — вся польза в ритуале</small>'
+      : pairsForCard(card).map(p => p.text).join('<br>') || 'Нет особых синергий.';
   $('dropFlavor').textContent = '«' + card.flavor + '»';
   modalCard.classList.remove('rarity4', 'rarity5');
   playRarityEffect(modalCard, bannerEl, card.rarity);
@@ -123,8 +125,10 @@ function showDropRelic(relicId) {
   el.innerHTML = relicArtHTML(r, 'drop-art', '');
   $('dropStars').textContent = '★'.repeat(r.rarity) + ' · РЕЛИКВИЯ · ' + FACTION_INFO[r.faction].name;
   $('dropName').textContent = r.name;
-  $('dropEffect').innerHTML = '<span style="color:#8fc87f">✅ ' + r.buff + '</span><br><span style="color:#e08a8a">❌ ' + r.debuff + '</span>' +
-    '<br><small style="color:#a08860">Ставится в слот столбца Алтаря (Эпоха ' + RELIC_SLOT_EPOCH + '+)</small>';
+  $('dropEffect').innerHTML = '<span style="color:#8fc87f">✅ ' + r.buff + '</span>' +
+    (r.faction === 'cultist'
+      ? '<br><small style="color:#c9a227">Ритуальная: усиливает ВЕСЬ ритуал, столб не важен</small>'
+      : '<br><small style="color:#a08860">Чистый бафф одного столба Алтаря (Эпоха ' + RELIC_SLOT_EPOCH + '+)</small>');
   $('dropFlavor').textContent = '«' + r.lore + '»';
   modalCard.classList.remove('rarity4', 'rarity5');
   playRarityEffect(modalCard, bannerEl, r.rarity === 5 ? 5 : r.rarity === 4 ? 4 : 3);
@@ -196,7 +200,7 @@ function showMulti(cardIds, count, relicIds) {
       el.style.setProperty('--cardBg', r.rarity === 5 ? '#4a3010' : '#3a2040');
       el.innerHTML = relicArtHTML(r, 'multi-art', '') +
         '<span class="multi-name">' + r.name + '</span>';
-      el.title = '✅ ' + r.buff + '\n❌ ' + r.debuff;
+      el.title = '✅ ' + r.buff;
       rev.appendChild(el);
       setTimeout(() => { if (r.rarity === 4) el.classList.add('rare4'); else if (r.rarity === 5) el.classList.add('rare5'); }, Math.min(i * 60, 500));
     });

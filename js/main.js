@@ -324,7 +324,7 @@ function wireEvents() {
   $('musicToggle').addEventListener('click', () => { musicOn = !musicOn; saveMeta(); if (musicOn) musicStart(); else musicStop(); updateSettingsUI(); });
   $('fxToggle').addEventListener('click', () => { fxOn = !fxOn; saveMeta(); updateSettingsUI(); });
   /* Реликвии */
-  /* Реликвии v1.2.5: живут во вкладке коллекции «⚒ РЕЛИКВИИ» + панель слева */
+  /* Реликвии v1.2.6: вкладка коллекции «⚒ РЕЛИКВИИ» + ряд слотов над Алтарём */
   $('resetBtn').addEventListener('click', () => {
     ask('Стереть ВЕСЬ прогресс (включая печати и ачивки)?', () => {
       noSave = true; wipeAll(); location.reload();
@@ -374,9 +374,15 @@ function wireEvents() {
 let lastC = crystals;
 setInterval(() => {
   const d = crystals - lastC;
-  /* Заработок идёт только от экономики, не от казино (чтобы не «натыкать» Эпохи) */
-  if (d > 0 && !document.querySelector('#casinoModal.show,#cgModal.show')) runEarned += d;
   lastC = crystals;
+  /* v1.2.6: в порог Эпохи идёт ТОЛЬКО доход Алтаря. Всё остальное
+     (награды Арены, знамения, компенсации, продажа дубликатов)
+     помечается в incomeExempt — Эпохи больше не «натыкаются» сами. */
+  if (d > 0 && !document.querySelector('#casinoModal.show,#cgModal.show')) {
+    const credited = Math.max(0, d - incomeExempt);
+    runEarned += credited;
+  }
+  incomeExempt = 0;
   checkMilestones();
   if (runEarned >= epochThreshold(epoch) && gameStarted && !gamePaused) {
     const upBtn = $('epochUpBtn');
