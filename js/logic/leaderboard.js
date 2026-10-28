@@ -10,7 +10,7 @@
    3) уход со страницы → рекорд ТОЛЬКО если вырос с прошлой отправки.
    Периодических «сердцебиений» нет. UPDATE-политик в базе нет:
    повторов не бывает, потому что пишем только рост score, а
-   лучшие результаты игроков дедупицируются при показе топа.
+   лучшие результаты игроков дедуплицируются при показе топа.
 
    В коде сайта — только publishable-ключ (его и так видно в F12);
    RLS базы разрешает INSERT и SELECT, обновлять/удалять нельзя.
@@ -134,9 +134,9 @@ function supaLeave() {
 function maybeAskNick() {
   try { if (localStorage.getItem('gg3_player')) return; } catch (e) { }
   mk('nickModal',
-    '<h2>👑 КАК ЗОВУТЬ ТЕБЯ, ГРИНДЕР?</h2>' +
+    '<h2>👑 КАК ТЕБЯ ЗОВУТ, ГРИНДЕР?</h2>' +
     '<div class="desc">Тьма ведёт <b>Табличку Тьмы</b> — топ инкама по Эпохам. ' +
-    'Запищутся твои Вознесения. Имя меняется когда угодно в 🏆 РЕЙТИНГ.</div>' +
+    'Записываются твои Вознесения. Имя меняется когда угодно в 🏆 РЕЙТИНГ.</div>' +
     '<input id="nickIn" maxlength="20" placeholder="Псевдоним до 20 символов" ' +
     'style="width:100%;padding:10px 12px;background:#0d0a0f;border:1px solid #3a3040;color:#e8dcc8;border-radius:8px;font-family:inherit;margin:6px 0 4px">' +
     '<div class="btn-row" style="gap:8px">' +
@@ -179,7 +179,7 @@ function leaderboardOpen() {
   $('lbResend').onclick = () => {
     const before = lbBestSent();
     supaSubmit(runTime).then(() => {
-      if (lbBestSent() === before) toast('⏳ Тьма already знает этот рекорд — растёт только при новом пике или Вознесении.', 'lbRes', 10);
+      if (lbBestSent() === before) toast('⏳ Тьма уже знает этот рекорд — он пишется только при новом пике дохода или Вознесении.');
     });
   };
   renderLeaderboard();
@@ -227,7 +227,7 @@ async function renderLeaderboard() {
         '</div>';
     });
     html += '<div style="opacity:.5;padding:8px 2px 0;font-size:12px">Топ-' + LB_TOP + ' по рекорду дохода/сек. ' +
-      'Место держится твоего лучшего результата — переписывается при Вознесении или росте пика.</div>';
+      'Место — за твоим лучшим результатом: он переписывается при Вознесении или росте пика.</div>';
     rows.innerHTML = html;
   } catch (e) {
     rows.innerHTML = '<div style="opacity:.75;padding:14px 0">Тьма молчит: связь с базой не установлена. ' +
