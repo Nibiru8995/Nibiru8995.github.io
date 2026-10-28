@@ -6,28 +6,39 @@
    ============================================================ */
 
 let lastTick = performance.now();
+/* v1.2.9.1 (perf): computeIncome — самый тяжёлый проход игры (полный скан
+   поля, BFS армии, ауры зданий). Пересчёт раз в 100мс вместо каждого кадра:
+   income между пересчётами читается из incomeCache. На цифры, баланс и
+   видимость это не влияет — совпадает с прежним result до \$в пределах 0.1с. */
+let lastRecalc = 0;
 
 function gameLoop(now) {
   const dt = Math.min((now - lastTick) / 1000, 0.2) * speedMult;
   lastTick = now;
   if (!gamePaused && gameStarted) {
-    computeIncome();
+    if (now - lastRecalc >= 100) { computeIncome(); lastRecalc = now; }
     const inc = calculateIncome();
     crystals += inc * dt;
     runTime += dt; gameTime += dt;
     tickFactionMechanics(dt);
     tickOmens(dt);
-    updateHUD();
+    updateHUD(now);
   }
   requestAnimationFrame(gameLoop);
 }
 
-/* ---------------- Гача: обработка кнопок ---------------- */
+/* ---------------- Гача: обработка кнопок ----------------
+   v1.2.9.1: бесплатные крутки (вехи/Призыв/Контракты/Знамение) теперь
+   списываются в ЛЮБОЙ пачке: сначала все бесплатные, остаток — за 💎.
+   Раньше они работали только при крутке по одной. */
 function doRolls(count) {
-  const free = count === 1 && freeRolls > 0;
-  const res = performRolls(count, free);
+  const freeN = Math.max(0, Math.min(freeRolls, count));
+  const res = performRolls(count, freeN);
   if (!res) { toast('Не хватает 💎'); return; }
-  if (free) { freeRolls--; saveRun(); toast('🏅 Бесплатная крутка по вехе!'); }
+  if (freeN > 0) {
+    freeRolls -= freeN; saveRun();
+    toast('🏅 Бесплатные крутки: ×' + freeN + (res.paid ? ' + платные: ×' + res.paid : ''));
+  }
   sfx('roll');
   /* РЕЛИКВИИ 2.0: выдаём сразу (окна лишь показывают дроп) */
   (res.relics || []).forEach(id => grantRelic(id, true));
@@ -240,8 +251,12 @@ function wireEvents() {
   /* Крутки */
   [1, 10, 100, 1000].forEach(n => $('roll' + n).addEventListener('click', () => doRolls(n)));
   $('rollAll').addEventListener('click', () => {
-    if (crystals < rollCost()) return;
-    doRolls(Math.min(2000, Math.floor(crystals / rollCost())));
+    /* v1.2.9.1: НАСТОЯЩИЕ «все деньги»: exact floor по текущей цене крутки
+       ПЛЮС все бесплатные; кап 2000 убран (он и был причиной «после
+       осталось много денег»). Ceil-защита от бесконечных значений — 200k. */
+    const n = Math.min(200000, Math.floor(Math.max(0, crystals) / rollCost()) + freeRolls);
+    if (n <= 0) return;
+    doRolls(n);
   });
 
   /* Инструменты */

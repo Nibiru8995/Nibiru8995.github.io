@@ -323,7 +323,7 @@ function computeIncome() {
       if (nr >= GRID_SIZE || nc >= GRID_SIZE || !grid[nr][nc]) continue;
       const pair = findPair(CARDS[it.cardId], CARDS[grid[nr][nc].cardId]);
       if (!pair) continue;
-      const idx = SYNERGY_PAIRS.indexOf(pair);
+      const idx = pair.idx; /* v1.2.9.1 (perf): кэш индекса вместо indexOf */
       const key = r + ',' + c, key2 = nr + ',' + nc;
       const lk = linkKey(r, c, nr, nc);
       const cardA = CARDS[it.cardId], cardB = CARDS[grid[nr][nc].cardId];

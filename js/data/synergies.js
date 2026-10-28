@@ -91,7 +91,10 @@ function pairsForCard(card) {
 }
 /* Быстрый поиск пары по двум картам (O(1) вместо перебора) */
 const PAIR_LOOKUP = {};
-SYNERGY_PAIRS.forEach((p, i) => { PAIR_LOOKUP[p.a + '|' + p.b] = i; PAIR_LOOKUP[p.b + '|' + p.a] = i; });
+SYNERGY_PAIRS.forEach((p, i) => {
+  p.idx = i; /* v1.2.9.1 (perf): вместо SYNERGY_PAIRS.indexOf(pair) в горячем computeIncome */
+  PAIR_LOOKUP[p.a + '|' + p.b] = i; PAIR_LOOKUP[p.b + '|' + p.a] = i;
+});
 function findPair(cardA, cardB) {
   const i = PAIR_LOOKUP[cardA.id + '|' + cardB.id];
   return i === undefined ? null : SYNERGY_PAIRS[i];

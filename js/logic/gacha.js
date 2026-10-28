@@ -50,10 +50,14 @@ function rollOne() {
   return id;
 }
 
-/* Сыграть count круток. free=true — крутка за счёт вехи (без денег).
-   Возвращает {cards: [id, ...], relics: [id, ...]} */
+/* Сыграть count круток. free — СКОЛЬКО из них бесплатные (за вехи/контракты/
+   Призыв/Знамение), остальные — за кристаллы. v1.2.9.1: раньше бесплатные
+   работали только при count===1, из-за чего «×100/×1000» их игнорировали.
+   Возвращает {cards: [id, ...], relics: [id, ...], free, paid} */
 function performRolls(count, free) {
-  const cost = free ? 0 : rollCost() * count;
+  const freeN = Math.max(0, Math.min(count, free | 0));
+  const paidN = count - freeN;
+  const cost = paidN ? rollCost() * paidN : 0;
   if (crystals < cost) return null;
   crystals -= cost;
   const cards = [], relics = [];
@@ -61,5 +65,5 @@ function performRolls(count, free) {
     if (relicRollDue()) relics.push(rollRelicId());
     else { relicPity++; cards.push(rollOne()); }
   }
-  return { cards, relics };
+  return { cards, relics, free: freeN, paid: paidN };
 }

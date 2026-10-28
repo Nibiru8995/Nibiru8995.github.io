@@ -23,11 +23,21 @@ function applyFeatureLocks() {
   if (ctb) ctb.style.display = noSave ? 'none' : '';
 }
 
-function updateHUD() {
+/* v1.2.9.1 (perf): тяжёлые подрендеры (applyFeatureLocks, строка статистики
+   поля, слоты реликвий, шкала ритуала, бейдж контрактов) — раз в 200мс,
+   остальное (числа кристаллов/ставки/кнопки Эпохи) — каждый кадр.
+   Прямые вызовы updateHUD() (без timestamp) как раньше — всё сразу. */
+let hudHeavyLast = 0;
+
+function updateHUD(now) {
+  const heavy = now === undefined || (now - hudHeavyLast) >= 200;
+  if (heavy) {
+    if (now !== undefined) hudHeavyLast = now;
+    applyFeatureLocks();
+  }
   $('crystals').textContent = fmt(crystals);
   $('sealsTop').textContent = fmt(seals);
   $('rate').textContent = '+' + calculateIncome().toFixed(2) + '/сек';
-  applyFeatureLocks();
 
   /* Pity — гарантия до старшей ДОСТУПНОЙ редкости (показ у кнопок круток).
      «Череп Владыки» (реликвия) приближает ★4-гарантию */
@@ -40,22 +50,28 @@ function updateHUD() {
   $('pity').textContent = pity;
 
   const rc = rollCost();
+  /* v1.2.9.1: бесплатная часть пачки списывается сперва, поэтому
+     платной цены хватает «не на все N» — кнопка остаётся живой. */
   [1, 10, 100, 1000].forEach(n => {
     const el = $('roll' + n);
+    const freeN = Math.min(freeRolls, n);
+    const paidN = n - freeN;
     el.disabled = false;
     const cost = el.querySelector('.cost');
-    if (n === 1 && freeRolls > 0) {
-      cost.textContent = 'БЕСПЛАТНО ×' + freeRolls;
+    if (paidN === 0) {
+      cost.textContent = n === 1 ? 'БЕСПЛАТНО ×' + freeRolls : 'БЕСПЛАТНО';
       el.classList.add('free-roll');
       el.disabled = false;
       return;
     }
     el.classList.remove('free-roll');
-    el.disabled = crystals < n * rc;
-    if (cost) cost.textContent = fmt(n * rc);
+    el.disabled = crystals < paidN * rc;
+    if (cost) cost.textContent = fmt(paidN * rc) + (freeN ? ' (×' + freeN + ' бесплатные)' : '');
   });
-  $('rollAll').disabled = crystals < rc;
-  $('rollAll').querySelector('.cost').textContent = 'макс. круток';
+  /* v1.2.9.1: «ВСЕ ДЕНЬГИ» — честный счётчик: платные по текущей цене + бесплатные */
+  const allN = Math.floor(Math.max(0, crystals) / rc) + freeRolls;
+  $('rollAll').disabled = allN <= 0;
+  $('rollAll').querySelector('.cost').textContent = '×' + fmtShort(allN) + ' круток';
 
   /* Большая кнопка ЭПОХИ над Алтарём: всегда кликабельна —
      порог достигнут → Вознесение, нет → открыть Меню Эпохи.
@@ -82,11 +98,13 @@ function updateHUD() {
   const achvBtnCost = $('achvBtn') && $('achvBtn').querySelector('.cost');
   if (achvBtnCost) achvBtnCost.textContent = achvCount() + ' / ' + ACHIEVEMENTS.length;
   /* живой индикатор армии/бафов в строке над Алтарём */
-  if (typeof updateGridStats === 'function') updateGridStats();
-  /* Слоты реликвий над Алтарём + большая шкала ритуала (v1.2.6) */
-  if (typeof renderRelicSlots === 'function') renderRelicSlots();
-  if (typeof renderRitualBar === 'function') renderRitualBar();
-  if (typeof renderContractsBtn === 'function') renderContractsBtn(); /* v1.2.9: бейдж Тёмного Пакта */
+  if (heavy) {
+    if (typeof updateGridStats === 'function') updateGridStats();
+    /* Слоты реликвий над Алтарём + большая шкала ритуала (v1.2.6) */
+    if (typeof renderRelicSlots === 'function') renderRelicSlots();
+    if (typeof renderRitualBar === 'function') renderRitualBar();
+    if (typeof renderContractsBtn === 'function') renderContractsBtn(); /* v1.2.9: бейдж Тёмного Пакта */
+  }
 }
 
 function updateBanner() {
