@@ -1023,43 +1023,43 @@ body[data-faction="demon"] .cell, body[data-faction="demon"] .cell.playable { ba
 body[data-faction="demon"] .cell.playable:hover { background:#161110; }
 
 /* ============================================================
-   v1.5.0 — СВЯЗИ НЕЖИТИ: РЖАВЫЕ ЦЕПИ (SVG-паттерн) + ЗАГРОБНЫЙ ТУМАН
-   Кладбищенская тишина: цепь не светится. Движется и мерцает
-   только магия — знамение Владыки, Пакт Лича, искра Скованного.
+   v1.5.0 — СВЯЗИ НЕЖИТИ: РЖАВЫЕ ЦЕПИ (SVG-паттерн)
+   v1.5.4 «Ржавые Узы» — цепи крепятся к краям карт, пиксель-арт тайл,
+   тёплое переливание вместо «белого червя»; туман остался только на
+   обычных звеньях и Пакте Лича (у Владыки/Скованного аур нет).
+   Движется и мерцает только магия и свет переливания.
    Прочие фракции держат прежний вид (syn-flow и др.).
    ============================================================ */
-/* тень: мягкая подложка по ширине связки (v1.5.3: связка 16px — тень 13,
-   раньше 28 при жгутах 26px накрывала карты) */
-#synergySvg line.ug-shadow { stroke:#000; stroke-width:13; stroke-linecap:round; opacity:.16; }
+/* тень: мягкая подложка по ширине связки (v1.5.4: связка 16px — тень 12) */
+#synergySvg line.ug-shadow { stroke:#000; stroke-width:12; stroke-linecap:round; opacity:.13; }
 #synergySvg line.ug-shadow.faded { opacity:.1; }
 #synergySvg line.ug-shadow.dead { opacity:.05; }
-/* v1.5.3: спрайт трёх тонких цепей — rect с плиткой паттерном (шаг звеньев 1:1) */
-#synergySvg rect.ug-spr { opacity:.86; }
+/* v1.5.4: спрайт трёх цепей пиксель-арт тайлом 32x16 (шаг звеньев 1:1) */
+#synergySvg rect.ug-spr { opacity:.9; }
 #synergySvg rect.ug-spr.big { opacity:1; }
 #synergySvg rect.ug-spr.faded { opacity:.5; }
 #synergySvg rect.ug-spr.dead { opacity:.22; }
-/* лёгкая пульсация: тёплый отблеск медленно бежит по связке (7.5с цикл,
-   период дэша 150 = периоду keyframes — петля без рывка) */
-#synergySvg line.ug-pulse { stroke:#d8b878; stroke-width:11; stroke-linecap:round; stroke-dasharray: 22 128; opacity:.11; animation: ugPulse150 7.5s linear infinite; }
-#synergySvg line.ug-pulse.faded { opacity:.06; }
-#synergySvg line.ug-pulse.dead { display:none; }
-@keyframes ugPulse150 { from { stroke-dashoffset: 150; } to { stroke-dashoffset: 0; } }
+/* v1.5.4 переливание: мягкая тёплая волна света бежит по цепям — общий
+   градиент с SMIL (единая волна на всю сеть, без «рандомного червя»:
+   dash-пульс ug-pulse убран). Мёртвое звено не переливается. */
+#synergySvg rect.ug-sheen { pointer-events:none; }
+#synergySvg rect.ug-sheen.faded { opacity:.45; }
 /* магия поверх цепи: у каждого штриха период дэша = периоду keyframes,
    петля бесшовная (прежде fog.glint с периодом 36 дёргался на 122) */
 #synergySvg line.ug-magic { stroke-linecap:round; fill:none; }
-#synergySvg line.ug-magic.royal { stroke:#b79bef; stroke-width:4.5; stroke-dasharray: 14 26; opacity:.85; filter: drop-shadow(0 0 6px #7a55c8); animation: ugRun40 3.4s linear infinite; }
-#synergySvg line.ug-magic.lich { stroke:#c2e2ac; stroke-width:4; stroke-dasharray: 10 22; opacity:.8; filter: drop-shadow(0 0 5px #7fae5e); animation: ugRun32 2.6s linear infinite; }
-#synergySvg line.ug-magic.glint { stroke:#d8a860; stroke-width:3; stroke-dasharray: 6 18; opacity:.75; animation: ugRun24 1.9s linear infinite; }
+#synergySvg line.ug-magic.royal { stroke:#b79bef; stroke-width:3.5; stroke-dasharray: 14 26; opacity:.6; filter: drop-shadow(0 0 5px #7a55c8); animation: ugRun40 3.4s linear infinite; }
+#synergySvg line.ug-magic.lich { stroke:#c2e2ac; stroke-width:3; stroke-dasharray: 10 22; opacity:.6; filter: drop-shadow(0 0 4px #7fae5e); animation: ugRun32 2.6s linear infinite; }
+#synergySvg line.ug-magic.glint { stroke:#d8a860; stroke-width:2.5; stroke-dasharray: 6 18; opacity:.65; animation: ugRun24 1.9s linear infinite; }
 @keyframes ugRun40 { from { stroke-dashoffset: 40; } to { stroke-dashoffset: 0; } }
 @keyframes ugRun32 { from { stroke-dashoffset: 32; } to { stroke-dashoffset: 0; } }
 @keyframes ugRun24 { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
-/* туман: без blur-фильтра (десятки линий с blur = рывки), период дэша 120 */
-#synergySvg line.fog { stroke:#aab8a8; stroke-width:5.5; stroke-linecap:round; stroke-dasharray: 46 74; opacity:.28; animation: fogDrift 11s linear infinite; }
-#synergySvg line.fog.mult { stroke:#c6c1a8; opacity:.34; }
-/* Знамение Владыки: лиловая дымка тьмы, живее прочих */
-#synergySvg line.fog.royal { stroke:#a98fd8; opacity:.48; animation-duration:6s; }
-/* Пакт Тишины Лича: призрачная зеленоватая дымка */
-#synergySvg line.fog.lich { stroke:#a8c8b0; opacity:.44; animation-duration:7s; }
+/* туман: без blur-фильтра (десятки линий с blur = рывки), период дэша 120.
+   v1.5.4: только обычные звенья и Пакт Лича — у Владыки и Скованного
+   аур нет (фидбек игрока), их звенья чистые */
+#synergySvg line.fog { stroke:#aab8a8; stroke-width:4.5; stroke-linecap:round; stroke-dasharray: 46 74; opacity:.18; animation: fogDrift 11s linear infinite; }
+#synergySvg line.fog.mult { stroke:#c6c1a8; opacity:.3; }
+/* Пакт Тишины Лича: призрачная зеленоватая дымка (зона Пакта — настоящая механика) */
+#synergySvg line.fog.lich { stroke:#a8c8b0; opacity:.4; animation-duration:7s; }
 #synergySvg line.fog.faded { opacity:.1; animation-duration:16s; }
 #synergySvg line.fog.dead { opacity:.04; animation:none; }
 @keyframes fogDrift { from { stroke-dashoffset: 120; } to { stroke-dashoffset: 0; } }

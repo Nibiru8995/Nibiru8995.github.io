@@ -392,6 +392,9 @@ function drawSynergies() {
   const cellAt = (r, c) => gridEl.children[(r - st) * n + (c - st)];
   const cx = (c) => { const b = cellAt(st, c).getBoundingClientRect(); return b.left - sr.left + b.width / 2; };
   const cy = (r) => { const b = cellAt(r, st).getBoundingClientRect(); return b.top - sr.top + b.height / 2; };
+  /* v1.5.4: полклетки — настолько цепи продлеваются за центры карт,
+     чтобы концы встали ровно на границы карт (крепление к краям) */
+  const ugExt = ug ? Math.round(cellAt(st, st).getBoundingClientRect().width / 2) : 0;
   for (let r = st; r < st + n; r++) for (let c = st; c < st + n; c++) {
     const item = grid[r][c]; if (!item) continue;
     const card = CARDS[item.cardId];
@@ -403,7 +406,7 @@ function drawSynergies() {
       const pair = findPair(card, nCard);
       if (!pair) {
         /* Цепь нежити: соседство без пары всё равно даёт бонус */
-        if (ug && card.faction === 'undead' && nCard.faction === 'undead') drawUgLink(coords, 'plain');
+        if (ug && card.faction === 'undead' && nCard.faction === 'undead') drawUgLink(coords, 'plain', undefined, false, ugExt);
         return;
       }
       const kind = pair.kind === 'mult' ? 'mult' : pair.kind === 'chain' ? 'chain' : pair.kind === 'royal' ? 'royal' : 'good';
@@ -412,9 +415,9 @@ function drawSynergies() {
       const royal = !!(incomeCache.linkRoyal && incomeCache.linkRoyal[lk]);
       const lichW = !!(incomeCache.linkLich && incomeCache.linkLich[lk]);
       if (ug) {
-        /* вся связь нежити = ржавая цепь в тумане; сверху — только настоящая магия */
+        /* вся связь нежити = ржавая цепь; сверху — только настоящая магия */
         const mode = royal ? 'royal' : lichW ? 'lich' : kind === 'chain' ? 'big' : 'plain';
-        drawUgLink(coords, mode, lf, kind === 'mult');
+        drawUgLink(coords, mode, lf, kind === 'mult', ugExt);
         return;
       }
       /* прежний вид (культисты/звери/демоны): линия синергии + бегущий поток.
@@ -428,76 +431,120 @@ function drawSynergies() {
   }
 }
 
-/* v1.5.0: звено нежити — тень (читаемость на картах), туман, ржавая цепь.
+/* v1.5.0: звено нежити — тень (читаемость на картах), ржавые цепи, магия.
    mode: plain | big (⛓ Скованный со зданием) | royal (Владыка — магия тьмы) |
-   lich (Пакт Тишины). Погасшие звенья из экономики (faded/dead) теряют туман. */
-/* v1.5.3 «Три Нити»: звено нежити = ОДИН СПРАЙТ из трёх ТОНКИХ ржавых цепей
-   (assets/fx/chain_rust.png + chain_rust_v.png — бесшовные тайлы 64x18 / 18x64,
-   три раздельные нити ~4px с просветами, как на эскизе). Натягивается
-   SVG-паттерном userSpaceOnUse: шаг звеньев всегда 1:1 — растяжение/сжатие
-   связи НЕ мылит звенья (урок v1.5.2: спрайт 72x26 stretch = жгуты).
-   ВАЖНО (Chromium): у rect с pattern-заливкой НЕ должно быть transform
-   (rotate/наклон/90°) и у паттерна patternTransform — плитка тогда
-   рисуется со сдвигом (фантомные цепи мимо rect); поэтому вертикальный
-   вариант — ОТДЕЛЬНЫЙ PNG, а наклон убран (на эскизе цепи прямые).
-   mode: plain | big (⛓ Скованный — ярче, искра) | royal | lich. По всем
-   цепям бежит лёгкая пульсация, магия светится только когда творится,
-   туман живёт своей фазой. */
-const UG_PAT_DEFS =
-  '<pattern id="ugPatH" patternUnits="userSpaceOnUse" width="64" height="18">' +
-  '<image href="assets/fx/chain_rust.png" xlink:href="assets/fx/chain_rust.png"' +
-  ' x="0" y="0" width="64" height="18" preserveAspectRatio="none"/></pattern>' +
-  '<pattern id="ugPatV" patternUnits="userSpaceOnUse" width="18" height="64">' +
-  '<image href="assets/fx/chain_rust_v.png" xlink:href="assets/fx/chain_rust_v.png"' +
-  ' x="0" y="0" width="18" height="64" preserveAspectRatio="none"/></pattern>';
-function drawUgLink(coords, mode, lf, isMult) {
+   lich (Пакт Тишины). Погасшие звенья из экономики (faded/dead) гаснут. */
+/* v1.5.4 «Ржавые Узы»: цепи = пиксель-арт тайл 32x18 (3 параллельные
+   ржавые цепи, звенья «лицом/с ребра», период 8px), натягивается
+   ПЛИТКАМИ-КАРТИНКАМИ на глобальной сетке 32px внутри клипа звена
+   (уроки v1.5.2/3: растяжение = каша; transform/patternTransform над
+   pattern-rect = фантомы Chromium — поэтому ни pattern'ов, ни transform).
+   Глобальная сетка даёт два эффекта сразу: (1) соседи одного ряда
+   продолжают фазу друг друга — цепь идёт СПЛОШНОЙ линией через весь
+   строй; (2) высота банды жёстко привязана к центру ряда — нет фазовой
+   ряби между звеньями. ЦЕПИ КРЕПЯТСЯ К КРАЯМ КАРТ (ext = полклетки).
+   ПЕРЕЛИВАНИЕ: тёплая волна света — общий linearGradient + SMIL, одна
+   на всю сеть (не «рандомный червь», а единый свет по металлу).
+   ТУМАН только где есть настоящая мгла: обычные звенья и Пакт Лича;
+   у Владыки и Скованного аур НЕТ (фидбек игрока) — ни тумана на их
+   звеньях, ни туманных зон на клетках (u10/u11 убраны из auraRadiusOf). */
+const UG_TILE = 32, UG_BAND = 22;
+const UG_SHEEN_STOPS =
+  '<stop offset="0" stop-color="#e8b878" stop-opacity="0"/>' +
+  '<stop offset=".12" stop-color="#e8b878" stop-opacity=".07"/>' +
+  '<stop offset=".25" stop-color="#ffd9a0" stop-opacity=".18"/>' +
+  '<stop offset=".38" stop-color="#e8b878" stop-opacity=".07"/>' +
+  '<stop offset=".52" stop-color="#e8b878" stop-opacity="0"/>' +
+  '<stop offset="1" stop-color="#e8b878" stop-opacity="0"/>';
+const UG_DEFS =
+  /* период градиента 140 = вектору анимации — петля бесшовная */
+  '<linearGradient id="ugSheenH" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="140" y2="0" spreadMethod="repeat">' +
+  UG_SHEEN_STOPS +
+  '<animateTransform attributeName="gradientTransform" type="translate" from="0 0" to="140 0" dur="7.2s" repeatCount="indefinite"/></linearGradient>' +
+  '<linearGradient id="ugSheenV" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="140" spreadMethod="repeat">' +
+  UG_SHEEN_STOPS +
+  '<animateTransform attributeName="gradientTransform" type="translate" from="0 0" to="0 140" dur="7.2s" repeatCount="indefinite"/></linearGradient>';
+function drawUgLink(coords, mode, lf, isMult, ext) {
+  const NS = 'http://www.w3.org/2000/svg';
   const faded = lf !== undefined && lf > 0 && lf < 1, dead = lf === 0;
   const st = (faded ? ' faded' : dead ? ' dead' : '');
   const horiz = coords.y1 === coords.y2;
+  /* цепи крепятся к КРАЯМ карт: продлеваем звено на полклетки в обе
+     стороны — концы встают ровно на границы карт */
+  if (ext) {
+    coords = horiz
+      ? { x1: coords.x1 - ext, y1: coords.y1, x2: coords.x2 + ext, y2: coords.y2 }
+      : { x1: coords.x1, y1: coords.y1 - ext, x2: coords.x2, y2: coords.y2 + ext };
+  }
   const L = Math.hypot(coords.x2 - coords.x1, coords.y2 - coords.y1);
   /* 1) тень-подложка по ширине связки: читаемость на пёстрых картах */
   mkLine('ug-shadow' + st, coords);
-  /* 2) спрайт трёх цепей плиткой (без искажений и без transform —
-     см. примечание про Chromium выше) */
-  /* defs с паттернами пересоздаём после каждого wipe (innerHTML='' в
-     drawSynergies их стирает) — проверяем по DOM, не по флагу */
-  if (!synergySvg.querySelector('defs')) {
-    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-    defs.innerHTML = UG_PAT_DEFS;
+  /* 2) банды трёх цепей: клип по звену + плитки на глобальной сетке
+     (defs пересоздаём после каждого wipe — проверяем по DOM) */
+  let defs = synergySvg.querySelector('defs');
+  if (!defs) {
+    defs = document.createElementNS(NS, 'defs');
+    defs.innerHTML = UG_DEFS;
     synergySvg.appendChild(defs);
   }
-  const seed = Math.round(coords.x1 * 5 + coords.y1 * 11);
-  const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-  r.setAttribute('class', 'ug-spr' + (mode === 'big' ? ' big' : '') + st);
+  const n = drawUgLink._n = (drawUgLink._n || 0) + 1;
+  const bx = horiz ? coords.x1 : coords.x1 - 11;
+  const by = horiz ? coords.y1 - 11 : coords.y1;
+  const bw = horiz ? L : 22, bh = horiz ? 22 : L;
+  const cp = document.createElementNS(NS, 'clipPath');
+  cp.setAttribute('id', 'ugc' + n);
+  const cr = document.createElementNS(NS, 'rect');
+  cr.setAttribute('x', bx.toFixed(1)); cr.setAttribute('y', by.toFixed(1));
+  cr.setAttribute('width', bw.toFixed(1)); cr.setAttribute('height', bh.toFixed(1));
+  cp.appendChild(cr);
+  defs.appendChild(cp);
+  const g = document.createElementNS(NS, 'g');
+  g.setAttribute('clip-path', 'url(#ugc' + n + ')');
+  const href = horiz ? 'assets/fx/chain_rust.png' : 'assets/fx/chain_rust_v.png';
   if (horiz) {
-    r.setAttribute('x', String(coords.x1));
-    r.setAttribute('y', (coords.y1 - 9).toFixed(1));
-    r.setAttribute('width', L.toFixed(1));
-    r.setAttribute('height', '18');
+    for (let x = Math.floor(coords.x1 / UG_TILE) * UG_TILE; x < coords.x2; x += UG_TILE) {
+      const im = document.createElementNS(NS, 'image');
+      im.setAttribute('href', href); im.setAttributeNS('http://www.w3.org/1999/xlink', 'href', href);
+      im.setAttribute('x', String(x)); im.setAttribute('y', by.toFixed(1));
+      im.setAttribute('width', String(UG_TILE)); im.setAttribute('height', String(UG_BAND));
+      im.setAttribute('style', 'image-rendering:pixelated');
+      g.appendChild(im);
+    }
   } else {
-    r.setAttribute('x', (coords.x1 - 9).toFixed(1));
-    r.setAttribute('y', String(coords.y1));
-    r.setAttribute('width', '18');
-    r.setAttribute('height', L.toFixed(1));
+    for (let y = Math.floor(coords.y1 / UG_TILE) * UG_TILE; y < coords.y2; y += UG_TILE) {
+      const im = document.createElementNS(NS, 'image');
+      im.setAttribute('href', href); im.setAttributeNS('http://www.w3.org/1999/xlink', 'href', href);
+      im.setAttribute('x', bx.toFixed(1)); im.setAttribute('y', String(y));
+      im.setAttribute('width', String(UG_BAND)); im.setAttribute('height', String(UG_TILE));
+      im.setAttribute('style', 'image-rendering:pixelated');
+      g.appendChild(im);
+    }
   }
-  r.setAttribute('fill', horiz ? 'url(#ugPatH)' : 'url(#ugPatV)');
-  synergySvg.appendChild(r);
-  /* 3) лёгкая пульсация по всем цепям: тёплый отблеск медленно бежит,
-     у каждой связи своя фаза — связки не пульсируют строем */
-  const p = mkLine('ug-pulse' + st, coords);
-  p.style.animationDelay = (-(Math.abs(seed * 3) % 75) / 10) + 's';
+  /* 3) переливание: тёплая волна света по металлу (внутри того же клипа).
+     Мёртвое звено не светится вовсе, гаснущее — вполовину */
+  if (!dead) {
+    const sh = document.createElementNS(NS, 'rect');
+    sh.setAttribute('class', 'ug-sheen' + (faded ? ' faded' : ''));
+    sh.setAttribute('x', bx.toFixed(1)); sh.setAttribute('y', by.toFixed(1));
+    sh.setAttribute('width', bw.toFixed(1)); sh.setAttribute('height', bh.toFixed(1));
+    sh.setAttribute('fill', horiz ? 'url(#ugSheenH)' : 'url(#ugSheenV)');
+    g.appendChild(sh);
+  }
+  synergySvg.appendChild(g);
   /* 4) магия поверх металла — только когда она реально творится:
      знамение Владыки (royal), Пакт Лича (lich), искра Скованного (big) */
   if (mode === 'royal' || mode === 'lich' || mode === 'big') {
     const m = mkLine('ug-magic ' + (mode === 'royal' ? 'royal' : mode === 'lich' ? 'lich' : 'glint') + st, coords);
     m.style.animationDelay = (-(Math.abs(Math.round(coords.x1 * 7 + coords.y1 * 13)) % 40) / 10) + 's';
   }
-  /* 5) туман ПОДЕРХ цепи, у каждой связи своя фаза (отрицательный delay) —
-     туманы никогда не дёргаются строем и не «перезапускаются» глазу */
-  const fogCls = 'fog' + (isMult ? ' mult' : '') +
-    (mode === 'royal' ? ' royal' : mode === 'lich' ? ' lich' : '') + st;
-  const fl = mkLine(fogCls, coords);
-  fl.style.animationDelay = (-(Math.abs(Math.round(coords.x1 * 17 + coords.y1 * 29)) % 110) / 10) + 's';
+  /* 5) туман ТОЛЬКО где есть настоящая мгла: обычные звенья (загробная
+     тяга) и Пакт Лича (призрачная зона). У Владыки и Скованного аур
+     нет — их звенья стоят чисто, без тумана */
+  if (mode === 'plain' || mode === 'lich') {
+    const fogCls = 'fog' + (isMult ? ' mult' : '') + (mode === 'lich' ? ' lich' : '') + st;
+    const fl = mkLine(fogCls, coords);
+    fl.style.animationDelay = (-(Math.abs(Math.round(coords.x1 * 17 + coords.y1 * 29)) % 110) / 10) + 's';
+  }
 }
 function updateGridStats() {
   const inc = calculateIncome();

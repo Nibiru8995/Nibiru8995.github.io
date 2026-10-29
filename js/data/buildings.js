@@ -25,10 +25,12 @@ const BLD_SUMMON_POOL = {
   bl_gates: ['d0', 'd1', 'd2', 'd3']
 };
 
-/* Радиусы аур карт + зданий — единая карта для подсветки (grid_render) */
+/* Радиусы аур карт + зданий — единая карта для подсветки (grid_render).
+   v1.5.4: u10 (Владыка) и u11 (Скованный) вычеркнуты — аур у них НЕТ
+   (фидбек игрока: туман вокруг этих карт ничем не обоснован). */
 function auraRadiusOf(cardId) {
   if (BUILDING_AURA[cardId] !== undefined) return BUILDING_AURA[cardId];
-  const R = { u8: 1, u10: 2, u11: 2, bl_altar: 1, c9: 2, b8: 1, b9: 2, b10: 1, d8: 1, d9: 1, d10: 2, d11: 1 };
+  const R = { u8: 1, bl_altar: 1, c9: 2, b8: 1, b9: 2, b10: 1, d8: 1, d9: 1, d10: 2, d11: 1 };
   return R[cardId] || 0;
 }
 
