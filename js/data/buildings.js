@@ -103,6 +103,16 @@ function buildCryptZone() {
    дублируется — КУЛДАУН между срабатываниями ВДВОЕ КОРОЧЕ:
    Кладбище 12с → 6с, Врата Ада 25с → 12.5с, ЖАТВА Горы 30с → 15с. */
 let bldGraveTimer = 0, bldGatesTimer = 0, bldMoundTimer = 0;
+/* v1.5.0 «если активно — дышит»: в момент срабатывания способности здание
+   получает fxUntil — renderGrid даст карте класс fx-live (вспышка-каст),
+   а buildAuraMap оживит туман её ауры. Пока здание молчит — всё стоит тихо. */
+function fxMarkBuildings(id, secs) {
+  const until = gameTime + secs;
+  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
+    const it = grid[r][c];
+    if (it && it.cardId === id) it.fxUntil = until;
+  }
+}
 function tickBuildings(dt) {
   let changed = false;
   /* ⛓ какие здания прикованы (орто-сосед u11) — один проход на тик */
@@ -125,6 +135,7 @@ function tickBuildings(dt) {
       const id = pick(BLD_SUMMON_POOL.bl_grave);
       inventory[id] = (inventory[id] || 0) + 1; discovered.add(id);
       stats.summons = (stats.summons || 0) + 1; /* v1.2.9: для контрактов */
+      fxMarkBuildings('bl_grave', 3); /* v1.5.0: кладбищенский туман оживает на 3с */
       toast('🪦 Кладбище подняло: <b>' + CARDS[id].name + '</b> (в коллекции)' + (graveChained ? ' ⛓' : ''), 'summon', 45);
       changed = true;
     }
@@ -138,6 +149,7 @@ function tickBuildings(dt) {
       const id = pick(BLD_SUMMON_POOL.bl_gates);
       inventory[id] = (inventory[id] || 0) + 1; discovered.add(id);
       stats.summons = (stats.summons || 0) + 1; /* v1.2.9: для контрактов */
+      fxMarkBuildings('bl_gates', 3); /* v1.5.0: вспышка портала на 3с */
       toast('🚪 Врата Ада выпустили: <b>' + CARDS[id].name + '</b> (в коллекции)' + (gatesChained ? ' ⛓' : ''), 'summon', 45);
       changed = true;
     }
@@ -151,6 +163,7 @@ function tickBuildings(dt) {
       bldMoundTimer = 0;
       const mult = Math.min(3, 2 + 0.25 * (mounds - 1));
       altBuff.mult = mult; altBuff.until = gameTime + 5;
+      fxMarkBuildings('bl_mound', 5); /* v1.5.0: Гора дышит, пока идёт ЖАТВА (5с) */
       altBuff.label = '🗿 ЖАТВА ×' + mult.toFixed(2).replace(/\.?0+$/, '') + (moundChained ? ' ⛓' : '');
       toast('🗿 Гора костей отдаёт накопленное: доход ×' + mult.toFixed(2).replace(/\.?0+$/, '') + ' на 5 секунд!' + (moundChained ? ' ⛓' : ''), 'mound', 40);
       updateHUD();

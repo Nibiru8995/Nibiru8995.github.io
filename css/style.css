@@ -9,6 +9,10 @@
   --ink: #d5d1c7;
   --cell-size: min(6vh, 58px, calc((100vw - 70px) / 9.6));
   --f-undead: #9a9a9a; --f-beast: #3aa03a; --f-demon: #c03030; --f-cultist: #b3a15f;
+  /* v1.5.0: раньше --ink-dim/--gold-hi/--steel использовались без определения
+     (браузер подставлял наследование) — теперь они настоящие и темируемые */
+  --ink-dim: #a39e92; --gold-hi: #e4d6a4; --steel: #9fb0c4;
+  --sp-live: #d3bd7a; /* цвет АКТИВНОЙ способности (✦) — темируется фракцией */
 }
 html, body { height: 100%; overflow: hidden; width: 100%; }
 body {
@@ -224,10 +228,11 @@ body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-i
 .card .anchor-badge { position: absolute; top: 1px; right: 2px; font-size: 9px; filter: drop-shadow(0 0 3px #d3bd7a); }
 /* ✦-индикатор особенности (v1.2.6): тусклый — не задействована, золотой — активна */
 .card .sp-badge { color: #5a5a5e; filter: none; text-shadow: none; }
-.card .sp-badge.on { color: #d3bd7a; filter: drop-shadow(0 0 4px #d3bd7a); }
+/* v1.5.0: активный ✦ красится в цвет фракции и подсвечивает себя сам */
+.card .sp-badge.on { color: var(--sp-live, #d3bd7a); filter: drop-shadow(0 0 4px currentColor); }
 .card .mut-badge { position: absolute; bottom: 4px; right: 1px; font-size: 8px; font-weight: bold; color: #d08a70; background: #2a0a0add; border-radius: 2px; padding: 0 2px; line-height: 1; border: 1px solid #6e3a30; }
 .card .stack-badge { position: absolute; top: -1px; left: 1px; font-size: 9px; color: #e4d6a4; text-shadow: 0 0 4px #000; }
-.card .cd-badge { position: absolute; top: 1px; left: 50%; transform: translateX(-50%); font-size: 8px; font-weight: bold; color: #d3bd7a; background: #0c0c0edd; border: 1px solid #b3a15f; border-radius: 2px; padding: 0 2px; line-height: 1.2; white-space: nowrap; text-shadow: 0 0 3px #000; }
+.card .cd-badge { position: absolute; top: 1px; left: 50%; transform: translateX(-50%); font-size: 8px; font-weight: bold; color: var(--gold-hi); background: #0c0c0edd; border: 1px solid var(--gold); border-radius: 2px; padding: 0 2px; line-height: 1.2; white-space: nowrap; text-shadow: 0 0 3px #000; }
 .card .faction-dot { position: absolute; top: 2px; right: 2px; width: 7px; height: 7px; border-radius: 50%; border: 1px solid #000000aa; }
 .card .hp-bar { position: absolute; top: 0; left: 0; height: 4px; transition: width .2s; box-shadow: 0 0 4px currentColor; }
 #synergySvg { position: absolute; top: 8px; left: 8px; width: calc(100% - 16px); height: calc(100% - 16px); pointer-events: none; z-index: 4; overflow: visible; }
@@ -949,3 +954,115 @@ body { font-family: 'Alegreya', 'Georgia', 'Times New Roman', serif; }
 
 /* v1.4.1: «Активных игроков за день» — скромная строка ПОД чатом */
 #wallDaily { margin-top: 6px; text-align: center; font-size: 10px; color: var(--ink-dim); opacity: .8; letter-spacing: .5px; user-select: none; }
+
+
+/* ============================================================
+   v1.5.0 «ЧЕТЫРЕ ЛИКА ТЬМЫ» — ТЕМЫ ФРАКЦИЙ
+   Тему включает applyFactionTheme(): body[data-faction].
+   Меняются: фон, панели, границы, шрифты, подсветка способностей.
+   ============================================================ */
+/* — НЕЖИТЬ: холодный склеп, кость, ржавая цепь — */
+body[data-faction="undead"] {
+  --bg:#0e100e; --bg2:#0b0d0b;
+  --border:#262c26; --border2:#363e36;
+  --gold:#9aa38c; --gold-hi:#cad2b9; --accent2:#8a9480;
+  --ink:#c7cdc2; --ink-dim:#8f968c; --steel:#93a49b;
+  --sp-live:#cad2b9;
+  background: linear-gradient(rgba(12,14,12,.85), rgba(8,10,8,.93)), url('../assets/bg_undead.jpg') center / cover no-repeat fixed #0c0e0c;
+}
+body[data-faction="undead"] #menu { background: linear-gradient(rgba(9,10,9,.58), rgba(6,7,6,.9)), url('../assets/menu_undead.jpg') center 30% / cover no-repeat #0b0c0b; }
+body[data-faction="undead"] #topBar, body[data-faction="undead"] #collection { background:#101210; border-color:#262c26; }
+body[data-faction="undead"] #gridWrap { border-color:#5b6353; }
+body[data-faction="undead"] #grid { background:#0c0e0c; }
+body[data-faction="undead"] .cell, body[data-faction="undead"] .cell.playable { background:#0e100e; border-color:#222822; }
+body[data-faction="undead"] .cell.playable:hover { background:#121512; }
+/* — КУЛЬТИСТЫ: багровый ритуал — */
+body[data-faction="cultist"] {
+  --bg:#100d0d; --bg2:#0d0a0a;
+  --border:#33211f; --border2:#452c29;
+  --gold:#b3654f; --gold-hi:#e09a86; --accent2:#a85545;
+  --ink:#d8ccc4; --ink-dim:#a29088; --steel:#b58f85;
+  --sp-live:#e09a86;
+  background: linear-gradient(rgba(15,10,10,.85), rgba(10,7,7,.93)), url('../assets/bg_cultist.jpg') center / cover no-repeat fixed #0e0b0b;
+}
+body[data-faction="cultist"] #menu { background: linear-gradient(rgba(11,7,7,.58), rgba(7,5,5,.9)), url('../assets/menu_cultist.jpg') center 30% / cover no-repeat #0d0a0a; }
+body[data-faction="cultist"] #topBar, body[data-faction="cultist"] #collection { background:#131010; border-color:#33211f; }
+body[data-faction="cultist"] #gridWrap { border-color:#6b463c; }
+body[data-faction="cultist"] #grid { background:#0e0b0b; }
+body[data-faction="cultist"] .cell, body[data-faction="cultist"] .cell.playable { background:#100d0d; border-color:#2e1f1e; }
+body[data-faction="cultist"] .cell.playable:hover { background:#151010; }
+/* — ЗВЕРИ: дикая чаща — */
+body[data-faction="beast"] {
+  --bg:#0d100c; --bg2:#0a0d09;
+  --border:#24301f; --border2:#324028;
+  --gold:#93a04f; --gold-hi:#c9d486; --accent2:#7e8c46;
+  --ink:#ccd2c0; --ink-dim:#939a86; --steel:#9aac90;
+  --sp-live:#c9d486;
+  background: linear-gradient(rgba(11,14,10,.85), rgba(7,10,6,.93)), url('../assets/bg_beast.jpg') center / cover no-repeat fixed #0b0e0a;
+}
+body[data-faction="beast"] #menu { background: linear-gradient(rgba(9,12,8,.58), rgba(5,7,4,.9)), url('../assets/menu_beast.jpg') center 30% / cover no-repeat #0a0d08; }
+body[data-faction="beast"] #topBar, body[data-faction="beast"] #collection { background:#101309; border-color:#24301f; }
+body[data-faction="beast"] #gridWrap { border-color:#5a6640; }
+body[data-faction="beast"] #grid { background:#0b0e0a; }
+body[data-faction="beast"] .cell, body[data-faction="beast"] .cell.playable { background:#0d100c; border-color:#202a1c; }
+body[data-faction="beast"] .cell.playable:hover { background:#111510; }
+/* — ДЕМОНЫ: раскалённый уголь — */
+body[data-faction="demon"] {
+  --bg:#110d0b; --bg2:#0e0a09;
+  --border:#33221c; --border2:#452c22;
+  --gold:#c07a3f; --gold-hi:#ecab6a; --accent2:#a86436;
+  --ink:#d8ccc0; --ink-dim:#a29084; --steel:#c49a80;
+  --sp-live:#ecab6a;
+  background: linear-gradient(rgba(16,10,8,.85), rgba(10,6,5,.93)), url('../assets/bg_demon.jpg') center / cover no-repeat fixed #0e0a08;
+}
+body[data-faction="demon"] #menu { background: linear-gradient(rgba(11,7,6,.58), rgba(6,4,3,.9)), url('../assets/menu_demon.jpg') center 30% / cover no-repeat #0c0908; }
+body[data-faction="demon"] #topBar, body[data-faction="demon"] #collection { background:#140f0c; border-color:#33221c; }
+body[data-faction="demon"] #gridWrap { border-color:#7a4e2e; }
+body[data-faction="demon"] #grid { background:#0f0b0a; }
+body[data-faction="demon"] .cell, body[data-faction="demon"] .cell.playable { background:#110d0b; border-color:#2c1e18; }
+body[data-faction="demon"] .cell.playable:hover { background:#161110; }
+
+/* ============================================================
+   v1.5.0 — СВЯЗИ НЕЖИТИ: РЖАВЫЕ ЦЕПИ (SVG-паттерн) + ЗАГРОБНЫЙ ТУМАН
+   Кладбищенская тишина: цепь не светится. Движется и мерцает
+   только магия — знамение Владыки, Пакт Лича, искра Скованного.
+   Прочие фракции держат прежний вид (syn-flow и др.).
+   ============================================================ */
+#synergySvg line.ug-shadow { stroke:#020202; stroke-width:10; stroke-linecap:round; opacity:.5; }
+#synergySvg line.ug-chain { stroke-width:7; opacity:.92; }
+#synergySvg line.ug-chain.big { stroke-width:9.5; opacity:1; }
+#synergySvg line.ug-chain.faded { opacity:.5; }
+#synergySvg line.ug-chain.dead { opacity:.22; }
+/* туман: широкий мягкий штрих с длинными «клочьями», ползёт очень медленно */
+#synergySvg line.fog { stroke:#a9b5a7; stroke-width:6.5; stroke-linecap:round; stroke-dasharray: 44 78; opacity:.26; filter: blur(1.6px); animation: fogDrift 9s linear infinite; }
+#synergySvg line.fog.mult { stroke:#c6c1a8; opacity:.32; }
+/* Знамение Владыки: цепь магии тьмы — лиловая, туман гуще и живее */
+#synergySvg line.fog.royal { stroke:#a98fd8; opacity:.46; animation-duration:5.5s; filter: blur(1.6px) drop-shadow(0 0 4px #6a4fa0); }
+/* Пакт Тишины Лича: призрачный зеленоватый свет — лич творит магию */
+#synergySvg line.fog.lich { stroke:#a8c8b0; opacity:.42; animation-duration:6s; filter: blur(1.6px) drop-shadow(0 0 3px #5f8f6f); }
+/* Скованный Цепью: по цепи бежит тусклая ржавая искра (натяжение) */
+#synergySvg line.fog.glint { stroke:#b98a4a; stroke-dasharray: 10 26; opacity:.38; animation-duration:2.8s; filter: blur(.6px); }
+#synergySvg line.fog.faded { opacity:.12; animation-duration:14s; }
+#synergySvg line.fog.dead { opacity:.05; animation:none; }
+@keyframes fogDrift { from { stroke-dashoffset: 122; } to { stroke-dashoffset: 0; } }
+
+/* АУРЫ НЕЖИТИ — ТУМАН: спокойная дымка; дышит, когда способность
+   источника реально работает (класс aura-live из buildAuraMap) */
+body[data-faction="undead"] .cell.aura-zone::after { box-shadow:none; background: radial-gradient(ellipse at 50% 58%, var(--auraC,#9a9a9a) 0%, transparent 70%); opacity:.17; animation:none; filter: blur(2px); }
+body[data-faction="undead"] .cell.aura-zone.r2::after { opacity:.24; }
+body[data-faction="undead"] .cell.aura-zone.aura-live::after { animation: fogBreath 4.8s ease-in-out infinite; }
+@keyframes fogBreath { 0%,100% { opacity:.13; } 50% { opacity:.32; } }
+/* зона Пакта Лича — живое призрачное сияние (магия работает постоянно) */
+body[data-faction="undead"] .cell.aura-lich { border-color:#7fa08c !important; box-shadow: inset 0 0 12px #7fae9066, inset 0 0 3px #a8d8b888; animation: lichBreath 3.4s ease-in-out infinite; }
+@keyframes lichBreath { 0%,100% { box-shadow: inset 0 0 9px #7fae9044; } 50% { box-shadow: inset 0 0 15px #7fae9077, inset 0 0 4px #a8d8b8aa; } }
+
+/* ============================================================
+   v1.5.0 — ПРИНЦИП «ЕСЛИ АКТИВНО — ДЫШИТ»
+   sp-live: особенность (✦ золотая) сейчас работает — карта мерцает.
+   fx-live: таймерная способность сработала — короткая вспышка-каст.
+   Всё остальное стоит тихо, как положено мёртвым.
+   ============================================================ */
+.card.sp-live { animation: cardBreath 3.8s ease-in-out infinite; }
+@keyframes cardBreath { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.25); } }
+.card.fx-live { animation: cardCast 1.5s ease-in-out infinite; }
+@keyframes cardCast { 0%,100% { filter: brightness(1.05); } 50% { filter: brightness(1.45); } }

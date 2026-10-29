@@ -224,6 +224,7 @@ function startDebugRun(ep, f, rich, keepSave) {
   toast('🛠 ЧИТ: Эпоха ' + ep + ' · ' + FACTION_INFO[f].name + (keepSave ? ' · сохранение ВКЛ' : ' · сохранение ВЫКЛ'));
 }
 function refreshAll() {
+  applyFactionTheme(); /* v1.5.0: тема фракции (фон/палитра) */
   buildGrid(); renderCollection(); renderFighters(); initArena(); updateHUD(); updateBanner(); updateEpochUI();
 }
 

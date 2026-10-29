@@ -42,6 +42,12 @@ function buildAuraMap() {
     const it = grid[r][c]; if (!it) continue;
     const R = auraRadiusOf(it.cardId); if (!R) continue;
     const color = FACTION_INFO[CARDS[it.cardId].faction].color;
+    /* v1.5.0 «если активно — дышит»: туман ауры оживает (aura-live), только
+       когда особенность источника реально работает (✦ активна) или таймерная
+       способность только что сработала (fxUntil). Спящий источник — тихая дымка. */
+    /* у ЗДАНИЙ specialActive всегда true (пассивка) — они оживают только
+       в момент срабатывания (fxUntil); «дышат» лишь карты с живой особенность */
+    const live = (!CARDS[it.cardId].isBuilding && !!SPECIALS[it.cardId] && specialActive(CARDS[it.cardId], it, r, c).active) || it.fxUntil > gameTime;
     for (let dr = -R; dr <= R; dr++) for (let dc = -R; dc <= R; dc++) {
       if (Math.max(Math.abs(dr), Math.abs(dc)) > R) continue;
       const nr = r + dr, nc = c + dc;
@@ -49,7 +55,7 @@ function buildAuraMap() {
       if (!playableMask[nr] || !playableMask[nr][nc]) continue; /* закрытые клетки не подсвечиваем */
       const k = nr + ',' + nc;
       const prev = map[k];
-      map[k] = { color: prev ? prev.color : color, big: R >= 2 || (prev && prev.big) };
+      map[k] = { color: prev ? prev.color : color, big: R >= 2 || (prev && prev.big), live: live || (prev && prev.live) };
     }
   }
   return map;
@@ -164,6 +170,7 @@ function renderGrid() {
     if (az) {
       cell.classList.add('aura-zone');
       if (az.big) cell.classList.add('r2');
+      if (az.live) cell.classList.add('aura-live'); /* v1.5.0: дышит, когда работает */
       cell.style.setProperty('--auraC', az.color);
     } else cell.style.removeProperty('--auraC');
     /* ФИДБЕК 1 (раунд 3): ЯРКАЯ золотая зона Ауры Власти — видно на любых клетках,
@@ -221,6 +228,10 @@ function renderGrid() {
         const sa = specialActive(card, item, r, c);
         badges += '<span class="anchor-badge sp-badge' + (sa.active ? ' on' : '') + '" title="' +
           (sa.active ? 'Особенность активна' : 'Особенность не задействована') + ': ' + (SPECIALS[card.id] || '').replace(/"/g, '') + '">✦</span>';
+        /* v1.5.0 «если активно — дышит»: работающая особенность мерцает,
+           спящая — стоит тихо. Здания исключены: их пассивка «активна» всегда,
+           вспышка-каст они получают в момент срабатывания (fx-live) */
+        if (sa.active && !card.isBuilding) cardEl.classList.add('sp-live');
       }
       /* Таймерные способности: бейджи перезарядки (v1.2.6: + Зомби-рост, Кладбище, Врата) */
       if (card.id === 'bl_mound') badges += '<span class="cd-badge" data-cd="mound"></span>';
@@ -247,6 +258,8 @@ function renderGrid() {
       cardEl.innerHTML = (damaged ? '<div class="hp-bar" style="width:' + hpPct + '%;background:' + hpColor + ';color:' + hpColor + ';"></div>' : '') +
         cardArtHTML(card, 'card-art', 'glyph') + badges;
       if (formation(r, c) > 1) cardEl.classList.add('in-formation');
+      /* v1.5.0: таймерная способность сработала (fxUntil от fxMarkBuildings) — вспышка-каст */
+      if (item.fxUntil > gameTime) cardEl.classList.add('fx-live');
       /* v1.2.6: активный источник ритуала — кольцо рун */
       if (FACTION_INFO[faction].mechanic === 'formation' && card.faction === 'cultist') {
         const k = r + ',' + c;
@@ -286,7 +299,7 @@ function gridSignature() {
       ',m' + Math.round((it.mutBuff || 1) * 100) + ',b' + Math.round((it.balrBuff || 1) * 100) +
       ',p' + Math.round(((it.predBuff || 0) + (it.graze || 0) + (it.floraBuff || 0) + (it.scavBuff || 0)) * 100) +
       ',y' + Math.round((it.hunger === undefined ? 1 : it.hunger) * 100) +
-      (it.boomUntil > gameTime ? '!' : '');
+      (it.boomUntil > gameTime ? '!' : '') + (it.fxUntil > gameTime ? 'F' : ''); /* F: v1.5.0 дыхание способностей */
   }
   return s;
 }
@@ -335,9 +348,49 @@ function specialActive(card, item, r, c) {
 }
 
 /* SVG-линии: парные синергии + цепи нежити (координаты — по открытым клеткам).
-   Фидбек 1: кольца аур УДАЛЕНЫ — ауры теперь подсвечивают области клеток. */
+   v1.5.0 «Четыре Лика Тьмы»: у НЕЖИТИ все связи — ржавые цепи (SVG-паттерн)
+   в стелющемся загробном тумане. Светится и движется только магия:
+   знамение Владыки (лиловая цепь тьмы), Пакт Лича (призрачный свет),
+   Скованный Цепью (искра натяжения по звеньям). Прочие фракции — прежний вид. */
+const UG_CHAIN_DEFS =
+  '<defs>' +
+  /* ржавая цепь, горизонтальная: чередование тёмных и светлых звеньев + потёртость */
+  '<pattern id="ugChH" width="16" height="8" patternUnits="userSpaceOnUse">' +
+  '<ellipse cx="4" cy="4" rx="4.4" ry="2.6" fill="none" stroke="#6b5940" stroke-width="1.8"/>' +
+  '<ellipse cx="12" cy="4" rx="4.4" ry="2.6" fill="none" stroke="#4e4335" stroke-width="1.8"/>' +
+  '<ellipse cx="4" cy="4" rx="4.4" ry="2.6" fill="none" stroke="#8d7757" stroke-width=".8" stroke-dasharray="5 15"/>' +
+  '</pattern>' +
+  '<pattern id="ugChV" width="8" height="16" patternUnits="userSpaceOnUse">' +
+  '<ellipse cx="4" cy="4" rx="2.6" ry="4.4" fill="none" stroke="#6b5940" stroke-width="1.8"/>' +
+  '<ellipse cx="4" cy="12" rx="2.6" ry="4.4" fill="none" stroke="#4e4335" stroke-width="1.8"/>' +
+  '<ellipse cx="4" cy="4" rx="2.6" ry="4.4" fill="none" stroke="#8d7757" stroke-width=".8" stroke-dasharray="5 15"/>' +
+  '</pattern>' +
+  /* магия тьмы Владыки: та же цепь, но лиловый металл */
+  '<pattern id="ugChHm" width="16" height="8" patternUnits="userSpaceOnUse">' +
+  '<ellipse cx="4" cy="4" rx="4.4" ry="2.6" fill="none" stroke="#7c62a8" stroke-width="1.8"/>' +
+  '<ellipse cx="12" cy="4" rx="4.4" ry="2.6" fill="none" stroke="#54427c" stroke-width="1.8"/>' +
+  '<ellipse cx="4" cy="4" rx="4.4" ry="2.6" fill="none" stroke="#b39ae0" stroke-width=".8" stroke-dasharray="5 15"/>' +
+  '</pattern>' +
+  '<pattern id="ugChVm" width="8" height="16" patternUnits="userSpaceOnUse">' +
+  '<ellipse cx="4" cy="4" rx="2.6" ry="4.4" fill="none" stroke="#7c62a8" stroke-width="1.8"/>' +
+  '<ellipse cx="4" cy="12" rx="2.6" ry="4.4" fill="none" stroke="#54427c" stroke-width="1.8"/>' +
+  '<ellipse cx="4" cy="4" rx="2.6" ry="4.4" fill="none" stroke="#b39ae0" stroke-width=".8" stroke-dasharray="5 15"/>' +
+  '</pattern>' +
+  '</defs>';
+
+function mkLine(cls, coords) {
+  const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  l.setAttribute('x1', coords.x1); l.setAttribute('y1', coords.y1);
+  l.setAttribute('x2', coords.x2); l.setAttribute('y2', coords.y2);
+  l.setAttribute('class', cls);
+  synergySvg.appendChild(l);
+  return l;
+}
+
 function drawSynergies() {
   synergySvg.innerHTML = '';
+  const ug = FACTION_INFO[faction].mechanic === 'chain'; /* v1.5.0: цепи — тема нежити */
+  if (ug) synergySvg.innerHTML = UG_CHAIN_DEFS; /* паттерны живут вместе с полотном */
   const n = playableSize, st = gridStart();
   const sr = synergySvg.getBoundingClientRect();
   const cellAt = (r, c) => gridEl.children[(r - st) * n + (c - st)];
@@ -350,43 +403,49 @@ function drawSynergies() {
       const isForward = (r < nb.r) || (r === nb.r && c < nb.c);
       if (!isForward) return;
       const nCard = CARDS[nb.item.cardId];
-      const x1 = cx(c), y1 = cy(r), x2 = cx(nb.c), y2 = cy(nb.r);
+      const coords = { x1: cx(c), y1: cy(r), x2: cx(nb.c), y2: cy(nb.r) };
       const pair = findPair(card, nCard);
       if (!pair) {
         /* Цепь нежити: соседство без пары всё равно даёт бонус */
-        if (FACTION_INFO[faction].mechanic === 'chain' && card.faction === 'undead' && nCard.faction === 'undead') {
-          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-          line.setAttribute('x1', x1); line.setAttribute('y1', y1);
-          line.setAttribute('x2', x2); line.setAttribute('y2', y2);
-          line.setAttribute('class', 'chain-line');
-          synergySvg.appendChild(line);
-        }
+        if (ug && card.faction === 'undead' && nCard.faction === 'undead') drawUgLink(coords, 'plain');
         return;
       }
-      /* v1.4.0: royal — звенья Владыки (золото), chain — связи Скованного со зданиями (цепи) */
       const kind = pair.kind === 'mult' ? 'mult' : pair.kind === 'chain' ? 'chain' : pair.kind === 'royal' ? 'royal' : 'good';
-      const base = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      base.setAttribute('x1', x1); base.setAttribute('y1', y1);
-      base.setAttribute('x2', x2); base.setAttribute('y2', y2);
-      base.setAttribute('class', kind === 'mult' ? 'base-mult' : kind === 'chain' ? 'base-chain' : kind === 'royal' ? 'base-royal' : 'base-good');
-      synergySvg.appendChild(base);
       const lk = linkKey(r, c, nb.r, nb.c);
       const lf = incomeCache.linkFactors && incomeCache.linkFactors[lk] !== undefined ? incomeCache.linkFactors[lk] : 1;
       const royal = !!(incomeCache.linkRoyal && incomeCache.linkRoyal[lk]);
       const lichW = !!(incomeCache.linkLich && incomeCache.linkLich[lk]);
-      const flow = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      flow.setAttribute('x1', x1); flow.setAttribute('y1', y1);
-      flow.setAttribute('x2', x2); flow.setAttribute('y2', y2);
-      /* faded — реальное затухание из экономики; royal — Знамение Владыки (золото);
-         lich — Пакт Тишины Лича (зелено-золотое); dead — мёртвое звено */
-      flow.setAttribute('class', 'syn-flow' + (kind === 'mult' ? ' mult' : kind === 'chain' ? ' chainflow' : '') +
+      if (ug) {
+        /* вся связь нежити = ржавая цепь в тумане; сверху — только настоящая магия */
+        const mode = royal ? 'royal' : lichW ? 'lich' : kind === 'chain' ? 'big' : 'plain';
+        drawUgLink(coords, mode, lf, kind === 'mult');
+        return;
+      }
+      /* прежний вид (культисты/звери/демоны): линия синергии + бегущий поток.
+         faded — реальное затухание из экономики; royal — Знамение Владыки;
+         lich — Пакт Тишины Лича; dead — мёртвое звено */
+      mkLine(kind === 'mult' ? 'base-mult' : kind === 'chain' ? 'base-chain' : kind === 'royal' ? 'base-royal' : 'base-good', coords);
+      mkLine('syn-flow' + (kind === 'mult' ? ' mult' : kind === 'chain' ? ' chainflow' : '') +
         (lf === 0 ? ' dead' : lf < 1 ? ' faded' : '') +
-        (lichW ? ' lich' : royal ? ' royal' : ''));
-      synergySvg.appendChild(flow);
+        (lichW ? ' lich' : royal ? ' royal' : ''), coords);
     });
   }
 }
 
+/* v1.5.0: звено нежити — тень (читаемость на картах), туман, ржавая цепь.
+   mode: plain | big (⛓ Скованный со зданием) | royal (Владыка — магия тьмы) |
+   lich (Пакт Тишины). Погасшие звенья из экономики (faded/dead) теряют туман. */
+function drawUgLink(coords, mode, lf, isMult) {
+  const faded = lf !== undefined && lf > 0 && lf < 1, dead = lf === 0;
+  const st = (faded ? ' faded' : dead ? ' dead' : '');
+  const fogCls = 'fog' + (isMult ? ' mult' : '') +
+    (mode === 'royal' ? ' royal' : mode === 'lich' ? ' lich' : mode === 'big' ? ' glint' : '') + st;
+  mkLine('ug-shadow', coords);
+  mkLine(fogCls, coords);
+  const ln = mkLine('ug-chain' + (mode === 'big' ? ' big' : '') + st, coords);
+  /* паттерн по направлению звена: все связи на Алтаре ортогональные */
+  ln.setAttribute('stroke', 'url(#' + (coords.y1 === coords.y2 ? 'ugChH' : 'ugChV') + (mode === 'royal' ? 'm' : '') + ')');
+}
 function updateGridStats() {
   const inc = calculateIncome();
   let extra = '';

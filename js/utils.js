@@ -1,4 +1,14 @@
 'use strict';
+
+/* v1.5.0 «Четыре Лика Тьмы»: включить тему текущей фракции.
+   CSS ловит body[data-faction] и меняет фон/палитру/подсветку способностей. */
+function applyFactionTheme() {
+  try {
+    if (typeof faction === 'string' && typeof FACTION_INFO !== 'undefined' && FACTION_INFO[faction]) {
+      document.body.dataset.faction = faction;
+    }
+  } catch (e) { /* тело ещё не готово — не беда */ }
+}
 /* ============================================================
    УТИЛИТЫ (utils.js)
    Вспомогательные функции: DOM-шорткаты, рандом, форматирование,

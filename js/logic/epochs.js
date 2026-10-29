@@ -32,6 +32,7 @@ function epochResetSummary() {
 function resetRunCommon(newFaction) {
   const _runSecsAtEnd = runTime;
   faction = newFaction;
+  applyFactionTheme(); /* v1.5.0: новая фракция — новая тема (фон/палитра) */
   /* Сброс забега. Поле растёт АВТОМАТИЧЕСКИ (бесплатно) до размера Эпохи.
      v1.2.5: РЕЛИКВИИ — расходник забега: сбрасывается и коллекция,
      и расстановка (эффекты реликвий мощные именно поэтому).
