@@ -399,9 +399,9 @@ function computeIncome() {
 
     const e1 = colEngine(e.c), e2 = colEngine(e.nc);
     const isUndeadPair = A.faction === 'undead' && Bc.faction === 'undead';
-    /* Склеп: звенья нежити в его зоне не слабеют (первые 2 на пару; прикованный — 3) */
+    /* Склеп: звенья нежити в его зоне не слабеют (первые 2 на пару; ⛓ прикованный — 4, мощность ×2) */
     const cryptLink = isUndeadPair && (cryptZone.has(key) || cryptZone.has(key2));
-    const cryptCap = (cryptChainedZone.has(key) || cryptChainedZone.has(key2)) ? 3 : 2;
+    const cryptCap = (cryptChainedZone.has(key) || cryptChainedZone.has(key2)) ? 4 : 2;
 
     let factor;
     if (lichEdge.has(i)) {

@@ -38,7 +38,9 @@ function auraRadiusOf(cardId) {
    v1.4.0 ⛓ ПРИКОВАННЫЕ ЗДАНИЯ: здание с орто-соседом «Скованный Цепью»
    (u11) — chainedAt; его аура ×1.5 (graveM/gatesM/glacierM/obeliskM),
    глобальные флаги pen/pole/spring/pit/wells/mound, зона прикованного
-   Склепа защищает 3 звена пары вместо 2, периодика срабатывает дважды. */
+   Склепа защищает 4 звена пары вместо 2. 
+   v1.4.2: абилка прикованного здания больше НЕ дублируется —
+   КУЛДАУН между срабатываниями вдвое короче (см. tickBuildings). */
 function buildBuildingAuras() {
   const bld = { grave: {}, graveM: {}, obelisk: {}, obeliskM: {}, gates: {}, gatesM: {}, glacier: {}, glacierM: {},
     pen: {}, pole: {}, spring: {}, pit: {}, wells: 0, mound: 0,
@@ -77,7 +79,7 @@ function buildBuildingAuras() {
 }
 
 /* Зона Склепа (звенья нежити в радиусе 2 от каждого Склепа не слабеют) +
-   зона ПРИКОВАННОГО Склепа (защищает до 3 звеньев пары) */
+   зона ПРИКОВАННОГО Склепа (защищает до 4 звеньев пары — мощность ×2) */
 function buildCryptZone() {
   const zone = new Set();
   const chained = new Set();
@@ -97,60 +99,60 @@ function buildCryptZone() {
 }
 
 /* Тик периодических зданий: призыв и Жатва.
-   v1.4.0 ⛓ ПРИКОВАННЫЕ ЗДАНИЯ (Скованный Цепью рядом): абилка срабатывает
-   ДВАЖДЫ — Кладбище и Врата поднимают двоих, ЖАТВА Горы длится 10с вместо 5с. */
-function bldIsChained(id) {
-  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
-    const it = grid[r][c];
-    if (it && it.cardId === id && getNeighbors(r, c).some(n => n.item.cardId === 'u11')) return true;
-  }
-  return false;
-}
+   v1.4.2 ⛓ ПРИКОВАННЫЕ ЗДАНИЯ (Скованный Цепью рядом): абилка больше НЕ
+   дублируется — КУЛДАУН между срабатываниями ВДВОЕ КОРОЧЕ:
+   Кладбище 12с → 6с, Врата Ада 25с → 12.5с, ЖАТВА Горы 30с → 15с. */
 let bldGraveTimer = 0, bldGatesTimer = 0, bldMoundTimer = 0;
 function tickBuildings(dt) {
   let changed = false;
-  /* Кладбище: бесплатная нежить каждые 12с (прикованное — по двое) */
+  /* ⛓ какие здания прикованы (орто-сосед u11) — один проход на тик */
+  const chainedIds = new Set();
+  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
+    const it = grid[r][c];
+    if (it && it.cardId === 'u11') {
+      getNeighbors(r, c).forEach(n => {
+        const nit = n.item;
+        if (nit && nit.cardId !== 'u11' && CARDS[nit.cardId] && CARDS[nit.cardId].isBuilding) chainedIds.add(nit.cardId);
+      });
+    }
+  }
+  /* Кладбище: бесплатная нежить каждые 12с (⛓ прикованное — каждые 6с) */
   if (hasCard('bl_grave')) {
     bldGraveTimer += dt;
-    if (bldGraveTimer >= BLD_TIMER.bl_grave) {
+    const graveChained = chainedIds.has('bl_grave');
+    if (bldGraveTimer >= BLD_TIMER.bl_grave * (graveChained ? 0.5 : 1)) {
       bldGraveTimer = 0;
-      const nTimes = bldIsChained('bl_grave') ? 2 : 1;
-      for (let i = 0; i < nTimes; i++) {
-        const id = pick(BLD_SUMMON_POOL.bl_grave);
-        inventory[id] = (inventory[id] || 0) + 1; discovered.add(id);
-        stats.summons = (stats.summons || 0) + 1; /* v1.2.9: для контрактов */
-        toast('🪦 Кладбище подняло: <b>' + CARDS[id].name + '</b> (в коллекции)' + (nTimes > 1 ? ' ⛓ ДВОЙНОЙ ПРИЗЫВ' : ''), 'summon', 45);
-      }
+      const id = pick(BLD_SUMMON_POOL.bl_grave);
+      inventory[id] = (inventory[id] || 0) + 1; discovered.add(id);
+      stats.summons = (stats.summons || 0) + 1; /* v1.2.9: для контрактов */
+      toast('🪦 Кладбище подняло: <b>' + CARDS[id].name + '</b> (в коллекции)' + (graveChained ? ' ⛓' : ''), 'summon', 45);
       changed = true;
     }
   }
-  /* Врата Ада: бесплатный демон каждые 25с (прикованные — по двое) */
+  /* Врата Ада: бесплатный демон каждые 25с (⛓ прикованные — каждые 12.5с) */
   if (hasCard('bl_gates')) {
     bldGatesTimer += dt;
-    if (bldGatesTimer >= BLD_TIMER.bl_gates) {
+    const gatesChained = chainedIds.has('bl_gates');
+    if (bldGatesTimer >= BLD_TIMER.bl_gates * (gatesChained ? 0.5 : 1)) {
       bldGatesTimer = 0;
-      const nTimes = bldIsChained('bl_gates') ? 2 : 1;
-      for (let i = 0; i < nTimes; i++) {
-        const id = pick(BLD_SUMMON_POOL.bl_gates);
-        inventory[id] = (inventory[id] || 0) + 1; discovered.add(id);
-        stats.summons = (stats.summons || 0) + 1; /* v1.2.9: для контрактов */
-        toast('🚪 Врата Ада выпустили: <b>' + CARDS[id].name + '</b> (в коллекции)' + (nTimes > 1 ? ' ⛓ ДВОЙНОЙ ПРИЗЫВ' : ''), 'summon', 45);
-      }
+      const id = pick(BLD_SUMMON_POOL.bl_gates);
+      inventory[id] = (inventory[id] || 0) + 1; discovered.add(id);
+      stats.summons = (stats.summons || 0) + 1; /* v1.2.9: для контрактов */
+      toast('🚪 Врата Ада выпустили: <b>' + CARDS[id].name + '</b> (в коллекции)' + (gatesChained ? ' ⛓' : ''), 'summon', 45);
       changed = true;
     }
   }
-  /* Гора костей: ЖАТВА ×2 (бывшая «Жатва» Жнеца) каждые 30с.
-     ⛓ Прикованная Гора: дубликат — ЖАТВА длится 10с вместо 5с. */
+  /* Гора костей: ЖАТВА ×2 каждые 30с (⛓ прикованная — каждые 15с) */
   const mounds = countOnGrid('bl_mound');
   if (mounds > 0) {
     bldMoundTimer += dt;
-    if (bldMoundTimer >= BLD_TIMER.bl_mound) {
+    const moundChained = chainedIds.has('bl_mound');
+    if (bldMoundTimer >= BLD_TIMER.bl_mound * (moundChained ? 0.5 : 1)) {
       bldMoundTimer = 0;
       const mult = Math.min(3, 2 + 0.25 * (mounds - 1));
-      const chained = bldIsChained('bl_mound');
-      altBuff.mult = mult; altBuff.until = gameTime + 5 * (chained ? 2 : 1);
-      altBuff.label = '🗿 ЖАТВА ×' + mult.toFixed(2).replace(/\.?0+$/, '') + (chained ? ' ⛓' : '');
-      toast('🗿 Гора костей отдаёт накопленное: доход ×' + mult.toFixed(2).replace(/\.?0+$/, '') + ' на ' + (chained ? '10 секунд (двойная) ⛓' : '5 секунд!') , 'mound', 40);
+      altBuff.mult = mult; altBuff.until = gameTime + 5;
+      altBuff.label = '🗿 ЖАТВА ×' + mult.toFixed(2).replace(/\.?0+$/, '') + (moundChained ? ' ⛓' : '');
+      toast('🗿 Гора костей отдаёт накопленное: доход ×' + mult.toFixed(2).replace(/\.?0+$/, '') + ' на 5 секунд!' + (moundChained ? ' ⛓' : ''), 'mound', 40);
       updateHUD();
     }
   }

@@ -208,7 +208,7 @@ function renderGrid() {
       if (colRel && epoch >= RELIC_SLOT_EPOCH) badges += '<span class="anchor-badge relic-mini" style="color:' + RELIC_RARITY_COLOR(colRel.rarity) + '" title="Столбец под реликвией: ' + colRel.name + '\n✅ ' + colRel.rule + '\n❌ ' + (colRel.curse || '') + '">' + relicArtHTML(colRel, 'relic-mini-img', '') + '</span>';
       /* v1.4.0: ⛓ ПРИКОВАННОЕ ЗДАНИЕ (Скованным Цепью) */
       if (card.isBuilding && INC_CTX.bld && INC_CTX.bld.chainedAt && INC_CTX.bld.chainedAt.has(r + ',' + c))
-        badges += '<span class="anchor-badge" style="color:#b8c4d4" title="⛓ Приковано Скованным Цепью: абилка срабатывает ДВАЖДЫ, аура ×1.5, звено с любой соседней картой">⛓</span>';
+        badges += '<span class="anchor-badge" style="color:#b8c4d4" title="⛓ Приковано Скованным Цепью: кулдаун абилки вдвое короче, аура ×1.5, звено с любой соседней картой">⛓</span>';
       /* v1.4.0: ⛓ сам Скованный — маркер, когда его цепь работает */
       if (card.id === 'u11' && getNeighbors(r, c).some(n => CARDS[n.item.cardId].isBuilding))
         badges += '<span class="anchor-badge" style="color:#b8c4d4" title="Цепь здания захвачена">⛓</span>';
