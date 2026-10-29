@@ -13,6 +13,9 @@ function applyFeatureLocks() {
   /* v1.2.7: арена — компактный док под гридом + оверлей «поле боя» */
   const arenaDock = $('arenaDock'), arenaOverlay = $('arenaOverlay'), fightersPanel = $('fightersPanel');
   if (arenaDock) arenaDock.style.display = arenaOn ? '' : 'none';
+  /* v1.3.1: живой мини-визуал боя живёт вместе с панелью дока */
+  const arenaMini = $('arenaMini');
+  if (arenaMini) arenaMini.style.display = arenaOn ? '' : 'none';
   if (arenaOverlay) arenaOverlay.classList.toggle('hidden-feature', !arenaOn);
   if (fightersPanel) fightersPanel.style.display = arenaOn ? '' : 'none';
   ['bulkDup', 'bulk1', 'bulkAll'].forEach(id => { const b = $(id); if (b) b.style.display = arenaOn ? '' : 'none'; });
@@ -40,14 +43,15 @@ function updateHUD(now) {
   $('rate').textContent = '+' + calculateIncome().toFixed(2) + '/сек';
 
   /* Pity — гарантия до старшей ДОСТУПНОЙ редкости (показ у кнопок круток).
-     «Череп Владыки» (реликвия) приближает ★4-гарантию */
+     «Череп Владыки» (реликвия) приближает ★4-гарантию.
+     v1.3.1 ТЗ: три строки — «Гаранты:», затем до ★4, затем до ★5 */
   const unlocked = unlockedRarities();
   const p4m = pity4Max();
-  let pity = 'Гарантия: ';
-  if (unlocked.includes(5)) pity += 'до ★4: ' + Math.max(0, p4m - pity4) + ' · до ★5: ' + Math.max(0, 80 - pity5);
+  let pity = 'Гаранты:<br>';
+  if (unlocked.includes(5)) pity += 'до ★4: ' + Math.max(0, p4m - pity4) + '<br>до ★5: ' + Math.max(0, 80 - pity5);
   else if (unlocked.includes(4)) pity += 'до ★4: ' + Math.max(0, p4m - pity4);
   else pity += 'до ★3: ' + Math.max(0, p4m - pity4);
-  $('pity').textContent = pity;
+  $('pity').innerHTML = pity;
 
   const rc = rollCost();
   /* v1.2.9.1: бесплатная часть пачки списывается сперва, поэтому

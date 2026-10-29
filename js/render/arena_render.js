@@ -37,7 +37,7 @@ function loadBattleBg() {
   battleBgTried = true;
   const img = new Image();
   img.onload = () => { battleBg = img; };
-  img.src = 'assets/arena/battlefield.png';
+  img.src = 'assets/arena/battlefield.jpg';
 }
 
 /* «Часы» атмосферы — тикают всегда, даже вне боя (туман/пепел в превью) */
@@ -46,8 +46,9 @@ function ambTime() { return performance.now() / 1000; }
 function drawBattleBg(ctx) {
   if (battleBg) { ctx.drawImage(battleBg, 0, 0, ARENA.FIELD_W, ARENA.FIELD_H); }
   else {
+    /* v1.3.1: без ассета — холодный серо-синий склеп вместо тёплого градиента */
     const g = ctx.createLinearGradient(0, 0, 0, ARENA.FIELD_H);
-    g.addColorStop(0, '#150a06'); g.addColorStop(0.6, '#1e1009'); g.addColorStop(1, '#0d0704');
+    g.addColorStop(0, '#0e1013'); g.addColorStop(0.6, '#14171b'); g.addColorStop(1, '#0a0c0e');
     ctx.fillStyle = g; ctx.fillRect(0, 0, ARENA.FIELD_W, ARENA.FIELD_H);
     ctx.strokeStyle = '#00000055'; ctx.lineWidth = 1;
     for (let y = 70; y < ARENA.FIELD_H; y += 34) {
@@ -60,24 +61,25 @@ function drawBattleBg(ctx) {
   [96, 160, 224].forEach(ly => {
     ctx.fillRect(0, ly - 22, ARENA.FIELD_W, 44);
   });
-  /* Дрейфующий туман: два мягких пятна, гуляют в противофазе */
+  /* Дрейфующий туман: два мягких пятна, гуляют в противофазе
+     v1.3.1: холодный серый туман кладбища вместо тёплого */
   for (let i = 0; i < 2; i++) {
     const fx = ARENA.FIELD_W * (0.3 + 0.4 * i) + Math.sin(t * 0.11 + i * 2.7) * 90;
     const fy = 60 + i * 90 + Math.cos(t * 0.09 + i * 1.9) * 26;
     const fr = 150 + i * 60;
     const fog = ctx.createRadialGradient(fx, fy, 10, fx, fy, fr);
-    fog.addColorStop(0, 'rgba(120,90,60,0.10)');
-    fog.addColorStop(1, 'rgba(120,90,60,0)');
+    fog.addColorStop(0, 'rgba(150,158,168,0.10)');
+    fog.addColorStop(1, 'rgba(150,158,168,0)');
     ctx.fillStyle = fog;
     ctx.fillRect(fx - fr, fy - fr, fr * 2, fr * 2);
   }
-  /* Пепел/искры в воздухе — медленно плывут вверх */
+  /* Пепел/искры в воздухе — медленно плывут вверх; в вайбе склепа — пепельно-голубые */
   for (let i = 0; i < 14; i++) {
     const ph = i * 2.399;
     const px = (ARENA.FIELD_W * ((i * 0.618) % 1) + Math.sin(t * 0.4 + ph) * 30 + ARENA.FIELD_W) % ARENA.FIELD_W;
     const py = ARENA.FIELD_H - ((t * (8 + (i % 4) * 4) + i * 47) % (ARENA.FIELD_H + 40));
     const a = 0.10 + 0.14 * (0.5 + 0.5 * Math.sin(t * 2 + ph));
-    ctx.fillStyle = i % 3 ? 'rgba(255,190,110,' + a + ')' : 'rgba(200,210,255,' + (a * 0.7) + ')';
+    ctx.fillStyle = i % 3 ? 'rgba(190,200,215,' + a + ')' : 'rgba(230,240,255,' + (a * 0.7) + ')';
     ctx.fillRect(px, py, 2, 2);
   }
   /* Виньетка + тёмная кайма */
@@ -500,3 +502,40 @@ function renderArenaDockVisual() {
   }
   squadEl.innerHTML = html || '<span>отряд пуст</span>';
 }
+
+/* ============================================================
+   v1.3.1 ТЗ: ЖИВОЙ ВИЗУАЛ АВТОБАТЛЕРА — мини-канвас в правой
+   панели ПОД панелью «Колыбель Войны». Та же сцена, что на
+   Поле боя (фон, отряды, волна, эффекты), обрезанная по центру.
+   Клик — открыть оверлей (навешен в main.js).
+   ============================================================ */
+function renderMini() {
+  const el = $('adCanvas'), wrap = $('arenaMini');
+  if (!el || !wrap || wrap.style.display === 'none' || !wrap.offsetParent) return;
+  const ctx = el.getContext('2d');
+  if (!ctx) return;
+  loadBattleBg();
+  const W = el.width, H = el.height;
+  const s = W / ARENA.FIELD_W;
+  const sceneH = ARENA.FIELD_H * s;
+  const offY = -(sceneH - H) / 2;             /* центр поля по вертикали */
+  ctx.setTransform(s, 0, 0, s, 0, offY);
+  drawBattleBg(ctx);
+  let units;
+  if (battle.active) units = battle.units.slice().sort((a, b) => (a.dead === b.dead ? a.y - b.y : a.dead ? -1 : 1));
+  else {
+    const pv = previewArmies();
+    units = pv.hero.concat(pv.foe).sort((a, b) => a.y - b.y);
+  }
+  units.forEach(u => drawUnit(ctx, u, imgCache, battle.active ? battle.t : ambTime()));
+  /* мягкая виньетка мини-поля */
+  const vg = ctx.createRadialGradient(ARENA.FIELD_W / 2, ARENA.FIELD_H / 2, 90, ARENA.FIELD_W / 2, ARENA.FIELD_H / 2, 300);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.42)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, ARENA.FIELD_W, ARENA.FIELD_H);
+}
+
+(function miniLoop() {
+  try { renderMini(); } catch (e) { /* фон-исключения не роняют игру */ }
+  requestAnimationFrame(miniLoop);
+})();

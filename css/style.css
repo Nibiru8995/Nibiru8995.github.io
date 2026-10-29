@@ -12,7 +12,8 @@
 }
 html, body { height: 100%; overflow: hidden; width: 100%; }
 body {
-  background: radial-gradient(ellipse at 50% 28%, #17171a 0%, #0d0d0f 55%, #08080a 100%);
+  /* v1.3.1 «Склеп»: пиксельный дарк-склеп за игрой — в тон главному меню */
+  background: linear-gradient(rgba(13,13,15,.84), rgba(10,10,12,.92)), url('../assets/game_bg.jpg') center / cover no-repeat fixed #0d0d0f;
   color: var(--ink); font-family: 'Georgia', 'Times New Roman', serif;
   display: flex; flex-direction: column; align-items: center;
   padding: 4px; height: 100%;
@@ -25,8 +26,8 @@ body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-i
 #brand b { font-family: 'Ruslan Display', 'Georgia', serif; font-size: 14px; letter-spacing: 1px; color: var(--gold); text-shadow: none; }
 #brand small { font-size: 8.5px; letter-spacing: .8px; color: var(--ink-dim); }
 #hudCenter { display: flex; gap: 22px; align-items: center; font-variant-numeric: tabular-nums; }
-#topBar { display: flex; gap: 12px; align-items: center; justify-content: center; padding: 5px 14px; margin-bottom: 4px; background: #0d0d0f; border: 1px solid var(--border); border-radius: 2px; box-shadow: none; font-size: 13px; font-weight: normal; flex-shrink: 0; position: relative; z-index: 2; flex-wrap: wrap; width: 100%; max-width: 1620px; }
-#topBar #menuBtn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); }
+#topBar { display: flex; gap: 12px; align-items: center; justify-content: center; padding: 5px 14px; margin-bottom: 4px; background: #0d0d0f; border: 1px solid var(--border); border-radius: 2px; box-shadow: none; font-size: 13px; font-weight: normal; flex-shrink: 0; position: relative; z-index: 2; flex-wrap: wrap; width: 100%; }
+/* v1.3.1: «Меню» живёт в правой панели — топбар чисто HUD-овый */
 #crystals, #sealsTop { color: var(--gold-hi); font-weight: bold; }
 .crystal-icon { display: inline-block; width: 13px; height: 13px; background: var(--gold); clip-path: polygon(50% 0%, 100% 38%, 75% 100%, 25% 100%, 0% 38%); margin-right: 4px; vertical-align: middle; box-shadow: none; }
 .res-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; }
@@ -129,9 +130,12 @@ body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-i
 
 /* ===== ПРАВАЯ КОЛОНКА (Резец Тьмы): две колонки плоских кнопок + под ними
    панель «Колыбель Войны» с живым визуалом боя. Высота ограничена полем. ===== */
-#rightCol { width: 324px; min-width: 270px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; max-height: 100%; min-height: 0; filter: none; overflow: hidden; }
+#rightCol { width: 324px; min-width: 270px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; height: 100%; min-height: 0; filter: none; overflow: hidden; }
 #rightBtns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; flex-shrink: 0; }
 #rightBtns button { display: flex; align-items: center; justify-content: center; gap: 7px; width: auto; min-height: 0; height: 35px; padding: 6px 4px; background: #111113; border: 1px solid var(--border); border-radius: 2px; color: var(--ink); font-size: 11.5px; font-weight: 600; font-family: inherit; letter-spacing: .2px; text-transform: none; white-space: nowrap; cursor: pointer; box-shadow: none; transition: background .12s, border-color .12s; }
+/* v1.3.1: «Меню» — под двумя столбиками кнопок, на всю ширину панели */
+#rightBtns #menuBtn { grid-column: 1 / -1; width: 100%; height: 32px; color: var(--gold); font-weight: 700; letter-spacing: 1.2px; }
+#rightBtns #menuBtn:hover { border-color: var(--gold); background: #161618; }
 #rightBtns button:hover:not(:disabled) { background: #161618; border-color: var(--border2); }
 #rightBtns button:active:hover { background: #1c1c1e; }
 #rightBtns button:disabled { opacity: .4; cursor: not-allowed; filter: grayscale(1); }
@@ -165,12 +169,12 @@ body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-i
 #rollBar #pity { flex-basis: 100%; text-align: center; font-size: 11px; color: var(--ink-dim); font-weight: normal; }
 
 /* ===== ГРИД ===== */
-#centerCol { display: flex; flex-direction: column; align-items: center; gap: 5px; flex-shrink: 0; position: relative; max-height: 100%; justify-content: flex-start; min-width: 0; }
+#centerCol { display: flex; flex-direction: column; align-items: center; gap: 5px; flex-shrink: 0; position: relative; height: 100%; justify-content: flex-start; min-width: 0; }
 .grid-title { font-family: 'Ruslan Display', 'Georgia', serif; font-size: 14px; letter-spacing: 1.5px; text-transform: none; color: var(--gold); text-shadow: none; margin-bottom: 2px; font-weight: normal; text-align: center; position: relative; z-index: 3; display: flex; align-items: center; gap: 10px; }
 .grid-title::before, .grid-title::after { content: ''; width: 46px; height: 1px; background: var(--border2); }
 .grid-stats { font-size: 10.5px; color: var(--ink-dim); margin: 0 0 4px; text-align: center; background: none; border: none; border-radius: 0; padding: 2px 8px; position: relative; z-index: 3; box-shadow: none; max-width: min(100%, 640px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .grid-stats b { color: var(--gold-hi); }
-#gridAltar { position: relative; padding: 0; background: none; border-radius: 2px; box-shadow: none; }
+#gridAltar { position: relative; padding: 0; background: none; border-radius: 2px; box-shadow: none; /* v1.3.1: грид жмёт крутки к самому низу — низ всех колонок совпадает */ flex: 1 1 auto; display: flex; align-items: center; justify-content: center; min-height: 0; }
 #gridAltar::before { content: none; }
 #gridWrap { position: relative; padding: 8px; background: #141416; border: 2px solid #6e6238; border-radius: 0; box-shadow: 0 0 0 1px #000, 0 4px 10px #00000088; clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px)); }
 #gridWrap::before, #gridWrap::after { content: ''; position: absolute; width: 16px; height: 16px; border: 2px solid var(--gold); pointer-events: none; z-index: 3; }
@@ -248,7 +252,8 @@ body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-i
 
 /* ===== v1.2: ГЛАВНОЕ МЕНЮ — заставка подземного собора ===== */
 #menu { background:
-  linear-gradient(rgba(6,3,1,.72), rgba(6,3,1,.88)),
+  /* v1.3.1: серая кладбищенская пелена поверх склепа */
+  linear-gradient(rgba(10,10,13,.62), rgba(8,8,10,.88)),
   url('../assets/menu_bg.jpg') center 30% / cover no-repeat #0c0c0e; }
 #menu .modal-card { box-shadow: 0 0 80px #000000ee, 0 0 40px #b3a15f33, inset 0 0 30px #000000aa; }
 /* Чит-режим: секрет остаётся секретом — только курсор выдаёт строку */
@@ -750,9 +755,10 @@ body { font-family: 'Alegreya', 'Georgia', 'Times New Roman', serif; }
 
 /* --- Центральная колонна: слитые строки --- */
 #centerCol { min-height: 0; }
-#gridTitleRow { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; position: relative; }
-#gridTitleRow .grid-title { order: 1; flex: 1; font-size: 13px; letter-spacing: 1.5px; margin: 0; white-space: nowrap; }
-#gridTitleRow .grid-stats { order: 2; position: absolute; right: 0; margin: 0; padding: 0 4px; font-size: 10.5px; min-width: 0; max-width: 46%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#gridTitleRow { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px 10px; width: 100%; position: relative; }
+/* v1.3.1: «Алтарь Синергий» строго по центру; статы — вторым рядом под ним */
+#gridTitleRow .grid-title { order: 1; margin: 0 auto; font-size: 13px; letter-spacing: 1.5px; white-space: nowrap; }
+#gridTitleRow .grid-stats { order: 2; position: static; flex-basis: 100%; margin: 0; padding: 0 4px; font-size: 10.5px; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; }
 #ritualRow { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 26px; }
 #ritualRow #ritualBar { flex: 1; min-width: 0; }
 #ritualRow #ritualBar .rb-track { height: 10px; }
@@ -760,7 +766,7 @@ body { font-family: 'Alegreya', 'Georgia', 'Times New Roman', serif; }
 
 /* --- Крутки: одна компактная строка, pity встроен слева --- */
 #rollBar { flex-wrap: nowrap; gap: 5px; }
-#rollBar #pity { flex: 0 0 auto; order: -1; margin-right: auto; font-size: 10.5px; max-width: 190px; text-align: left; line-height: 1.2; }
+#rollBar #pity { flex: 0 0 auto; order: -1; margin-right: auto; font-size: 11px; max-width: 150px; text-align: left; line-height: 1.35; }
 .roll-btn { min-height: 38px; min-width: 0; flex: 1 1 0; padding: 3px 8px; font-size: 11px; }
 .roll-btn .cost { font-size: 10px; }
 
@@ -771,14 +777,14 @@ body { font-family: 'Alegreya', 'Georgia', 'Times New Roman', serif; }
 /* --- ДОК АРЕНЫ (Резец Тьмы): вертикальная панель «Колыбель Войны»
    в правой колонке под кнопками; высота — как у панели Коллекции,
    живой визуал боя сжимается при нехватке места --- */
-#arenaDock { display: flex; flex-direction: column; gap: 6px; padding: 7px 8px; background: #121214; border: 1px solid var(--border); border-radius: 2px; box-shadow: none; font-size: 11px; color: var(--ink-dim); width: 100%; flex: 0 0 auto; max-height: 52vh; overflow: hidden; }
+#arenaDock { display: flex; flex-direction: column; gap: 6px; padding: 7px 8px; background: #121214; border: 1px solid var(--border); border-radius: 2px; box-shadow: none; font-size: 11px; color: var(--ink-dim); width: 100%; /* v1.3.1: панель растягивается на всю свободную высоту колонки */ flex: 1 1 auto; min-height: 0; overflow: hidden; }
 .ad-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 5px; flex-shrink: 0; }
 #arenaDock .ad-title { font-family: 'Ruslan Display', 'Georgia', serif; font-size: 12px; letter-spacing: 1px; color: var(--gold); white-space: nowrap; font-weight: normal; text-transform: none; text-shadow: none; display: flex; align-items: center; gap: 8px; }
 #arenaDock .ad-title::after { content: ''; width: 34px; height: 1px; background: var(--border2); }
 #arenaDock .ad-item { white-space: nowrap; color: var(--ink-dim); }
 #arenaDock .ad-item b { color: var(--gold-hi); }
 .ad-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-shrink: 0; }
-.ad-visual { border: 1px solid #1c1c1e; background: #0e0e10; border-radius: 2px; padding: 6px 7px; display: flex; flex-direction: column; gap: 5px; flex: 0 0 auto; min-height: 0; overflow: hidden; }
+.ad-visual { border: 1px solid #1c1c1e; background: #0e0e10; border-radius: 2px; padding: 6px 7px; display: flex; flex-direction: column; gap: 5px; /* v1.3.1: визуал забирает свободную высоту дока */ flex: 1 1 auto; min-height: 0; overflow: hidden; }
 .ad-bar-row { display: flex; align-items: center; gap: 7px; font-size: 10px; color: var(--ink-dim); flex-shrink: 0; min-height: 0; }
 .ad-bar-row > span { flex: 0 0 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
 .ad-bar-row em { font-style: normal; color: var(--gold-hi); font-variant-numeric: tabular-nums; margin-left: 2px; }
@@ -795,6 +801,11 @@ body { font-family: 'Alegreya', 'Georgia', 'Times New Roman', serif; }
 .ad-squad .dead { filter: grayscale(1) brightness(.45); }
 .ad-squad > span { font-size: 9.5px; color: #55555a; letter-spacing: 1px; }
 #arenaDockStatus { color: var(--ink-dim); font-size: 10.5px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+
+/* v1.3.1: ЖИВОЙ ВИЗУАЛ автобатлера — мини-поле под панелью дока */
+#arenaMini { display: flex; width: 100%; padding: 5px; background: #0e0e10; border: 1px solid var(--border); border-radius: 2px; cursor: pointer; flex-shrink: 0; }
+#arenaMini:hover { border-color: var(--gold); }
+#adCanvas { width: 100%; height: auto; display: block; border-radius: 2px; image-rendering: auto; }
 .ad-btns { display: flex; gap: 6px; flex-shrink: 0; }
 #adSquad { position: relative; }
 #arenaDock #arenaFightBtn { flex: 1.2; width: auto; padding: 6px 4px; min-height: 30px; font-size: 11px; border-radius: 2px; }

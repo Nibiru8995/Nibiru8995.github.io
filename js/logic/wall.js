@@ -1,8 +1,8 @@
 'use strict';
 /* ============================================================
-   ЛОГИКА: СТЕНА ТЬМЫ (logic/wall.js) — v1.3.0
+   ЛОГИКА: СТЕНА ТЬМЫ (logic/wall.js) — v1.3.1
    Облачный чат в ГЛАВНОМ МЕНЮ. База — Supabase (Free-план),
-   простенькая таблица wall_messages (см. wall_messages.sql).
+   простенькая таблица wall_messages.
 
    v1.3.0 ТЗ: чат хранит ДО 15 СООБЩЕНИЙ — потолок держит
    триггер в самой базе (каждая вставка подчищает старьё),
@@ -11,7 +11,7 @@
    Имя — то же, что для Таблички Тьмы (gg3_player): анонимно,
    без регистрации; сменить — клик по имени под стеной.
    RLS базы разрешает только INSERT и SELECT. При отсутствии
-   базы (SQL ещё не выполнен) меню живёт как раньше — Тьма молчит.
+   базы меню живёт как раньше — Тьма молчит.
    ============================================================ */
 
 const WALL_LIMIT = 15;     // сколько сообщений живёт на Стене
@@ -50,8 +50,7 @@ function wallFetch() {
     })
     .catch(() => {
       const box = $('wallRows');
-      if (box) box.innerHTML = '<div class="wall-empty">Тьма молчит: Стена ещё не высечена.<br>' +
-        'Выполни <b>wall_messages.sql</b> в Supabase (SQL Editor) — Стена оживёт без пересохранений.</div>';
+      if (box) box.innerHTML = '<div class="wall-empty">Тьма молчит: Стена ещё не высечена.</div>';
     });
 }
 
@@ -80,7 +79,7 @@ function wallSend() {
     inp.value = '';
     wallFetch();
   }).catch(() => {
-    toast('🕯 Стена молчит: сообщение не ушло. Нужен SQL из wall_messages.sql');
+    toast('🕯 Стена молчит: сообщение не ушло.');
   }).finally(() => {
     wallBusy = false;
     const g = $('wallGo');
@@ -120,8 +119,10 @@ function wallInit() {
   $('wallName').textContent = supaPlayerName();
   $('wallName').onclick = wallAskName;
   wallFetch();
+  /* v1.3.1 ТЗ: поллинг каждые 10 секунд — новые сообщения приходят сами,
+     пока меню открыто; при закрытии фетч замирает */
   wallTimer = setInterval(() => {
     const menu = $('menu');
     if (menu && menu.classList.contains('show')) wallFetch();
-  }, 8000);
+  }, 10000);
 }

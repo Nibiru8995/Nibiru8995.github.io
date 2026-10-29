@@ -127,7 +127,7 @@ let collectionFilter = 'all', rarityFilter = 'all';
 let busy = 0; // активный раунд казино (блокирует выход)
 
 /* Кэш расчёта дохода (заполняется logic/economy.js) */
-let incomeCache = { total: 0, uniquePairs: 0, perCell: {}, pairUsage: {}, diversityMult: 1, linkFactors: {}, linkWarded: {}, lichZone: [] };
+let incomeCache = { total: 0, uniquePairs: 0, perCell: {}, pairUsage: {}, linkFactors: {}, linkWarded: {}, lichZone: [] };
 
 /* ================== СОХРАНЕНИЕ ================== */
 function buildRunSave() {

@@ -273,10 +273,11 @@ function computeIncome() {
   const linkFactors = {};     // linkKey -> эффективный множитель затухания (тултип, линии; 0 — мертво)
   const linkWarded = {};      // linkKey -> 1, если звено под Аурой Власти (Лич)
 
-  /* Спец-флаги ★4/★5: Лич (снятие затухания), Голос Пустоты, Глаз Бездны.
+  /* Спец-флаги ★4/★5: Лич (снятие затухания), Голос Пустоты.
      ФИДБЕК (раунд 3): зона Лича включает ВСЕ соседние клетки — в т.ч. пустые,
-     чтобы игрок чётко видел, куда попадает эффект. */
-  let hasLich = false, hasVoice = false, hasEye = false;
+     чтобы игрок чётко видел, куда попадает эффект.
+     v1.3.1: надбавка за уникальные пары (Хор) УБРАНА — «Глаз Бездны» больше не нужен */
+  let hasLich = false, hasVoice = false;
   const lichAdj = new Set();
   for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
     const it = grid[r][c]; if (!it) continue;
@@ -290,7 +291,6 @@ function computeIncome() {
       }
     }
     else if (it.cardId === 'c11') hasVoice = true;
-    else if (it.cardId === 'c10') hasEye = true;
   }
 
   /* РИТУАЛ культистов: строится до звеньев — звенья вне ритуала мертвы (фидбек 3) */
@@ -379,7 +379,10 @@ function computeIncome() {
           usage[idx] = (usage[idx] || 0) + 1;
           /* Повторы: у нежити своя, ЖЁСТКАЯ кривая */
           const curve = (cardA.faction === 'undead' && cardB.faction === 'undead') ? SYN_DR_UNDEAD : SYN_DR;
-          factor = curve[Math.min(usage[idx] - 1, curve.length - 1)];
+          /* «Плачущий Камень» (v1.3.1): затухание пар столба НЕ УГЛУБЛЯЕТСЯ —
+             максимум первый шаг кривой, дальше звенья держат силу */
+          const fadeCap = ((e1 && e1.slowfade) || (e2 && e2.slowfade)) ? 1 : curve.length - 1;
+          factor = curve[Math.min(usage[idx] - 1, fadeCap)];
           /* «Сердце Пустоты»: повтор не глушит звено столба до конца */
           if (factor < 0.35 && hasLaw('revive')) factor = 0.35;
         }
@@ -394,19 +397,12 @@ function computeIncome() {
       linkFactors[lk] = factor;
       if (wardedLink) linkWarded[lk] = 1;
 
-      /* Разнообразие: вес пары («Плачущий Камень» делает пары громче) */
-      let w = 1;
-      if ((e1 && e1.choir) || (e2 && e2.choir)) w = 3;
-      if (w > 0) pairSeen[idx] = Math.max(pairSeen[idx] || 0, w);
+      /* v1.3.1: пары просто СЧИТАЮТСЯ (достижения «Синергетик»),
+         надбавки за разнообразие больше нет */
+      pairSeen[idx] = 1;
     }
   }
   const uniquePairs = Object.keys(pairSeen).length;
-  /* Разнообразие: взвешенная сумма уникальных пар; «Глаз Бездны» (★5) удваивает вклад */
-  let divWeight = 0;
-  for (const k in pairSeen) divWeight += pairSeen[k];
-  const divBonus = DIVERSITY_BONUS * (hasEye ? 2 : 1);
-  const divCap = DIVERSITY_CAP * (hasEye ? 2 : 1);
-  const diversityMult = 1 + Math.min(divCap, divBonus * divWeight);
   const sealMult = 1 + 0.25 * sealLv.rich;
 
   /* Контекст для factionMult: уникальные пары */
@@ -460,10 +456,11 @@ function computeIncome() {
     perCell[r + ',' + c] = val;
     total += val;
   }
-  total *= diversityMult * sealMult;
+  /* v1.3.1 ТЗ: надбавка за уникальные пары УБРАНА — только печати Эпохи */
+  total *= sealMult;
   /* Временный буст всего дохода: ЖАТВА (Гора костей), вехи, Ускорение */
   total *= activeAltBuff().mult;
-  incomeCache = { total, uniquePairs, perCell, pairUsage: usage, diversityMult, armyBest, armyMultOf: INC_CTX.armyMult,
+  incomeCache = { total, uniquePairs, perCell, pairUsage: usage, armyBest, armyMultOf: INC_CTX.armyMult,
     linkFactors, linkWarded, lichZone: Array.from(lichAdj) };
   return total;
 }
@@ -484,7 +481,7 @@ function countLinks() {
 function altarPower() {
   if (FACTION_INFO[faction].mechanic === 'formation')
     return Math.min(4, 1 + 0.05 * (INC_CTX.ritual ? INC_CTX.ritual.size : 0));
-  return Math.min(4, (1 + 0.035 * countLinks()) * incomeCache.diversityMult);
+  return Math.min(4, 1 + 0.035 * countLinks());
 }
 
 /* ---------------- ЦЕНА КРУТКИ ----------------

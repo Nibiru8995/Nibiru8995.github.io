@@ -49,6 +49,12 @@ function setSupaPlayerName(n) {
   n = String(n || '').replace(/[<>&"]/g, '').trim().slice(0, 20);
   if (!n) n = 'Аноним';
   try { localStorage.setItem('gg3_player', n); } catch (e) { }
+  /* v1.3.1 ТЗ: ник меняется НА МЕСТЕ, а не после обновления страницы —
+     чип Стены Тьмы и поле Таблички перерисовываются сразу */
+  const chip = $('wallName');
+  if (chip) chip.textContent = n;
+  const lbNick = $('lbNickIn');
+  if (lbNick) lbNick.value = n;
   return n;
 }
 

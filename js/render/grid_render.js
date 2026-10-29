@@ -96,9 +96,8 @@ function renderRelicSlots() {
       slots += '<div class="rsr-slot empty" data-col="' + c + '" title="Пустой столб — клик: вставить реликвию"><span>+</span></div>';
     }
   }
-  row.innerHTML = '<div class="rsr-cap"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="6" height="14"/><rect x="13" y="3" width="6" height="14"/><path d="M8 17v4M16 17v4"/></svg>' +
-    '<span>Столбы — реликвии до конца Эпохи' + (cultGlobal ? ' · у культистов — на весь ритуал' : '') + ' · клик: вставить / снять</span></div>' +
-    '<div class="rsr-grid">' + slots + '</div>';
+  /* v1.3.1 ТЗ: надпись «Столбы — реликвии до конца Эпохи…» убрана — бред */
+  row.innerHTML = '<div class="rsr-grid">' + slots + '</div>';
   const g = row.querySelector('.rsr-grid');
   g.style.gridTemplateColumns = 'repeat(' + playableSize + ', var(--cell-size))';
   row.querySelectorAll('.rsr-slot').forEach(el => { el.onclick = () => onColSlotClick(+el.dataset.col); });
@@ -395,9 +394,9 @@ function updateGridStats() {
       ' · 💰<b>+' + fmtShort(E.payout) + '</b>' +
       ' · Заряд: <b>' + rpct + '%</b>';
   }
-  $('gridStats').innerHTML = 'Активных звеньев: <b>' + countLinks() + '</b>' +
-    ' · Уникальных пар: <b>' + currentDiversity() + '</b> (+' + Math.round((incomeCache.diversityMult - 1) * 100) + '% дохода)' +
-    ' · Доход: <b>+' + inc.toFixed(2) + '/сек</b>' + extra;
+  /* v1.3.1 ТЗ: из статов убраны «Активных звеньев» и «Уникальных пар» —
+     надбавки за разнообразие больше нет, строки не вводят в заблуждение */
+  $('gridStats').innerHTML = 'Доход: <b>+' + inc.toFixed(2) + '/сек</b>' + extra;
   updateCooldownBadges();
 }
 
