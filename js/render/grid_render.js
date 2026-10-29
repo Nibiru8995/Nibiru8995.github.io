@@ -299,9 +299,31 @@ function gridSignature() {
       ',m' + Math.round((it.mutBuff || 1) * 100) + ',b' + Math.round((it.balrBuff || 1) * 100) +
       ',p' + Math.round(((it.predBuff || 0) + (it.graze || 0) + (it.floraBuff || 0) + (it.scavBuff || 0)) * 100) +
       ',y' + Math.round((it.hunger === undefined ? 1 : it.hunger) * 100) +
-      (it.boomUntil > gameTime ? '!' : '') + (it.fxUntil > gameTime ? 'F' : ''); /* F: v1.5.0 дыхание способностей */
+      (it.boomUntil > gameTime ? '!' : ''); /* v1.5.1: fxUntil НЕ в сигнатуре — вспышки обновляет updateFxLive (дёшево), поле не стирается */
   }
   return s;
+}
+
+/* v1.5.1: вспышки способностей (fxUntil) и живой туман аур обновляются
+   классами РАЗ в 250мс — без стирания DOM. Прежний вариант (флаг F в
+   сигнатуре) перерисовывал всё поле 2 раза за цикл Кладбища: игрок видел
+   мигание, а все анимации перезапускались строем. classList.toggle не
+   перезапускает анимацию, пока класс не изменился — «дышит» только то,
+   что начало/кончило работать. В харнесе gridEl === null — выходим тихо. */
+function updateFxLive() {
+  if (!gridEl) return;
+  const n = playableSize, st = gridStart();
+  const cells = gridEl.children;
+  if (cells.length !== n * n) return;
+  const auraMap = buildAuraMap();
+  for (let dr = 0; dr < n; dr++) for (let dc = 0; dc < n; dc++) {
+    const r = st + dr, c = st + dc;
+    const cell = cells[dr * n + dc];
+    const it = grid[r][c];
+    if (cell.firstElementChild) cell.firstElementChild.classList.toggle('fx-live', !!(it && it.fxUntil > gameTime));
+    const az = auraMap[r + ',' + c];
+    cell.classList.toggle('aura-live', !!(az && az.live));
+  }
 }
 
 /* ---- v1.2.6: АКТИВНОСТЬ ОСОБЕННОСТИ (✦) ----
@@ -354,28 +376,27 @@ function specialActive(card, item, r, c) {
    Скованный Цепью (искра натяжения по звеньям). Прочие фракции — прежний вид. */
 const UG_CHAIN_DEFS =
   '<defs>' +
-  /* ржавая цепь, горизонтальная: чередование тёмных и светлых звеньев + потёртость */
-  '<pattern id="ugChH" width="16" height="8" patternUnits="userSpaceOnUse">' +
-  '<ellipse cx="4" cy="4" rx="4.4" ry="2.6" fill="none" stroke="#6b5940" stroke-width="1.8"/>' +
-  '<ellipse cx="12" cy="4" rx="4.4" ry="2.6" fill="none" stroke="#4e4335" stroke-width="1.8"/>' +
-  '<ellipse cx="4" cy="4" rx="4.4" ry="2.6" fill="none" stroke="#8d7757" stroke-width=".8" stroke-dasharray="5 15"/>' +
-  '</pattern>' +
-  '<pattern id="ugChV" width="8" height="16" patternUnits="userSpaceOnUse">' +
-  '<ellipse cx="4" cy="4" rx="2.6" ry="4.4" fill="none" stroke="#6b5940" stroke-width="1.8"/>' +
-  '<ellipse cx="4" cy="12" rx="2.6" ry="4.4" fill="none" stroke="#4e4335" stroke-width="1.8"/>' +
-  '<ellipse cx="4" cy="4" rx="2.6" ry="4.4" fill="none" stroke="#8d7757" stroke-width=".8" stroke-dasharray="5 15"/>' +
-  '</pattern>' +
-  /* магия тьмы Владыки: та же цепь, но лиловый металл */
-  '<pattern id="ugChHm" width="16" height="8" patternUnits="userSpaceOnUse">' +
-  '<ellipse cx="4" cy="4" rx="4.4" ry="2.6" fill="none" stroke="#7c62a8" stroke-width="1.8"/>' +
-  '<ellipse cx="12" cy="4" rx="4.4" ry="2.6" fill="none" stroke="#54427c" stroke-width="1.8"/>' +
-  '<ellipse cx="4" cy="4" rx="4.4" ry="2.6" fill="none" stroke="#b39ae0" stroke-width=".8" stroke-dasharray="5 15"/>' +
-  '</pattern>' +
-  '<pattern id="ugChVm" width="8" height="16" patternUnits="userSpaceOnUse">' +
-  '<ellipse cx="4" cy="4" rx="2.6" ry="4.4" fill="none" stroke="#7c62a8" stroke-width="1.8"/>' +
-  '<ellipse cx="4" cy="12" rx="2.6" ry="4.4" fill="none" stroke="#54427c" stroke-width="1.8"/>' +
-  '<ellipse cx="4" cy="4" rx="2.6" ry="4.4" fill="none" stroke="#b39ae0" stroke-width=".8" stroke-dasharray="5 15"/>' +
-  '</pattern>' +
+  /* v1.5.1: НАСТОЯЩЕЕ ЗВЕНО — два шаблона. «Лицом» (A): широкий овал,
+     тёмная заливка, ржавый контур, блик. «С ребра» (B): узкий овал,
+     проходит сквозь соседнее звено (рисуется позже соседа — перекрытие
+     даёт настоящий переплёт, а не ряд окружностей). */
+  '<g id="ugLA">' +
+  '<ellipse rx="4.9" ry="3.1" fill="#0e0b06" stroke="#7b6a4c" stroke-width="1.5"/>' +
+  '<path d="M-3.1,-1.7 A3.7,2.3 0 0 1 2.3,-2.2" fill="none" stroke="#a8905e" stroke-width=".8" stroke-linecap="round" opacity=".85"/>' +
+  '</g>' +
+  '<g id="ugLB">' +
+  '<ellipse rx="1.7" ry="3.7" fill="#120e08" stroke="#5e523c" stroke-width="1.5"/>' +
+  '<path d="M-0.8,-2 A1.5,2.8 0 0 1 0.8,-2" fill="none" stroke="#8a774f" stroke-width=".7" stroke-linecap="round" opacity=".6"/>' +
+  '</g>' +
+  /* магия тьмы Владыки: тот же переплёт, лиловый металл */
+  '<g id="ugLAm">' +
+  '<ellipse rx="4.9" ry="3.1" fill="#0e0a14" stroke="#8b72c8" stroke-width="1.5"/>' +
+  '<path d="M-3.1,-1.7 A3.7,2.3 0 0 1 2.3,-2.2" fill="none" stroke="#c9b4ef" stroke-width=".8" stroke-linecap="round" opacity=".9"/>' +
+  '</g>' +
+  '<g id="ugLBm">' +
+  '<ellipse rx="1.7" ry="3.7" fill="#0c0912" stroke="#5e4a8e" stroke-width="1.5"/>' +
+  '<path d="M-0.8,-2 A1.5,2.8 0 0 1 0.8,-2" fill="none" stroke="#9a84d0" stroke-width=".7" stroke-linecap="round" opacity=".7"/>' +
+  '</g>' +
   '</defs>';
 
 function mkLine(cls, coords) {
@@ -438,13 +459,43 @@ function drawSynergies() {
 function drawUgLink(coords, mode, lf, isMult) {
   const faded = lf !== undefined && lf > 0 && lf < 1, dead = lf === 0;
   const st = (faded ? ' faded' : dead ? ' dead' : '');
+  /* 1) тень-подложка: цепь читается на пёстрых картах, но не «дорога» */
+  mkLine('ug-shadow' + st, coords);
+  /* 2) звенья: чередование «лицом/с ребра», шаг ~10.5px, лёгкая ручная
+     кривизна (детерминированная — цепь не прыгает при перерисовке) */
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.setAttribute('class', 'ug-links' + (mode === 'big' ? ' big' : '') + st);
+  synergySvg.appendChild(g);
+  const horiz = coords.y1 === coords.y2;
+  const L = Math.hypot(coords.x2 - coords.x1, coords.y2 - coords.y1);
+  const n = Math.max(2, Math.round(L / 10.5));
+  const step = L / n;
+  const ang = horiz ? 0 : 90;
+  const A = mode === 'royal' ? 'ugLAm' : 'ugLA', B = mode === 'royal' ? 'ugLBm' : 'ugLB';
+  const seed = Math.round(coords.x1 * 5 + coords.y1 * 11);
+  for (let i = 0; i < n; i++) {
+    const t = step * (i + 0.5);
+    const x = horiz ? coords.x1 + t : coords.x1;
+    const y = horiz ? coords.y1 : coords.y1 + t;
+    const u = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    u.setAttribute('href', '#' + (i % 2 ? B : A));
+    u.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', '#' + (i % 2 ? B : A));
+    const j = ((i * 73 + seed) % 7) - 3; /* наклон ±3°: кованая, не по линейке */
+    u.setAttribute('transform', 'translate(' + x.toFixed(1) + ',' + y.toFixed(1) + ') rotate(' + (ang + j) + ')' + (mode === 'big' ? ' scale(1.18)' : ''));
+    g.appendChild(u);
+  }
+  /* 3) магия поверх металла — только когда она реально творится:
+     знамение Владыки (royal), Пакт Лича (lich), искра Скованного (big) */
+  if (mode === 'royal' || mode === 'lich' || mode === 'big') {
+    const m = mkLine('ug-magic ' + (mode === 'royal' ? 'royal' : mode === 'lich' ? 'lich' : 'glint') + st, coords);
+    m.style.animationDelay = (-(Math.abs(Math.round(coords.x1 * 7 + coords.y1 * 13)) % 40) / 10) + 's';
+  }
+  /* 4) туман ПОДЕРХ цепи, у каждой связи своя фаза (отрицательный delay) —
+     туманы никогда не дёргаются строем и не «перезапускаются» глазу */
   const fogCls = 'fog' + (isMult ? ' mult' : '') +
-    (mode === 'royal' ? ' royal' : mode === 'lich' ? ' lich' : mode === 'big' ? ' glint' : '') + st;
-  mkLine('ug-shadow', coords);
-  mkLine(fogCls, coords);
-  const ln = mkLine('ug-chain' + (mode === 'big' ? ' big' : '') + st, coords);
-  /* паттерн по направлению звена: все связи на Алтаре ортогональные */
-  ln.setAttribute('stroke', 'url(#' + (coords.y1 === coords.y2 ? 'ugChH' : 'ugChV') + (mode === 'royal' ? 'm' : '') + ')');
+    (mode === 'royal' ? ' royal' : mode === 'lich' ? ' lich' : '') + st;
+  const fl = mkLine(fogCls, coords);
+  fl.style.animationDelay = (-(Math.abs(Math.round(coords.x1 * 17 + coords.y1 * 29)) % 110) / 10) + 's';
 }
 function updateGridStats() {
   const inc = calculateIncome();

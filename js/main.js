@@ -432,7 +432,10 @@ setInterval(() => {
   incomeExempt = 0;
   /* v1.2.7: САМОВОССТАНОВЛЕНИЕ ОТОБРАЖЕНИЯ — если DOM разошёлся с состоянием
      («ауры пропали», «карты задвоились»), перерисовываем поле в течение 250мс */
-  if (gameStarted && !gamePaused && typeof gridSignature === 'function' && gridSignature() !== lastRenderSig) renderGrid();
+  if (gameStarted && !gamePaused && typeof gridSignature === 'function') {
+    if (gridSignature() !== lastRenderSig) renderGrid();
+    else if (typeof updateFxLive === 'function') updateFxLive(); /* v1.5.1: вспышки способностей без перерисовки поля */
+  }
   checkMilestones();
   if (runEarned >= epochThreshold(epoch) && gameStarted && !gamePaused) {
     const upBtn = $('epochUpBtn');
