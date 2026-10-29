@@ -231,8 +231,15 @@ function showMenu() {
   gamePaused = true;
   $('menuContinue').disabled = !hasRunSave() && !gameStarted;
   $('menu').classList.add('show');
-  /* v1.3.0: Стена Тьмы живёт в меню — при каждом открытии просим свежак */
+  /* v1.4.1 ТЗ: выход в меню — тихая запись рекорда (только рост),
+     затем свежак Таблички и счётчика игроков за день.
+     Табличка перечитывается ПОСЛЕ завершения записи — иначе гонка:
+     блок покажет старьё раньше, чем POST дойдёт до базы. */
+  if (typeof supaMenuSave === 'function') {
+    Promise.resolve(supaMenuSave()).then(() => { if (typeof lbFetch === 'function') setTimeout(lbFetch, 350); });
+  }
   if (typeof wallFetch === 'function') setTimeout(wallFetch, 100);
+  if (typeof renderDailyCount === 'function') setTimeout(renderDailyCount, 160);
 }
 function hideMenu() { $('menu').classList.remove('show'); gamePaused = false; }
 function restartWith(mode) {
@@ -262,8 +269,9 @@ function wireEvents() {
   });
 
   /* Инструменты */
-  /* v1.2.9.2: Табличка Тьмы — облачный рейтинг + сколько игроков за день */
-  $('leaderboardBtn').addEventListener('click', () => leaderboardOpen());
+  /* v1.4.1: Табличка Тьмы переехала в главное меню (над Стеной) —
+     кнопка «Рейтинг» из игровой панели снята, запись рекорда
+     автоматическая: Вознесение / выход в меню / уход со страницы. */
   $('deleteToolBtn').addEventListener('click', function () {
     deleteMode = !deleteMode; placingMode = false; pendingCard = null; moveMode = false; moveSource = null;
     $('moveToolBtn').classList.remove('active');
@@ -442,6 +450,8 @@ setInterval(() => {
   supaPing(); /* v1.2.9.2: уникальный игрок за день */
   maybeAskNick(); /* v1.2.9.2: имя для Таблички Тьмы — спрашиваем один раз */
   wallInit(); /* v1.3.0: СТЕНА ТЬМЫ — чат в главном меню */
+  lbInit(); /* v1.4.1: ТАБЛИЦА ТЬМЫ — рейтинг по Эпохам над чатом */
+  renderDailyCount(); /* v1.4.1: «Активных игроков за день» под чатом */
   wireEvents();
   fxInit();
   document.addEventListener('pointerdown', soundUnlock, { once: true });

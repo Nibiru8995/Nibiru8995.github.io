@@ -74,7 +74,6 @@
       <button id="casinoBtn"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="8" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="16" cy="12" r="1.3"/></svg>Казино</button>
       <button class="action-btn" id="achvBtn"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="9" r="4"/><path d="M9 12.5 8 21l4-2.5L16 21l-1-8.5"/></svg>Достижения<span class="cost">0 / 50</span></button>
       <button class="action-btn" id="contractsBtn"><svg class="ic" viewBox="0 0 24 24"><path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h4"/></svg>Контракты<span class="cost" id="contractsBadge">0/6</span></button>
-      <button class="action-btn" id="leaderboardBtn"><svg class="ic" viewBox="0 0 24 24"><path d="M7 3h10v4a5 5 0 01-10 0zM17 4h3a3 3 0 01-3 4M7 4H4a3 3 0 003 4M12 14v4M8 21h8"/></svg>Рейтинг<span class="cost" id="lbBadge">Табличка</span></button>
       <button class="move-tool-btn" id="moveToolBtn"><svg class="ic" viewBox="0 0 24 24"><path d="M4 8h13M14 5l3 3-3 3M20 16H7M10 13l-3 3 3 3"/></svg>Переместить</button>
       <button class="delete-tool-btn" id="deleteToolBtn"><svg class="ic" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>Удалить</button>
       <button class="settings-btn" id="settingsBtn"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg>Настройки</button>
@@ -106,7 +105,7 @@
   </div>
 </div>
 
-<footer id="verFoot">версия v1.4.0 «Закон и Кара» · реликвии: бафф + кара, знамение Владыки, пакт Лича, прикованные здания</footer>
+<footer id="verFoot">версия v1.4.1 «Табличка в Меню» · рейтинг по Эпохам в главном меню, счётчик игроков за день</footer>
 <div id="toast"></div>
 <canvas id="fxCanvas"></canvas>
 
@@ -135,6 +134,12 @@
 
 <div class="modal show" id="menu" style="z-index:500"><div class="modal-card" style="max-width:340px"><h2 style="font-size:24px">⚜ Гача-Гриндер 2 ⚜</h2><div class="desc">Тёмное Наследие · Эпохи Тьмы</div>
 <button class="btn btn-take" id="menuContinue" style="width:100%;max-width:none">▶ Продолжить</button><button class="btn btn-take" id="menuNew" style="width:100%;max-width:none">✦ Новая игра</button><button class="btn btn-take" id="menuTut" style="width:100%;max-width:none">📖 Обучение</button><button class="btn btn-take" id="menuEpoch" style="width:100%;max-width:none">⚜ Меню Эпохи <small>(печати 🔱, Алтарь)</small></button>
+<div id="lbBox">
+  <div id="lbHead"><span>🏆 ТАБЛИЦА ТЬМЫ</span><span id="lbRefresh" title="Обновить">⟳</span></div>
+  <div id="lbTabs"></div>
+  <div id="lbRows"><div class="wall-empty">Читаем в Тьму…</div></div>
+  <div id="lbFoot">Рекорд дохода/сек за Эпоху · пишется при Вознесении, выходе в меню и уходе со страницы</div>
+</div>
 <div id="wallBox">
   <div id="wallHead"><span>☠ СТЕНА ТЬМЫ</span><span id="wallRefresh" title="Обновить">⟳</span></div>
   <div id="wallRows"><div class="wall-empty">Слушаем Тьму…</div></div>
@@ -144,9 +149,10 @@
     <button id="wallGo" title="Отправить">➤</button>
   </div>
 </div>
+<div id="wallDaily" style="display:none"></div>
 <div class="flavor">Крутите карты одной фракции, стройте синергии на Алтаре, качайте Эпохи.</div>
 <div class="flavor" id="menuFlavor">Тёмное Наследие · Эпохи Тьмы</div>
-<div class="flavor" style="color:#a08c56">версия 1.4.0 «Закон и Кара»</div></div></div><div id="tutPanel"><div id="tutText"></div><div id="tutBtns"><span id="tutStep"></span><button class="mini" id="tutExit">Выйти</button><button class="btn btn-take" id="tutNext" style="max-width:120px;padding:5px 10px">Далее</button></div></div>
+<div class="flavor" style="color:#a08c56">версия 1.4.1 «Табличка в Меню»</div></div></div><div id="tutPanel"><div id="tutText"></div><div id="tutBtns"><span id="tutStep"></span><button class="mini" id="tutExit">Выйти</button><button class="btn btn-take" id="tutNext" style="max-width:120px;padding:5px 10px">Далее</button></div></div>
 <div id="guidePanel"><div id="guideText"></div><div id="guideBtns"><span id="guideStepLbl"></span><button class="mini" id="guideSkip">Пропустить</button><button class="btn btn-take" id="guideNext" style="max-width:120px;padding:5px 10px">Далее</button></div></div>
 <div id="tooltip"></div><div id="selectionBanner"></div>
 

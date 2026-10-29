@@ -1,13 +1,21 @@
 'use strict';
 /* ============================================================
-   ЛОГИКА: ТАБЛИЦА ТЬМЫ (logic/leaderboard.js) — v1.2.9.2
+   ЛОГИКА: ТАБЛИЦА ТЬМЫ (logic/leaderboard.js) — v1.4.1
    Облачный топ инкама по Эпохам + счётчик игроков за день
    (Supabase, Free-план).
 
-   КОГДА ПИШЕМ В БАЗУ (v1.2.9.2 — договорённость с Гриндером):
+   v1.4.1 ТЗ: рейтинг переехал из кнопки в игре в ГЛАВНОЕ МЕНЮ,
+   в блок НАД чатом (Стеной Тьмы). 10 вкладок по Эпохам:
+   1..9 и «10+» (Эпоха 10 и выше). Запись игрока чёткая:
+   ИГРОК — МАКСИМАЛЬНЫЙ ДОХОД (за выбранную Эпоху).
+   Запросы с базы — по вкладке: epoch=eq.N, для «10+» — epoch=gte.10.
+
+   КОГДА ПИШЕМ В БАЗУ (проверено v1.4.1 — три точки записи):
    1) открытие страницы → пинг (день + устройство): счётчик «за день»;
-   2) Вознесение → рекорд забега (force — Эпоха выросла всегда);
-   3) уход со страницы → рекорд ТОЛЬКО если вырос с прошлой отправки.
+   2) Вознесение (конец Эпохи) → рекорд забега (force — Эпоха выросла);
+   3) выход в меню (showMenu) → тихая запись, если рекорд вырос;
+   4) уход со страницы (pagehide/visibilitychange/beforeunload) →
+      тихая запись, только если рекорд вырос с прошлой отправки.
    Периодических «сердцебиений» нет. UPDATE-политик в базе нет:
    повторов не бывает, потому что пишем только рост score, а
    лучшие результаты игроков дедуплицируются при показе топа.
@@ -19,7 +27,8 @@
 
 const SUPA_URL = 'https://gtxutfpdfknpttrkjzhq.supabase.co';
 const SUPA_KEY = 'sb_publishable_3pAfzOXNPB8k4yPnlTd3bQ_c7ul-Fsk';
-const LB_TOP = 5; /* размер показываемого топа */
+const LB_TOP = 6;          /* строк в топе одной вкладки */
+const LB_EPOCH_TABS = 10;  /* вкладки 1..9 + «10+» */
 
 function supaHeaders(extra) {
   return Object.assign({
@@ -50,15 +59,14 @@ function setSupaPlayerName(n) {
   if (!n) n = 'Аноним';
   try { localStorage.setItem('gg3_player', n); } catch (e) { }
   /* v1.3.1 ТЗ: ник меняется НА МЕСТЕ, а не после обновления страницы —
-     чип Стены Тьмы и поле Таблички перерисовываются сразу */
+     чип Стены Тьмы перерисовывается сразу */
   const chip = $('wallName');
   if (chip) chip.textContent = n;
-  const lbNick = $('lbNickIn');
-  if (lbNick) lbNick.value = n;
   return n;
 }
 
-/* Лучшая Легендарность, уже отправленная в базу с этого устройства */
+/* Лучшая запись, уже отправленная в базу с этого устройства
+   (score = Эпоха × 1 млрд + инкам) */
 function lbBestSent() {
   try { return +localStorage.getItem('gg3_lbBest') || 0; } catch (e) { return 0; }
 }
@@ -97,9 +105,21 @@ function supaDailyCount() {
     }).catch(() => null);
 }
 
+/* v1.4.1: «Активных игроков за день : N» — скромная строка ПОД чатом */
+function renderDailyCount() {
+  const el = $('wallDaily');
+  if (!el) return;
+  supaDailyCount().then(n => {
+    if (!el) return;
+    if (n === null) { el.style.display = 'none'; return; } /* база молчит — строка не мешает */
+    el.textContent = 'Активных игроков за день : ' + n;
+    el.style.display = '';
+  });
+}
+
 /* ---------------- ЗАПИСЬ РЕКОРДА ----------------
    force=true — «Вознесение» (новая Эпоха → писать гарантированно).
-   silent=true — без тоста (фон при уходе со страницы). */
+   silent=true — без тоста (фон при выходе в меню / уходе со страницы). */
 function supaSubmit(runSecs, force, silent) {
   if (typeof noSave !== 'undefined' && noSave) return Promise.resolve(); /* обучение/чит-режим не пишутся */
   const score = lbCurrentScore();
@@ -120,7 +140,7 @@ function supaSubmit(runSecs, force, silent) {
   }).then(res => {
     if (res.ok) {
       lbSetBestSent(score);
-      if (!silent) toast('🏆 <b>Рекорд записан в Табличку Тьмы!</b> Смотри 🏆 РЕЙТИНГ');
+      if (!silent) toast('🏆 <b>Рекорд записан в Табличку Тьмы!</b> Смотри меню — блок над Стеной.');
     }
   }).catch(() => { /* оффлайн — не страшно */ });
 }
@@ -135,14 +155,20 @@ function supaLeave() {
   supaSubmit(runTime, false, true);
 }
 
+/* v1.4.1: выход в ГЛАВНОЕ МЕНЮ — та же тихая запись роста */
+function supaMenuSave() {
+  if (!gameStarted || (typeof noSave !== 'undefined' && noSave)) return;
+  supaSubmit(runTime, false, true);
+}
+
 /* ---------------- ПРИГЛАШЕНИЕ ВВЕСТИ НИК ----------------
    Показывается один раз, пока в памяти нет имени. */
 function maybeAskNick() {
   try { if (localStorage.getItem('gg3_player')) return; } catch (e) { }
   mk('nickModal',
     '<h2>👑 КАК ТЕБЯ ЗОВУТ, ГРИНДЕР?</h2>' +
-    '<div class="desc">Тьма ведёт <b>Табличку Тьмы</b> — топ инкама по Эпохам. ' +
-    'Записываются твои Вознесения. Имя меняется когда угодно в 🏆 РЕЙТИНГ.</div>' +
+    '<div class="desc">Тьма ведёт <b>Табличку Тьмы</b> — топ инкама по Эпохам, теперь в главном меню. ' +
+    'Записываются твои Вознесения. Имя меняется когда угодно под Стеной Тьмы.</div>' +
     '<input id="nickIn" maxlength="20" placeholder="Псевдоним до 20 символов" ' +
     'style="width:100%;padding:10px 12px;background:#0d0a0f;border:1px solid #3a3040;color:#e8dcc8;border-radius:8px;font-family:inherit;margin:6px 0 4px">' +
     '<div class="btn-row" style="gap:8px">' +
@@ -157,86 +183,93 @@ function maybeAskNick() {
   $('nickSkip').onclick = () => { setSupaPlayerName(''); close_('nickModal'); };
 }
 
-/* ---------------- ОКНО РЕЙТИНГА (топ-5) ---------------- */
+/* ================= БЛОК РЕЙТИНГА В ГЛАВНОМ МЕНЮ =================
+   10 вкладок по Эпохам: 1..9 и «10+». Строка рейтинга — чётко:
+   ИГРОК — МАКСИМАЛЬНЫЙ ДОХОД (рекорд дохода/сек в этой Эпохе). */
+
 function lbFactionIcon(f) {
   const F = { undead: '⛓', cultist: '🔯', beast: '🐾', demon: '🔥' };
   return F[f] || '⚜';
 }
+function lbEscape(s) {
+  return String(s || '').replace(/[<>&"]/g, c =>
+    ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+}
+function lbTabLabel(n) { return n >= LB_EPOCH_TABS ? '10+' : String(n); }
+function lbTabFilter(n) { return n >= LB_EPOCH_TABS ? 'epoch=gte.10' : 'epoch=eq.' + n; }
 
-function leaderboardOpen() {
-  mk('lbModal',
-    '<h2>🏆 ТАБЛИЦА ТЬМЫ</h2>' +
-    '<div class="desc" id="lbInfo">Читаем в Тьму…</div>' +
-    '<div id="lbRows" style="min-height:100px"></div>' +
-    '<div class="btn-row" style="gap:8px">' +
-    '<input id="lbNickIn" maxlength="20" placeholder="Псевдоним" style="flex:1;padding:8px 10px;background:#0d0a0f;border:1px solid #3a3040;color:#e8dcc8;border-radius:8px;font-family:inherit">' +
-    '<button class="btn btn-take" id="lbNickSave">Записать имя</button>' +
-    '<button class="btn btn-take" id="lbResend">Отправить рекорд</button>' +
-    '<button class="btn btn-take" id="lbX">Закрыть</button>' +
-    '</div>', 620);
-  open_('lbModal');
-  $('lbNickIn').value = supaPlayerName();
-  $('lbX').onclick = () => close_('lbModal');
-  $('lbNickSave').onclick = () => {
-    const saved = setSupaPlayerName($('lbNickIn').value);
-    $('lbNickIn').value = saved;
-    toast('🏆 Имя записано: <b>' + saved + '</b>. Рекорд перепишется при следующем Вознесении или росте.');
-  };
-  $('lbResend').onclick = () => {
-    const before = lbBestSent();
-    supaSubmit(runTime).then(() => {
-      if (lbBestSent() === before) toast('⏳ Тьма уже знает этот рекорд — он пишется только при новом пике дохода или Вознесении.');
-    });
-  };
-  renderLeaderboard();
+let lbTab = 1;
+
+function lbBuildTabs() {
+  const box = $('lbTabs');
+  if (!box) return;
+  box.innerHTML = '';
+  for (let n = 1; n <= LB_EPOCH_TABS; n++) {
+    const b = document.createElement('button');
+    b.className = 'lb-tab' + (n === lbTab ? ' active' : '');
+    b.textContent = lbTabLabel(n);
+    b.title = n >= LB_EPOCH_TABS ? 'Эпоха 10 и выше' : 'Эпоха ' + n;
+    b.onclick = () => lbSetTab(n);
+    box.appendChild(b);
+  }
 }
 
-async function renderLeaderboard() {
-  const rows = $('lbRows'), info = $('lbInfo');
+function lbSetTab(n) {
+  lbTab = n;
+  lbBuildTabs();
+  lbFetch();
+}
+
+function lbInit() {
+  if (!$('lbRows')) return;
+  /* открываем вкладку текущей Эпохи (для «10+» — последняя вкладка) */
+  lbTab = Math.max(1, Math.min(LB_EPOCH_TABS, Math.floor(epoch || 1)));
+  lbBuildTabs();
+  const rf = $('lbRefresh');
+  if (rf) rf.onclick = lbFetch;
+  lbFetch();
+}
+
+async function lbFetch() {
+  const rows = $('lbRows');
   if (!rows) return;
-  rows.innerHTML = '<div style="opacity:.6;padding:14px 0">Читаем в Тьму…</div>';
+  rows.innerHTML = '<div class="wall-empty">Читаем в Тьму…</div>';
   try {
-    /* Топ по инкаму: берём 40 свежайших строк и дедупим игрока-Лучший,
-       потому что UPDATE-ов в базе нет — история роста живёт строками. */
-    const resPromise = fetch(
-      SUPA_URL + '/rest/v1/leaderboard?order=max_inc.desc&limit=40' +
-      '&select=player,max_inc,epoch,faction,created_at',
+    /* Топ Эпохи по инкаму: берём 40 свежайших строк вкладки и дедупим
+       игрока-Лучший, потому что UPDATE-ов в базе нет — история роста
+       живёт строками. */
+    const res = await fetch(
+      SUPA_URL + '/rest/v1/leaderboard?' + lbTabFilter(lbTab) +
+      '&order=max_inc.desc&limit=40&select=player,max_inc,epoch,faction,created_at',
       { headers: supaHeaders() });
-    const [res, daily] = await Promise.all([resPromise, supaDailyCount()]);
-    if (info) {
-      info.innerHTML = (daily !== null ? '👥 Игроков за день: <b>' + daily + '</b> · ' : '') +
-        'Топ по инкаму (рекорд дохода/сек) · Легендарность = Эпоха × 1 млрд + инкам';
-    }
     if (!res.ok) throw 0;
     const data = await res.json();
-    if (!data.length) {
-      rows.innerHTML = '<div style="opacity:.7;padding:14px 0">Табличка пуста. Вознесись — и стань первым гриндером в Тьме!</div>';
-      return;
-    }
     const best = {};
-    data.forEach(r => {
-      const k = (r.player || 'Аноним').toLowerCase();
+    (data || []).forEach(r => {
+      const k = String(r.player || 'Аноним').toLowerCase();
       if (!best[k] || r.max_inc > best[k].max_inc) best[k] = r;
     });
     const top = Object.values(best).sort((a, b) => b.max_inc - a.max_inc).slice(0, LB_TOP);
+    if (!top.length) {
+      rows.innerHTML = '<div class="wall-empty">В Эпохе «' + lbTabLabel(lbTab) +
+        '» пока пусто. Вознесись — и впиши себя первым!</div>';
+      return;
+    }
     let html = '';
     top.forEach((r, i) => {
-      const d = new Date(r.created_at);
       const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '.';
       const me = (r.player || 'Аноним') === supaPlayerName();
-      html += '<div style="display:flex;gap:10px;padding:8px;border-bottom:1px solid rgba(255,255,255,.06);align-items:baseline">' +
-        '<span style="min-width:36px">' + medal + '</span>' +
-        '<span style="flex:1">' + lbFactionIcon(r.faction) + ' <b style="color:#e8c060">' +
-        (me ? '<u>' + r.player + '</u>' : r.player) + '</b> ' +
-        '<span style="opacity:.5;font-size:11px">«' + (d.getMonth() + 1) + '.' + d.getDate() + '»</span></span>' +
-        '<span>⚜' + r.epoch + ' · <b style="color:#7fd4ff">' + fmtShort(r.max_inc) + '</b>/с</span>' +
+      const epTag = lbTab >= LB_EPOCH_TABS ? '<span class="lb-ep">Э' + r.epoch + '</span>' : '';
+      html += '<div class="lb-row">' +
+        '<span class="lb-place">' + medal + '</span>' +
+        '<span class="lb-player">' + lbFactionIcon(r.faction) + ' <b' + (me ? ' class="lb-me"' : '') + '>' +
+        lbEscape(r.player || 'Аноним') + '</b></span>' +
+        '<span class="lb-score">⚜<b>' + fmtShort(r.max_inc) + '</b>/с ' + epTag + '</span>' +
         '</div>';
     });
-    html += '<div style="opacity:.5;padding:8px 2px 0;font-size:12px">Топ-' + LB_TOP + ' по рекорду дохода/сек. ' +
-      'Место — за твоим лучшим результатом: он переписывается при Вознесении или росте пика.</div>';
     rows.innerHTML = html;
   } catch (e) {
-    rows.innerHTML = '<div style="opacity:.75;padding:14px 0">Тьма молчит: связь с базой не установлена. ' +
+    rows.innerHTML = '<div class="wall-empty">Тьма молчит: связь с базой не установлена. ' +
       'Если SQL для таблиц ещё не выполнен — выполни его в Supabase (SQL Editor), всё оживёт без пересохранений.</div>';
   }
 }

@@ -918,3 +918,28 @@ body { font-family: 'Alegreya', 'Georgia', 'Times New Roman', serif; }
 #wallGo { background: #1a1720; border: 1px solid var(--gold); color: var(--gold); border-radius: 2px; width: 28px; height: 25px; cursor: pointer; font-weight: bold; font-size: 11px; flex-shrink: 0; transition: background .12s, color .12s; }
 #wallGo:hover { background: var(--gold); color: #121014; }
 #wallGo:disabled { opacity: .4; cursor: default; }
+
+/* ================= v1.4.1 ТАБЛИЦА ТЬМЫ (рейтинг в главном меню) =================
+   Блок НАД чатом, тот же серый чекан. 10 вкладок по Эпохам (последняя «10+»),
+   строка рейтинга чёткая: ИГРОК — МАКСИМАЛЬНЫЙ ДОХОД. */
+#lbBox { margin-top: 10px; background: #121014; border: 1px solid #2e2a33; border-radius: 2px; display: flex; flex-direction: column; overflow: hidden; }
+#lbHead { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; font-family: 'Ruslan Display', Georgia, serif; font-size: 11px; letter-spacing: 1.2px; color: var(--gold); border-bottom: 1px solid #2e2a33; user-select: none; }
+#lbRefresh { cursor: pointer; color: var(--ink-dim); font-size: 13px; padding: 0 2px; }
+#lbRefresh:hover { color: var(--gold); }
+#lbTabs { display: flex; gap: 3px; padding: 5px 6px; border-bottom: 1px solid #2e2a33; }
+.lb-tab { flex: 1; min-width: 0; padding: 3px 0; background: #0d0a0f; border: 1px solid #3a3040; color: var(--ink-dim); border-radius: 2px; font-family: inherit; font-size: 10px; line-height: 1; cursor: pointer; transition: border-color .12s, color .12s; }
+.lb-tab:hover { color: var(--ink); border-color: #55485e; }
+.lb-tab.active { color: #121014; background: var(--gold); border-color: var(--gold); font-weight: bold; }
+#lbRows { height: 126px; overflow-y: auto; padding: 5px 8px; display: flex; flex-direction: column; gap: 3px; scrollbar-width: thin; scrollbar-color: #3a3040 transparent; }
+.lb-row { display: flex; gap: 7px; align-items: baseline; font-size: 11.5px; line-height: 1.4; }
+.lb-place { min-width: 22px; color: var(--ink-dim); flex-shrink: 0; }
+.lb-player { flex: 1; min-width: 0; color: var(--gold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-player b { font-weight: normal; }
+.lb-player b.lb-me { color: var(--gold-hi); text-decoration: underline; }
+.lb-score { color: var(--ink); white-space: nowrap; flex-shrink: 0; }
+.lb-score b { color: #7fd4ff; }
+.lb-ep { color: var(--ink-dim); font-size: 9.5px; font-style: italic; }
+#lbFoot { padding: 4px 8px 5px; border-top: 1px solid #2e2a33; font-size: 9px; color: var(--ink-dim); text-align: center; letter-spacing: .3px; }
+
+/* v1.4.1: «Активных игроков за день» — скромная строка ПОД чатом */
+#wallDaily { margin-top: 6px; text-align: center; font-size: 10px; color: var(--ink-dim); opacity: .8; letter-spacing: .5px; user-select: none; }
