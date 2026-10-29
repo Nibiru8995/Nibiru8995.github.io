@@ -136,6 +136,12 @@ body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-i
 /* v1.3.1: «Меню» — под двумя столбиками кнопок, на всю ширину панели */
 #rightBtns #menuBtn { grid-column: 1 / -1; width: 100%; height: 32px; color: var(--gold); font-weight: 700; letter-spacing: 1.2px; }
 #rightBtns #menuBtn:hover { border-color: var(--gold); background: #161618; }
+/* v1.4.3 «Второй Круг»: «Рестарт Эпохи» — НАД «Меню», на всю ширину.
+   Мрачно-красная тонировка: действие необратимое, печати не даёт. */
+#rightBtns #epochRestartBtn { grid-column: 1 / -1; width: 100%; height: 32px; color: #c98f8f; font-weight: 700; letter-spacing: 1px; }
+#rightBtns #epochRestartBtn svg.ic { stroke: #b06a6a; }
+#rightBtns #epochRestartBtn:hover { border-color: #8a4444; background: #181114; color: #e0a8a8; }
+#rightBtns #epochRestartBtn:hover svg.ic { stroke: #e0a8a8; }
 #rightBtns button:hover:not(:disabled) { background: #161618; border-color: var(--border2); }
 #rightBtns button:active:hover { background: #1c1c1e; }
 #rightBtns button:disabled { opacity: .4; cursor: not-allowed; filter: grayscale(1); }

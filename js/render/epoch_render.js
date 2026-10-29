@@ -69,11 +69,13 @@ function milHtml() {
 
 /* Окно-предупреждение перед сбросом (пункт 1 ТЗ).
    ФИДБЕК (раунд 4): никакого «начать новую» — только Вознесение
-   в КОНКРЕТНУЮ Эпоху с именем. */
+   в КОНКРЕТНУЮ Эпоху с именем.
+   v1.4.3: mkFresh — окно может открываться много раз за сессию,
+   содержимое должно обновляться КАЖДЫЙ показ. */
 function confirmEpochUp() {
   const s = epochResetSummary();
   const gain = epochSealsGain(epoch);
-  mk('epochWarn',
+  mkFresh('epochWarn',
     '<h2>⚜ Вознесение: ЭПОХА ' + (epoch + 1) + ' «' + epochName(epoch + 1) + '»</h2>' +
     '<div class="res">Награда: <b>+' + gain + ' 🔱</b> печатей' +
     (EPOCHS[Math.min(epoch, EPOCHS.length - 1)] ? ' · откроется: ' + epochUnlockText(epoch + 1) : '') + '</div>' +
@@ -92,7 +94,7 @@ function pickFactionAndAscend() {
      ровно в ту Эпоху, в которую она разблокировалась (4→5 и т.д.). */
   const avail = epochFactions(epoch + 1);
   if (avail.length <= 1) { doEpochUp(avail[0]); return; }
-  mk('factionModal',
+  mkFresh('factionModal',
     '<h2>Выберите фракцию Эпохи ' + (epoch + 1) + '</h2>' +
     '<div class="faction-list">' + avail.map(f => {
       const info = FACTION_INFO[f];
@@ -106,6 +108,45 @@ function pickFactionAndAscend() {
   $('fmCancel').onclick = () => close_('factionModal');
   $('factionModal').querySelectorAll('.faction-card').forEach(fc => {
     fc.onclick = () => { const f = fc.dataset.f; close_('factionModal'); doEpochUp(f); };
+  });
+  open_('factionModal');
+}
+
+/* ---------------- v1.4.3 «Второй Круг»: РЕСТАРТ ЭПОХИ ----------------
+   Кнопка над «Меню». Тык → ОБЯЗАТЕЛЬНОЕ подтверждение → выбор фракции
+   ТЕКУЩЕЙ Эпохи → забег начинается с нуля. Печатей 🔱 НЕ даёт. */
+function confirmEpochRestart() {
+  const s = epochResetSummary();
+  mkFresh('epochWarn',
+    '<h2>⟲ Рестарт ЭПОХИ ' + epoch + ' «' + epochName(epoch) + '»</h2>' +
+    '<div class="res">Эпоха НЕ вырастет — вы начинаете её <b>с самого начала</b>. ' +
+    'Печатей 🔱 рестарт не даёт. Фракцию можно выбрать заново.</div>' +
+    '<div class="warn-cols"><div class="warn-col bad"><b>СГОРИТ:</b><ul>' + s.reset.map(x => '<li>' + x + '</li>').join('') + '</ul></div>' +
+    '<div class="warn-col good"><b>ОСТАНЕТСЯ:</b><ul>' + s.keep.map(x => '<li>' + x + '</li>').join('') + '</ul></div></div>' +
+    '<div class="btn-row"><button class="btn btn-take" id="ewNo">Отмена</button><button class="btn btn-take" id="ewYes" style="background:#4a1010">⟲ НАЧАТЬ ЭПОХУ ' + epoch + ' ЗАНОВО</button></div>', 600);
+  $('ewNo').onclick = () => close_('epochWarn');
+  $('ewYes').onclick = () => { close_('epochWarn'); pickFactionForRestart(); };
+  open_('epochWarn');
+}
+
+/* Выбор фракции на рестарт: по ТЕКУЩЕЙ эпохе (в отличие от Вознесения — epoch + 1) */
+function pickFactionForRestart() {
+  const avail = epochFactions(epoch);
+  if (avail.length <= 1) { doEpochRestart(avail[0]); return; }
+  mkFresh('factionModal',
+    '<h2>Выберите фракцию Эпохи ' + epoch + '</h2>' +
+    '<div class="faction-list">' + avail.map(f => {
+      const info = FACTION_INFO[f];
+      return '<div class="faction-card" data-f="' + f + '" style="border-color:' + info.color + '">' +
+        '<h3 style="color:' + info.color + '">' + info.epochTitle + '</h3>' +
+        '<div class="mech-tag">' + info.mechanicName + '</div>' +
+        '<p>' + info.mechanicDesc + '</p><small>' + info.hierarchy + '</small></div>';
+    }).join('') + '</div>' +
+    '<div class="flavor">Всю Эпоху вы играете ТОЛЬКО картами этой фракции — гача выдаёт только её карты.</div>' +
+    '<div class="btn-row"><button class="btn btn-take" id="fmCancel">Назад</button></div>', 600);
+  $('fmCancel').onclick = () => close_('factionModal');
+  $('factionModal').querySelectorAll('.faction-card').forEach(fc => {
+    fc.onclick = () => { const f = fc.dataset.f; close_('factionModal'); doEpochRestart(f); };
   });
   open_('factionModal');
 }

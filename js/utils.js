@@ -72,6 +72,17 @@ function mk(id, html, z) {
   document.body.appendChild(d);
   return d;
 }
+
+/* v1.4.3 «Второй Круг»: mk() создаёт окно ОДИН раз и дальше возвращает старый
+   узел — для повторно открываемых модалов (Вознесение, Рестарт Эпохи) это
+   оставляло в заголовке число ПРОШЛОЙ Эпохи. mkFresh перезаписывает
+   содержимое при каждом показе. */
+function mkFresh(id, html, z) {
+  const d = mk(id, '', z);
+  const card = d.querySelector('.modal-card');
+  if (card) card.innerHTML = html;
+  return d;
+}
 const open_ = id => $(id).classList.add('show');
 const close_ = id => $(id).classList.remove('show');
 

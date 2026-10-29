@@ -111,6 +111,7 @@ function startTutorial() {
   gameStarted = true; /* доход и HUD работают, но сохранение отключено */
   rebuildPlayableMask(); /* фикс: в учебном режиме маска клеток не строилась */
   $('menuBtn').style.display = 'none';
+  const rb = $('epochRestartBtn'); if (rb) rb.style.display = 'none'; /* v1.4.3: в обучении рестарта нет */
   $('tutPanel').classList.add('show');
   $('tutNext').onclick = () => { if (TUT[tutI].last) location.reload(); else tutGo(tutI + 1); };
   $('tutExit').onclick = () => location.reload();
@@ -306,6 +307,8 @@ function wireEvents() {
     if (canEpochUp()) confirmEpochUp();
     else openEpochMenu();
   });
+  /* v1.4.3 «Второй Круг»: рестарт ТЕКУЩЕЙ Эпохи — подтверждение + выбор фракции */
+  $('epochRestartBtn').addEventListener('click', confirmEpochRestart);
   $('achvBtn').addEventListener('click', openAchv);
   /* v1.2.9: Тёмный Пакт — контракты Эпохи */
   $('contractsBtn').addEventListener('click', openContracts);
