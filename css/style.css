@@ -1034,6 +1034,10 @@ body[data-faction="demon"] .cell.playable:hover { background:#161110; }
 #synergySvg line.ug-shadow { stroke:#000; stroke-width:12; stroke-linecap:round; opacity:.13; }
 #synergySvg line.ug-shadow.faded { opacity:.1; }
 #synergySvg line.ug-shadow.dead { opacity:.05; }
+/* v1.5.5: состояние звена читается с самой банды цепей (туман на звеньях снят) */
+#synergySvg g.ug-band { transition: opacity .3s; }
+#synergySvg g.ug-band.faded { opacity:.55; }
+#synergySvg g.ug-band.dead { opacity:.22; }
 /* v1.5.4: спрайт трёх цепей пиксель-арт тайлом 32x16 (шаг звеньев 1:1) */
 #synergySvg rect.ug-spr { opacity:.9; }
 #synergySvg rect.ug-spr.big { opacity:1; }
@@ -1053,16 +1057,8 @@ body[data-faction="demon"] .cell.playable:hover { background:#161110; }
 @keyframes ugRun40 { from { stroke-dashoffset: 40; } to { stroke-dashoffset: 0; } }
 @keyframes ugRun32 { from { stroke-dashoffset: 32; } to { stroke-dashoffset: 0; } }
 @keyframes ugRun24 { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
-/* туман: без blur-фильтра (десятки линий с blur = рывки), период дэша 120.
-   v1.5.4: только обычные звенья и Пакт Лича — у Владыки и Скованного
-   аур нет (фидбек игрока), их звенья чистые */
-#synergySvg line.fog { stroke:#aab8a8; stroke-width:4.5; stroke-linecap:round; stroke-dasharray: 46 74; opacity:.18; animation: fogDrift 11s linear infinite; }
-#synergySvg line.fog.mult { stroke:#c6c1a8; opacity:.3; }
-/* Пакт Тишины Лича: призрачная зеленоватая дымка (зона Пакта — настоящая механика) */
-#synergySvg line.fog.lich { stroke:#a8c8b0; opacity:.4; animation-duration:7s; }
-#synergySvg line.fog.faded { opacity:.1; animation-duration:16s; }
-#synergySvg line.fog.dead { opacity:.04; animation:none; }
-@keyframes fogDrift { from { stroke-dashoffset: 120; } to { stroke-dashoffset: 0; } }
+/* v1.5.5: туман на звеньях снят совсем (был и на обычных цепях, и на Пакте
+   Лича) — цепи стоят чистыми, состояние звена гасит саму банду (.ug-band) */
 
 /* АУРЫ НЕЖИТИ — ТУМАН: спокойная дымка; дышит, когда способность
    источника реально работает (класс aura-live из buildAuraMap) */

@@ -370,10 +370,11 @@ function specialActive(card, item, r, c) {
 }
 
 /* SVG-линии: парные синергии + цепи нежити (координаты — по открытым клеткам).
-   v1.5.0 «Четыре Лика Тьмы»: у НЕЖИТИ все связи — ржавые цепи (SVG-паттерн)
-   в стелющемся загробном тумане. Светится и движется только магия:
-   знамение Владыки (лиловая цепь тьмы), Пакт Лича (призрачный свет),
-   Скованный Цепью (искра натяжения по звеньям). Прочие фракции — прежний вид. */
+   v1.5.0: у НЕЖИТИ все связи — ржавые цепи. v1.5.5: цепь — стежок между
+   КРОМКАМИ соседних карт (центры карт свободны, как на эскизе игрока).
+   Светится и движется только магия: знамение Владыки (лиловая цепь тьмы),
+   Пакт Лича (призрачный свет), Скованный Цепью (искра натяжения по звеньям).
+   Прочие фракции — прежний вид. */
 function mkLine(cls, coords) {
   const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
   l.setAttribute('x1', coords.x1); l.setAttribute('y1', coords.y1);
@@ -392,9 +393,19 @@ function drawSynergies() {
   const cellAt = (r, c) => gridEl.children[(r - st) * n + (c - st)];
   const cx = (c) => { const b = cellAt(st, c).getBoundingClientRect(); return b.left - sr.left + b.width / 2; };
   const cy = (r) => { const b = cellAt(r, st).getBoundingClientRect(); return b.top - sr.top + b.height / 2; };
-  /* v1.5.4: полклетки — настолько цепи продлеваются за центры карт,
-     чтобы концы встали ровно на границы карт (крепление к краям) */
-  const ugExt = ug ? Math.round(cellAt(st, st).getBoundingClientRect().width / 2) : 0;
+  /* v1.5.5: геометрия цепи — от кромки до кромки: захват g ≈ четверть края
+     каждой карты + шов между клетками (3-5px). Центр карты не накрывается.
+     Координаты берутся из прямоугольников самих карт, а не клеток. */
+  const ugLinkCoords = !ug ? null : (r, c, nr, nc) => {
+    const ca = cellAt(r, c), cb = cellAt(nr, nc);
+    const ea = ca.querySelector('.card') || ca, eb = cb.querySelector('.card') || cb;
+    const ra = ea.getBoundingClientRect(), rb = eb.getBoundingClientRect();
+    const g = Math.round(ra.width * 0.26);
+    if (r === nr) return { x1: ra.right - sr.left - g, y1: ra.top - sr.top + ra.height / 2,
+                           x2: rb.left - sr.left + g, y2: rb.top - sr.top + rb.height / 2 };
+    return { x1: ra.left - sr.left + ra.width / 2, y1: ra.bottom - sr.top - g,
+             x2: rb.left - sr.left + rb.width / 2, y2: rb.top - sr.top + g };
+  };
   for (let r = st; r < st + n; r++) for (let c = st; c < st + n; c++) {
     const item = grid[r][c]; if (!item) continue;
     const card = CARDS[item.cardId];
@@ -406,7 +417,7 @@ function drawSynergies() {
       const pair = findPair(card, nCard);
       if (!pair) {
         /* Цепь нежити: соседство без пары всё равно даёт бонус */
-        if (ug && card.faction === 'undead' && nCard.faction === 'undead') drawUgLink(coords, 'plain', undefined, false, ugExt);
+        if (ug && card.faction === 'undead' && nCard.faction === 'undead') drawUgLink(ugLinkCoords(r, c, nb.r, nb.c), 'plain', undefined, false);
         return;
       }
       const kind = pair.kind === 'mult' ? 'mult' : pair.kind === 'chain' ? 'chain' : pair.kind === 'royal' ? 'royal' : 'good';
@@ -417,7 +428,7 @@ function drawSynergies() {
       if (ug) {
         /* вся связь нежити = ржавая цепь; сверху — только настоящая магия */
         const mode = royal ? 'royal' : lichW ? 'lich' : kind === 'chain' ? 'big' : 'plain';
-        drawUgLink(coords, mode, lf, kind === 'mult', ugExt);
+        drawUgLink(ugLinkCoords(r, c, nb.r, nb.c), mode, lf, kind === 'mult');
         return;
       }
       /* прежний вид (культисты/звери/демоны): линия синергии + бегущий поток.
@@ -431,23 +442,22 @@ function drawSynergies() {
   }
 }
 
-/* v1.5.0: звено нежити — тень (читаемость на картах), ржавые цепи, магия.
+/* v1.5.5 «Фикс Цепей»: звено нежити — тень (читаемость), ржавые цепи, магия.
    mode: plain | big (⛓ Скованный со зданием) | royal (Владыка — магия тьмы) |
-   lich (Пакт Тишины). Погасшие звенья из экономики (faded/dead) гаснут. */
-/* v1.5.4 «Ржавые Узы»: цепи = пиксель-арт тайл 32x18 (3 параллельные
-   ржавые цепи, звенья «лицом/с ребра», период 8px), натягивается
-   ПЛИТКАМИ-КАРТИНКАМИ на глобальной сетке 32px внутри клипа звена
-   (уроки v1.5.2/3: растяжение = каша; transform/patternTransform над
-   pattern-rect = фантомы Chromium — поэтому ни pattern'ов, ни transform).
-   Глобальная сетка даёт два эффекта сразу: (1) соседи одного ряда
-   продолжают фазу друг друга — цепь идёт СПЛОШНОЙ линией через весь
-   строй; (2) высота банды жёстко привязана к центру ряда — нет фазовой
-   ряби между звеньями. ЦЕПИ КРЕПЯТСЯ К КРАЯМ КАРТ (ext = полклетки).
-   ПЕРЕЛИВАНИЕ: тёплая волна света — общий linearGradient + SMIL, одна
-   на всю сеть (не «рандомный червь», а единый свет по металлу).
-   ТУМАН только где есть настоящая мгла: обычные звенья и Пакт Лича;
-   у Владыки и Скованного аур НЕТ (фидбек игрока) — ни тумана на их
-   звеньях, ни туманных зон на клетках (u10/u11 убраны из auraRadiusOf). */
+   lich (Пакт Тишины). Погасшие звенья из экономики (faded/dead) гаснут.
+   ГЕОМЕТРИЯ — стежок между кромками карт (см. ugLinkCoords): v1.5.2/3 шили
+   от центров, v1.5.4 тянула цепь поверх всей карты; обе геометрии неверны
+   (фидбек игрока: «цепи не должны идти поверх всей карты»).
+   БАНДА ЦЕПЕЙ: пиксель-арт тайл 32x22 (3 ржавые цепи, звенья «лицом/с
+   ребра», период 8px), плитки-КАРТИНКИ на глобальной сетке 32px внутри
+   клипа звена (уроки v1.5.2/3: растяжение = каша; transform/patternTransform
+   = фантомы Chromium — ни pattern'ов, ни transform).
+   ПЕРЕЛИВАНИЕ: тёплая волна света — общий linearGradient + SMIL, одна на
+   всю сеть (не «рандомный червь», а единый свет по металлу).
+   ТУМАНА НА ЗВЕНЬЯХ НЕТ: аур у юнитов не существует — снят и с обычных
+   звеньев, и с Пакта Лича; туманные зоны остались только у зданий
+   (настоящий радиус механики). Состояние звена читается с банды:
+   faded/dead гасят её целиком (CSS .ug-band). */
 const UG_TILE = 32, UG_BAND = 22;
 const UG_SHEEN_STOPS =
   '<stop offset="0" stop-color="#e8b878" stop-opacity="0"/>' +
@@ -464,18 +474,11 @@ const UG_DEFS =
   '<linearGradient id="ugSheenV" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="140" spreadMethod="repeat">' +
   UG_SHEEN_STOPS +
   '<animateTransform attributeName="gradientTransform" type="translate" from="0 0" to="0 140" dur="7.2s" repeatCount="indefinite"/></linearGradient>';
-function drawUgLink(coords, mode, lf, isMult, ext) {
+function drawUgLink(coords, mode, lf, isMult) {
   const NS = 'http://www.w3.org/2000/svg';
   const faded = lf !== undefined && lf > 0 && lf < 1, dead = lf === 0;
   const st = (faded ? ' faded' : dead ? ' dead' : '');
   const horiz = coords.y1 === coords.y2;
-  /* цепи крепятся к КРАЯМ карт: продлеваем звено на полклетки в обе
-     стороны — концы встают ровно на границы карт */
-  if (ext) {
-    coords = horiz
-      ? { x1: coords.x1 - ext, y1: coords.y1, x2: coords.x2 + ext, y2: coords.y2 }
-      : { x1: coords.x1, y1: coords.y1 - ext, x2: coords.x2, y2: coords.y2 + ext };
-  }
   const L = Math.hypot(coords.x2 - coords.x1, coords.y2 - coords.y1);
   /* 1) тень-подложка по ширине связки: читаемость на пёстрых картах */
   mkLine('ug-shadow' + st, coords);
@@ -500,6 +503,7 @@ function drawUgLink(coords, mode, lf, isMult, ext) {
   defs.appendChild(cp);
   const g = document.createElementNS(NS, 'g');
   g.setAttribute('clip-path', 'url(#ugc' + n + ')');
+  g.setAttribute('class', 'ug-band' + st);
   const href = horiz ? 'assets/fx/chain_rust.png' : 'assets/fx/chain_rust_v.png';
   if (horiz) {
     for (let x = Math.floor(coords.x1 / UG_TILE) * UG_TILE; x < coords.x2; x += UG_TILE) {
@@ -537,14 +541,8 @@ function drawUgLink(coords, mode, lf, isMult, ext) {
     const m = mkLine('ug-magic ' + (mode === 'royal' ? 'royal' : mode === 'lich' ? 'lich' : 'glint') + st, coords);
     m.style.animationDelay = (-(Math.abs(Math.round(coords.x1 * 7 + coords.y1 * 13)) % 40) / 10) + 's';
   }
-  /* 5) туман ТОЛЬКО где есть настоящая мгла: обычные звенья (загробная
-     тяга) и Пакт Лича (призрачная зона). У Владыки и Скованного аур
-     нет — их звенья стоят чисто, без тумана */
-  if (mode === 'plain' || mode === 'lich') {
-    const fogCls = 'fog' + (isMult ? ' mult' : '') + (mode === 'lich' ? ' lich' : '') + st;
-    const fl = mkLine(fogCls, coords);
-    fl.style.animationDelay = (-(Math.abs(Math.round(coords.x1 * 17 + coords.y1 * 29)) % 110) / 10) + 's';
-  }
+  /* 5) тумана на звеньях НЕТ (v1.5.5): цепи стоят чистыми. Состояние звена
+     читается с самой банды: faded/dead гасят её целиком (CSS .ug-band) */
 }
 function updateGridStats() {
   const inc = calculateIncome();
