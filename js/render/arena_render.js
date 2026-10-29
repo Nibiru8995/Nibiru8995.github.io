@@ -426,13 +426,77 @@ function updateArenaUI() {
   const dockStatus = $('arenaDockStatus');
   if (dockStatus) dockStatus.textContent = arenaState.status || 'Отряд ждёт приказа';
   const btn = $('arenaFightBtn'), retBtn = $('arenaRetreatBtn');
-  /* ФИКС «прыжка» арены: кнопка всегда занимает место, показывается через visibility */
-  if (arenaState.fighting) { btn.disabled = true; btn.textContent = '⚔ БОЙ ИДЁТ...'; retBtn.classList.add('visible'); }
+  /* ФИКС «прыжка» арены: кнопка всегда занимает место, показывается через visibility.
+     Резец Тьмы: без эмодзи и капса. */
+  if (arenaState.fighting) { btn.disabled = true; btn.textContent = 'Бой идёт…'; retBtn.classList.add('visible'); }
   else {
     btn.disabled = false; retBtn.classList.remove('visible');
     if (arenaState.cleared[arenaState.room - 1]) {
-      btn.textContent = arenaState.room < ARENA.roomsPerFloor ? '⚔ СЛЕДУЮЩАЯ КОМНАТА' : '⚔ НОВЫЙ ЭТАЖ';
-    } else btn.textContent = '⚔ В БОЙ';
+      btn.textContent = arenaState.room < ARENA.roomsPerFloor ? 'Следующая комната' : 'Новый этаж';
+    } else btn.textContent = 'В бой';
   }
   if (!battle.active) renderBattle(); /* превью поля */
+  renderArenaDockVisual(); /* Резец Тьмы: полосы и отряд в доке */
+}
+
+/* ------- Резец Тьмы: живой визуал боя в «Колыбели Войны” -------
+   Полосы здоровья отряда (золотая) и волны (кровавая) + мини-арты
+   бойцов из rendered fighters. Обновляется от updateHUD (heavy) и
+   сразу после каждого хода автобоя. */
+function renderArenaDockVisual() {
+  const minePct = $('adMinePct'), foePct = $('adFoePct');
+  const mineFill = $('adMineFill'), foeFill = $('adFoeFill');
+  const foeName = $('adFoeName'), squadEl = $('adSquad');
+  if (!minePct || !foeFill) return;
+
+  /* Отряд: суммарный HP живых бойцов (в бою — по боевой записи) */
+  let hNow = 0, hMax = 0;
+  if (battle.active) {
+    battle.units.filter(u => u.side === 'hero' && u.maxHp > 0).forEach(u => { hNow += Math.max(0, u.hp); hMax += u.maxHp; });
+  } else {
+    hMax = calcTotalHp();
+    hNow = Object.values(fighterHpState).reduce((s, st) => s + Math.max(0, st.hp || 0), 0);
+    if (hMax > 0 && hNow <= 0) hNow = hMax; /* свежий отряд — полный */
+  }
+  if (hMax <= 0) hMax = 1;
+  const mP = Math.max(0, Math.min(100, (hNow / hMax) * 100));
+  minePct.textContent = Math.round(mP) + '%';
+  mineFill.style.width = mP + '%';
+
+  /* Волна */
+  const wave = arenaState.enemy;
+  let fNow = 0, fMax = 0, fname = 'Волна';
+  if (wave) {
+    fname = wave.name;
+    if (battle.active) {
+      battle.units.filter(u => u.side === 'foe').forEach(u => { fNow += Math.max(0, u.hp); fMax += u.maxHp; });
+      if (fMax <= 0) fMax = waveMaxHp(wave) * Math.max(1, wave.units.length);
+    } else { fNow = fMax = waveMaxHp(wave); }
+    if (fMax <= 0) fMax = 1;
+    const fP = Math.max(0, Math.min(100, (fNow / fMax) * 100));
+    foePct.textContent = Math.round(fP) + '%';
+    foeFill.style.width = fP + '%';
+  } else { foePct.textContent = '—'; foeFill.style.width = '0%'; }
+  foeName.textContent = fname;
+
+  /* Отряд-иконки: мини-арты текущих бойцов, павшие — тускнеют */
+  const heroes = battle.active ? battle.units.filter(u => u.side === 'hero') : null;
+  let html = '';
+  if (heroes) {
+    heroes.forEach(u => {
+      const card = CARDS[u.cardId || u.id];
+      const dead = u.hp <= 0;
+      const art = card ? cardArtHTML(card, 'ad-art', '') : '<img class="ad-art">';
+      html += '<span class="ad-unit' + (dead ? ' dead' : '') + '">' + art + '</span>';
+    });
+  } else {
+    Object.keys(fighters).forEach(id => {
+      const card = CARDS[id];
+      if (!card) return;
+      const st = fighterHpState[id];
+      const dead = st && st.hp <= 0;
+      html += '<span class="ad-unit' + (dead ? ' dead' : '') + '">' + cardArtHTML(card, 'ad-art', '') + '</span>';
+    });
+  }
+  squadEl.innerHTML = html || '<span>отряд пуст</span>';
 }

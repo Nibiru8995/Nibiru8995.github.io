@@ -50,16 +50,19 @@ function renderCollection() {
   /* Фильтр редкостей: только открытые в текущей Эпохе */
   renderRarityFilter();
 
-  /* Вкладки: заблокированные фракции не отображаем вовсе */
+  /* Вкладки: заблокированные фракции не отображаем вовсе.
+     Резец Тьмы: сквозной фильтр «Все» убран — первая вкладка «Фракция»
+     показывает карты текущей Эпохи. */
   const tabsEl = $('collectionTabs');
   tabsEl.innerHTML = '';
   const invFactions = [...new Set(Object.keys(inventory).map(id => CARDS[id].faction))];
   const visible = FACTION_KEYS.filter(f => epochFactions(epoch).includes(f) &&
     (f === faction || invFactions.includes(f)));
-  const tabs = [['all', 'ВСЕ']].concat(visible.map(f => [f, FACTION_INFO[f].name.toUpperCase()]));
-  if (relicsUnlocked) tabs.push(['relics', '⚒ РЕЛИКВИИ']);
-  if (collectionFilter !== 'all' && collectionFilter !== 'relics' && !visible.includes(collectionFilter)) collectionFilter = 'all';
-  if (!relicsUnlocked && collectionFilter === 'relics') collectionFilter = 'all';
+  const tabs = [['faction', 'Фракция']].concat(visible.map(f => [f, FACTION_INFO[f].name]));
+  if (relicsUnlocked) tabs.push(['relics', 'Реликвии']);
+  if (collectionFilter === 'all' || collectionFilter === '') collectionFilter = 'faction';
+  if (collectionFilter !== 'faction' && collectionFilter !== 'relics' && !visible.includes(collectionFilter)) collectionFilter = 'faction';
+  if (!relicsUnlocked && collectionFilter === 'relics') collectionFilter = 'faction';
   relicTabActive = collectionFilter === 'relics';
   /* Фильтр редкостей не имеет смысла на вкладке реликвий */
   $('rarityFilter').style.visibility = relicTabActive ? 'hidden' : 'visible';
@@ -80,7 +83,7 @@ function renderCollection() {
   if (relicTabActive) { renderRelicTab(cont); return; }
 
   const ids = Object.keys(inventory).filter(id =>
-    (collectionFilter === 'all' || CARDS[id].faction === collectionFilter) &&
+    (collectionFilter === 'faction' ? CARDS[id].faction === faction : CARDS[id].faction === collectionFilter) &&
     (rarityFilter === 'all' || String(CARDS[id].rarity) === String(rarityFilter)));
   const pv = id => sel && sel.id !== id && linked(sel, CARDS[id]) ? 1 : 0;
   ids.sort((a, b) => pv(b) - pv(a) || rarityRank(CARDS[b].rarity) - rarityRank(CARDS[a].rarity) || a.localeCompare(b));
@@ -182,20 +185,21 @@ function renderRarityFilter() {
 
 function renderActions() {
   const el = $('cardActions');
-  const dupBtn = '<button id="sellDupesBtn" title="Продать все копии сверх стека ×' + maxStacks() + ' (выручка НЕ двигает порог Эпохи)">💰 Продать дубликаты</button>';
+  /* Резец Тьмы: масс-кнопка «Продать дубликаты» снята с экрана.
+     sellAllDupes/sellDupesOf живут в коде — судьба решается отдельно. */
   if (relicTabActive) {
-    el.innerHTML = '<span class="act-hint">Реликвии — чистый бафф на один столб Алтаря (культовые — на весь ритуал). Живут до конца Эпохи.</span>' +
-      '<button id="autoBtn2">🪄 Стак</button>';
+    el.innerHTML = '<span class="act-hint">Реликвии — усиливают один столб Алтаря (у культистов — весь ритуал). Живут до конца Эпохи.</span>' +
+      '<button id="autoBtn2">Стак</button>';
   } else if (!placingMode || !pendingCard || !inventory[pendingCard]) {
-    el.innerHTML = '<span class="act-hint">Выберите карту: <b style="color:#80e060">зелёная рамка</b> — партнёры по синергии, подсветятся лучшие клетки. ПКМ / Shift+клик — в бой.</span>' +
-      dupBtn + '<button id="autoBtn2">🪄 Стак</button>';
+    el.innerHTML = '<span class="act-hint">Выберите карту: <b style="color:#8fbf72">зелёная рамка</b> — партнёры по синергии подсветят лучшие клетки. ПКМ / Shift+клик — в бой.</span>' +
+      '<button id="autoBtn2">Стак</button>';
   } else {
     const c = CARDS[pendingCard], n = inventory[pendingCard];
-    const extra = n > maxStacks() ? ' <button id="sellThisBtn">💰 продать лишние (' + (n - maxStacks()) + ' → +' + fmtShort((n - maxStacks()) * sellPriceOf(c)) + ' 💎)</button>' : '';
+    const extra = n > maxStacks() ? ' <button id="sellThisBtn">продать лишние ×' + (n - maxStacks()) + ' → +' + fmtShort((n - maxStacks()) * sellPriceOf(c)) + '</button>' : '';
     el.innerHTML = '<b>' + cardArtHTML(c, 'inline-art', '') + ' ' + c.name + '</b> ×' + n +
-      ' <button data-n="1">⚔ ×1</button>' + (n > 5 ? '<button data-n="5">⚔ ×5</button>' : '') +
-      (n > 1 ? '<button data-n="' + n + '">⚔ все (' + n + ')</button>' : '') + extra +
-      '<span class="act-hint">или кликните по Алтарю</span>' + dupBtn + '<button id="autoBtn2">🪄 Стак</button>';
+      ' <button data-n="1">В бой ×1</button>' + (n > 5 ? '<button data-n="5">В бой ×5</button>' : '') +
+      (n > 1 ? '<button data-n="' + n + '">В бой все (' + n + ')</button>' : '') + extra +
+      '<span class="act-hint">или кликните по Алтарю</span>' + '<button id="autoBtn2">Стак</button>';
   }
   $('autoBtn2').onclick = autoStack;
   $('autoBtn2').title = 'Уложить карты из инвентаря в существующие стопки на поле';

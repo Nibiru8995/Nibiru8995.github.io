@@ -59,7 +59,7 @@ function updateHUD(now) {
     el.disabled = false;
     const cost = el.querySelector('.cost');
     if (paidN === 0) {
-      cost.textContent = n === 1 ? 'БЕСПЛАТНО ×' + freeRolls : 'БЕСПЛАТНО';
+      cost.textContent = n === 1 ? 'Бесплатно ×' + freeRolls : 'Бесплатно';
       el.classList.add('free-roll');
       el.disabled = false;
       return;
@@ -81,19 +81,19 @@ function updateHUD(now) {
   const p = epochProgress();
   const upBtn = $('epochUpBtn');
   const label = $('epochBtnLabel');
-  if (label) label.innerHTML = '⚜ ЭПОХА ' + epoch + ' <small class="ep-name">· ' + epochName(epoch) + '</small>';
+  if (label) label.innerHTML = 'Эпоха ' + epoch + ' <small class="ep-name">· ' + epochName(epoch) + '</small>';
   if (canEpochUp()) {
     upBtn.disabled = false;
     upBtn.classList.remove('notready');
     upBtn.classList.add('ready');
     upBtn.style.setProperty('--pct', '100%');
-    upBtn.querySelector('.cost').textContent = '⚔ НАЧАТЬ ЭПОХУ ' + (epoch + 1) + ' «' + epochName(epoch + 1) + '» → +' + epochSealsGain(epoch) + ' 🔱';
+    upBtn.querySelector('.cost').textContent = 'Начать Эпоху ' + (epoch + 1) + ' «' + epochName(epoch + 1) + '» → +' + epochSealsGain(epoch) + ' печатей';
   } else {
     upBtn.disabled = false;
     upBtn.classList.remove('ready');
     upBtn.classList.add('notready');
     upBtn.style.setProperty('--pct', (Math.floor(p.pct * 100)) + '%');
-    upBtn.querySelector('.cost').textContent = fmtShort(p.earned) + ' / ' + fmtShort(p.threshold) + ' 💎 · ' + Math.floor(p.pct * 100) + '%';
+    upBtn.querySelector('.cost').textContent = fmtShort(p.earned) + ' / ' + fmtShort(p.threshold) + ' · ' + Math.floor(p.pct * 100) + '%';
   }
   const achvBtnCost = $('achvBtn') && $('achvBtn').querySelector('.cost');
   if (achvBtnCost) achvBtnCost.textContent = achvCount() + ' / ' + ACHIEVEMENTS.length;
@@ -104,6 +104,8 @@ function updateHUD(now) {
     if (typeof renderRelicSlots === 'function') renderRelicSlots();
     if (typeof renderRitualBar === 'function') renderRitualBar();
     if (typeof renderContractsBtn === 'function') renderContractsBtn(); /* v1.2.9: бейдж Тёмного Пакта */
+    /* Резец Тьмы: живой визуал боя в «Колыбели Войны» */
+    if (typeof renderArenaDockVisual === 'function') renderArenaDockVisual();
   }
 }
 

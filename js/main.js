@@ -284,9 +284,8 @@ function wireEvents() {
   $('arenaCloseBtn').addEventListener('click', () => close_('arenaOverlay'));
 
   /* Коллекция */
-  $('bulkDup').onclick = () => bulkFight('dup');
-  $('bulk1').onclick = () => bulkFight('one');
-  $('bulkAll').onclick = () => { ask('Отправить в бой ВСЕ карты из коллекции?', () => bulkFight('all')); };
+  /* Резец Тьмы: масс-кнопки «в бой» (bulk1/bulkAll/bulkDup) сняты с экрана.
+     bulkFight() в logic/arena.js остаётся — судьба решается отдельно. */
   $('rarityFilter').addEventListener('change', e => { rarityFilter = e.target.value; renderCollection(); });
 
   /* Эпоха и ачивки: большая кнопка — старт при готовности, иначе Меню Эпохи */

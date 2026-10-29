@@ -26,6 +26,9 @@ function applyGridMetrics() {
   const sizeExpr = 'min(' + cap + 'px, max(40px, calc((100vh - ' + vhPad + 'px) / ' + n + ')), max(40px, calc((100vw - ' + vwPad + 'px) / ' + n + ')))';
   const wrap = $('gridWrap');
   if (wrap) wrap.style.setProperty('--cell-size', sizeExpr);
+  /* Резец Тьмы: слоты столбов — ровно те же квадраты, что клетки грида */
+  const rsr = $('relicSlotRow');
+  if (rsr) rsr.style.setProperty('--cell-size', sizeExpr);
   gridEl.style.gridTemplateColumns = 'repeat(' + n + ', var(--cell-size))';
   gridEl.style.gridTemplateRows = 'repeat(' + n + ', var(--cell-size))';
 }
@@ -67,6 +70,8 @@ function buildGrid() {
 /* ================= СЛОТЫ РЕЛИКВИЙ НАД АЛТАРЁМ (v1.2.6) =================
    Отдельная панель слева УБРАНА (перегружала интерфейс). Вместо неё —
    компактный ряд слотов прямо над гридом: столб ↔ слот, клик — вставить/снять.
+   Резец Тьмы: подпись вынесена ИЗ ряда, клетки — строгие квадраты того же
+   размера, что и клетки грида (1:1 по колонкам Алтаря).
    Реликвии культистов — глобальные (ритуальные): столб не важен.
    Открывается на Эпохе 2 (applyFeatureLocks). */
 function renderRelicSlots() {
@@ -75,23 +80,27 @@ function renderRelicSlots() {
   if (epoch < RELIC_SLOT_EPOCH) { if (row.style.display !== 'none') row.style.display = 'none'; return; }
   row.style.display = '';
   const st = gridStart();
+  /* сигнатура для мемоиза: какие столбы заняты чем */
   const cultGlobal = FACTION_INFO[faction].mechanic === 'formation';
-  let html = '<div class="rsr-title" title="Реликвии живут до конца Эпохи. Клик — вставить/снять">⚒ СТОЛБА</div>';
+  const sig = playableSize + '|' + st + '|' + cultGlobal + '|' + JSON.stringify(relicSlots);
+  if (row.dataset.sig === sig) return;
+  row.dataset.sig = sig;
+  let slots = '';
   for (let dc = 0; dc < playableSize; dc++) {
     const c = st + dc;
     const rel = relicAtCol(c);
     if (rel) {
-      html += '<div class="rsr-slot filled" data-col="' + c + '" style="--relicC:' + RELIC_RARITY_COLOR(rel.rarity) + '" title="' + rel.name + ' — клик: снять">' +
+      slots += '<div class="rsr-slot filled" data-col="' + c + '" style="--relicC:' + RELIC_RARITY_COLOR(rel.rarity) + '" title="' + rel.name + ' — клик: снять">' +
         relicArtHTML(rel, 'rsr-img', '') + '</div>';
     } else {
-      html += '<div class="rsr-slot empty" data-col="' + c + '" title="Пустой столб — клик: вставить реликвию"><span>+</span></div>';
+      slots += '<div class="rsr-slot empty" data-col="' + c + '" title="Пустой столб — клик: вставить реликвию"><span>+</span></div>';
     }
   }
-  if (cultGlobal) html += '<div class="rsr-note">ритуальные — действуют на весь ритуал</div>';
-  /* рендер вызывается каждый кадр — перестраиваем только при изменениях */
-  if (row.dataset.sig === html) return;
-  row.dataset.sig = html;
-  row.innerHTML = html;
+  row.innerHTML = '<div class="rsr-cap"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="6" height="14"/><rect x="13" y="3" width="6" height="14"/><path d="M8 17v4M16 17v4"/></svg>' +
+    '<span>Столбы — реликвии до конца Эпохи' + (cultGlobal ? ' · у культистов — на весь ритуал' : '') + ' · клик: вставить / снять</span></div>' +
+    '<div class="rsr-grid">' + slots + '</div>';
+  const g = row.querySelector('.rsr-grid');
+  g.style.gridTemplateColumns = 'repeat(' + playableSize + ', var(--cell-size))';
   row.querySelectorAll('.rsr-slot').forEach(el => { el.onclick = () => onColSlotClick(+el.dataset.col); });
 }
 
@@ -107,7 +116,7 @@ function onColSlotClick(c) {
   const avail = unassignedRelics();
   if (!avail.length) { toast('Свободных реликвий нет — они добываются из гачи (с Эпохи ' + RELIC_DROP_EPOCH + ')'); return; }
   const cultGlobal = FACTION_INFO[faction].mechanic === 'formation';
-  mk('relicPick', '<h2>⚒ Реликвия в столб ' + (c + 1) + '</h2>' +
+  mk('relicPick', '<h2>Реликвия в столб ' + (c + 1) + '</h2>' +
     '<div class="res">' + (cultGlobal
       ? 'Реликвии культистов — РИТУАЛЬНЫЕ: усиливают весь ритуал сразу, столб не важен.'
       : 'Бафф подействует на ВСЮ эту колонку Алтаря.') + '</div>' +
