@@ -374,31 +374,6 @@ function specialActive(card, item, r, c) {
    в стелющемся загробном тумане. Светится и движется только магия:
    знамение Владыки (лиловая цепь тьмы), Пакт Лича (призрачный свет),
    Скованный Цепью (искра натяжения по звеньям). Прочие фракции — прежний вид. */
-const UG_CHAIN_DEFS =
-  '<defs>' +
-  /* v1.5.1: НАСТОЯЩЕЕ ЗВЕНО — два шаблона. «Лицом» (A): широкий овал,
-     тёмная заливка, ржавый контур, блик. «С ребра» (B): узкий овал,
-     проходит сквозь соседнее звено (рисуется позже соседа — перекрытие
-     даёт настоящий переплёт, а не ряд окружностей). */
-  '<g id="ugLA">' +
-  '<ellipse rx="4.9" ry="3.1" fill="#0e0b06" stroke="#7b6a4c" stroke-width="1.5"/>' +
-  '<path d="M-3.1,-1.7 A3.7,2.3 0 0 1 2.3,-2.2" fill="none" stroke="#a8905e" stroke-width=".8" stroke-linecap="round" opacity=".85"/>' +
-  '</g>' +
-  '<g id="ugLB">' +
-  '<ellipse rx="1.7" ry="3.7" fill="#120e08" stroke="#5e523c" stroke-width="1.5"/>' +
-  '<path d="M-0.8,-2 A1.5,2.8 0 0 1 0.8,-2" fill="none" stroke="#8a774f" stroke-width=".7" stroke-linecap="round" opacity=".6"/>' +
-  '</g>' +
-  /* магия тьмы Владыки: тот же переплёт, лиловый металл */
-  '<g id="ugLAm">' +
-  '<ellipse rx="4.9" ry="3.1" fill="#0e0a14" stroke="#8b72c8" stroke-width="1.5"/>' +
-  '<path d="M-3.1,-1.7 A3.7,2.3 0 0 1 2.3,-2.2" fill="none" stroke="#c9b4ef" stroke-width=".8" stroke-linecap="round" opacity=".9"/>' +
-  '</g>' +
-  '<g id="ugLBm">' +
-  '<ellipse rx="1.7" ry="3.7" fill="#0c0912" stroke="#5e4a8e" stroke-width="1.5"/>' +
-  '<path d="M-0.8,-2 A1.5,2.8 0 0 1 0.8,-2" fill="none" stroke="#9a84d0" stroke-width=".7" stroke-linecap="round" opacity=".7"/>' +
-  '</g>' +
-  '</defs>';
-
 function mkLine(cls, coords) {
   const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
   l.setAttribute('x1', coords.x1); l.setAttribute('y1', coords.y1);
@@ -411,7 +386,7 @@ function mkLine(cls, coords) {
 function drawSynergies() {
   synergySvg.innerHTML = '';
   const ug = FACTION_INFO[faction].mechanic === 'chain'; /* v1.5.0: цепи — тема нежити */
-  if (ug) synergySvg.innerHTML = UG_CHAIN_DEFS; /* паттерны живут вместе с полотном */
+  /* v1.5.2: SVG-шаблоны звеньев убраны — связь рисует спрайт chain_rust.png */
   const n = playableSize, st = gridStart();
   const sr = synergySvg.getBoundingClientRect();
   const cellAt = (r, c) => gridEl.children[(r - st) * n + (c - st)];
@@ -456,41 +431,45 @@ function drawSynergies() {
 /* v1.5.0: звено нежити — тень (читаемость на картах), туман, ржавая цепь.
    mode: plain | big (⛓ Скованный со зданием) | royal (Владыка — магия тьмы) |
    lich (Пакт Тишины). Погасшие звенья из экономики (faded/dead) теряют туман. */
+/* v1.5.2 «Три Цепи»: звено нежити = ОДИН СПРАЙТ из трёх ржавых цепей
+   (assets/fx/chain_rust.png, 72x26, альфа затухает к краям — связка
+   «тонет в тумане» у центров карт). Растягивается по связи, у вертикальных
+   поворачивается. mode: plain | big (⛓ Скованный — шире) | royal (Владыка) |
+   lich (Пакт Лича). По всем цепям бежит лёгкая пульсация, магия светится
+   только когда творится, туман живёт своей фазой. */
 function drawUgLink(coords, mode, lf, isMult) {
   const faded = lf !== undefined && lf > 0 && lf < 1, dead = lf === 0;
   const st = (faded ? ' faded' : dead ? ' dead' : '');
-  /* 1) тень-подложка: цепь читается на пёстрых картах, но не «дорога» */
-  mkLine('ug-shadow' + st, coords);
-  /* 2) звенья: чередование «лицом/с ребра», шаг ~10.5px, лёгкая ручная
-     кривизна (детерминированная — цепь не прыгает при перерисовке) */
-  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-  g.setAttribute('class', 'ug-links' + (mode === 'big' ? ' big' : '') + st);
-  synergySvg.appendChild(g);
   const horiz = coords.y1 === coords.y2;
   const L = Math.hypot(coords.x2 - coords.x1, coords.y2 - coords.y1);
-  const n = Math.max(2, Math.round(L / 10.5));
-  const step = L / n;
-  const ang = horiz ? 0 : 90;
-  const A = mode === 'royal' ? 'ugLAm' : 'ugLA', B = mode === 'royal' ? 'ugLBm' : 'ugLB';
+  /* 1) тень-подложка по ширине связки: читаемость на пёстрых картах */
+  mkLine('ug-shadow' + st, coords);
+  /* 2) спрайт трёх цепей + лёгкий детерминированный наклон ±1.4° */
   const seed = Math.round(coords.x1 * 5 + coords.y1 * 11);
-  for (let i = 0; i < n; i++) {
-    const t = step * (i + 0.5);
-    const x = horiz ? coords.x1 + t : coords.x1;
-    const y = horiz ? coords.y1 : coords.y1 + t;
-    const u = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-    u.setAttribute('href', '#' + (i % 2 ? B : A));
-    u.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', '#' + (i % 2 ? B : A));
-    const j = ((i * 73 + seed) % 7) - 3; /* наклон ±3°: кованая, не по линейке */
-    u.setAttribute('transform', 'translate(' + x.toFixed(1) + ',' + y.toFixed(1) + ') rotate(' + (ang + j) + ')' + (mode === 'big' ? ' scale(1.18)' : ''));
-    g.appendChild(u);
-  }
-  /* 3) магия поверх металла — только когда она реально творится:
+  const j = ((seed % 5) - 2) * 0.7;
+  const bh = mode === 'big' ? 30 : 26;
+  const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+  img.setAttribute('class', 'ug-spr' + (mode === 'big' ? ' big' : '') + st);
+  img.setAttribute('x', String(coords.x1));
+  img.setAttribute('y', (coords.y1 - bh / 2).toFixed(1));
+  img.setAttribute('width', L.toFixed(1));
+  img.setAttribute('height', String(bh));
+  img.setAttribute('preserveAspectRatio', 'none');
+  img.setAttribute('transform', 'rotate(' + (horiz ? j : 90 + j) + ' ' + coords.x1 + ' ' + coords.y1 + ')');
+  img.setAttribute('href', 'assets/fx/chain_rust.png');
+  img.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', 'assets/fx/chain_rust.png');
+  synergySvg.appendChild(img);
+  /* 3) лёгкая пульсация по всем цепям: тёплый отблеск медленно бежит,
+     у каждой связи своя фаза — связки не пульсируют строем */
+  const p = mkLine('ug-pulse' + st, coords);
+  p.style.animationDelay = (-(Math.abs(seed * 3) % 75) / 10) + 's';
+  /* 4) магия поверх металла — только когда она реально творится:
      знамение Владыки (royal), Пакт Лича (lich), искра Скованного (big) */
   if (mode === 'royal' || mode === 'lich' || mode === 'big') {
     const m = mkLine('ug-magic ' + (mode === 'royal' ? 'royal' : mode === 'lich' ? 'lich' : 'glint') + st, coords);
     m.style.animationDelay = (-(Math.abs(Math.round(coords.x1 * 7 + coords.y1 * 13)) % 40) / 10) + 's';
   }
-  /* 4) туман ПОДЕРХ цепи, у каждой связи своя фаза (отрицательный delay) —
+  /* 5) туман ПОДЕРХ цепи, у каждой связи своя фаза (отрицательный delay) —
      туманы никогда не дёргаются строем и не «перезапускаются» глазу */
   const fogCls = 'fog' + (isMult ? ' mult' : '') +
     (mode === 'royal' ? ' royal' : mode === 'lich' ? ' lich' : '') + st;

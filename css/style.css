@@ -1028,19 +1028,27 @@ body[data-faction="demon"] .cell.playable:hover { background:#161110; }
    только магия — знамение Владыки, Пакт Лича, искра Скованного.
    Прочие фракции держат прежний вид (syn-flow и др.).
    ============================================================ */
-/* тень: тише и тоньше прежней — раньше была «дорога» под цепью */
-#synergySvg line.ug-shadow { stroke:#000; stroke-width:8; stroke-linecap:round; opacity:.34; }
-#synergySvg line.ug-shadow.faded { opacity:.16; }
-#synergySvg line.ug-shadow.dead { opacity:.07; }
-#synergySvg g.ug-links { opacity:.95; }
-#synergySvg g.ug-links.faded { opacity:.45; }
-#synergySvg g.ug-links.dead { opacity:.2; }
+/* тень: мягкая подложка по ширине связки трёх цепей */
+#synergySvg line.ug-shadow { stroke:#000; stroke-width:28; stroke-linecap:round; opacity:.2; }
+#synergySvg line.ug-shadow.faded { opacity:.12; }
+#synergySvg line.ug-shadow.dead { opacity:.05; }
+/* v1.5.2: спрайт трёх цепей — тянется между центрами карт */
+#synergySvg image.ug-spr { opacity:.86; }
+#synergySvg image.ug-spr.big { opacity:1; }
+#synergySvg image.ug-spr.faded { opacity:.5; }
+#synergySvg image.ug-spr.dead { opacity:.22; }
+/* лёгкая пульсация: тёплый отблеск медленно бежит по связке (7.5с цикл,
+   период дэша 150 = периоду keyframes — петля без рывка) */
+#synergySvg line.ug-pulse { stroke:#d8b878; stroke-width:20; stroke-linecap:round; stroke-dasharray: 22 128; opacity:.12; animation: ugPulse150 7.5s linear infinite; }
+#synergySvg line.ug-pulse.faded { opacity:.06; }
+#synergySvg line.ug-pulse.dead { display:none; }
+@keyframes ugPulse150 { from { stroke-dashoffset: 150; } to { stroke-dashoffset: 0; } }
 /* магия поверх цепи: у каждого штриха период дэша = периоду keyframes,
    петля бесшовная (прежде fog.glint с периодом 36 дёргался на 122) */
 #synergySvg line.ug-magic { stroke-linecap:round; fill:none; }
-#synergySvg line.ug-magic.royal { stroke:#b79bef; stroke-width:2.6; stroke-dasharray: 14 26; opacity:.8; filter: drop-shadow(0 0 5px #7a55c8); animation: ugRun40 3.4s linear infinite; }
-#synergySvg line.ug-magic.lich { stroke:#c2e2ac; stroke-width:2.2; stroke-dasharray: 10 22; opacity:.75; filter: drop-shadow(0 0 4px #7fae5e); animation: ugRun32 2.6s linear infinite; }
-#synergySvg line.ug-magic.glint { stroke:#d8a860; stroke-width:1.8; stroke-dasharray: 6 18; opacity:.7; animation: ugRun24 1.9s linear infinite; }
+#synergySvg line.ug-magic.royal { stroke:#b79bef; stroke-width:4.5; stroke-dasharray: 14 26; opacity:.85; filter: drop-shadow(0 0 6px #7a55c8); animation: ugRun40 3.4s linear infinite; }
+#synergySvg line.ug-magic.lich { stroke:#c2e2ac; stroke-width:4; stroke-dasharray: 10 22; opacity:.8; filter: drop-shadow(0 0 5px #7fae5e); animation: ugRun32 2.6s linear infinite; }
+#synergySvg line.ug-magic.glint { stroke:#d8a860; stroke-width:3; stroke-dasharray: 6 18; opacity:.75; animation: ugRun24 1.9s linear infinite; }
 @keyframes ugRun40 { from { stroke-dashoffset: 40; } to { stroke-dashoffset: 0; } }
 @keyframes ugRun32 { from { stroke-dashoffset: 32; } to { stroke-dashoffset: 0; } }
 @keyframes ugRun24 { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
