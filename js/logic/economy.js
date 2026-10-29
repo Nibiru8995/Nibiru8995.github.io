@@ -1,10 +1,23 @@
 'use strict';
 /* ============================================================
-   ЛОГИКА: ЭКОНОМИКА (logic/economy.js)
+   ЛОГИКА: ЭКОНОМИКА (logic/economy.js) — v1.4.0 «Закон и Кара»
    Доход карт: парные синергии (повторы одной пары дают всё меньше),
    бонус за разнообразие, формации, фракционные механики, ЗДАНИЯ
    (ауры/периодика — data/buildings.js), АРМИЯ нежити и уникальные
    механики ★4/★5 (SPECIALS в data/cards.js). Рендер отсюда не вызывается.
+
+   v1.4.0 — РАСЧЁТ СВЯЗЕЙ В ТРИ ФАЗЫ:
+   ФАЗА 1: сбор рёбер — пары из synergies.js + УНИВЕРСАЛЬНЫЕ звенья
+           прикованных зданий (⛓ Скованный Цепью: здание + любая карта).
+   ФАЗА 2: граф поля — ЗНАМЕНИЕ ВЛАДЫКИ (u10): вся связная цепь,
+           в которой стоит Владыка, усиливается (×1.25 к звеньям,
+           золотые линии). ПАКТ ТИШИНЫ ЛИЧА (u8): при активных звеньях
+           со Склепом И Некромантом звенья на ДЛИНЕ 2 от Лича не слабеют
+           (зелено-золотые линии).
+   ФАЗА 3: факторы затухания, активации, Хор разнообразия.
+   v1.3.1: надбавка за уникальные пары убрана; «Плачущий Камень» (slowfade).
+   Кары реликвий (nailPain/skullDeath/chorSorrow/urnGreed/heartDrain/
+   bannerDiscipline) и бафф «Короны Тлена» (crownLord ×2) — здесь.
    ============================================================ */
 
 const NEI4 = [[-1, 0], [1, 0], [0, -1], [0, 1]];
@@ -16,13 +29,11 @@ const NEI8 = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1], [1, -1], [1, 
    bld — ауры зданий (data/buildings.js) */
 let INC_CTX = { uniquePairs: 0, armyMult: {}, ritual: new Set(), ritualOuter: new Set(), formActive: {}, formCell: {}, bld: null, undeadCount: 0 };
 
-/* ------- РЕЛИКВИИ 4.0 «Закон Тьмы» (v1.3.0) -------
-   Слот столбца держит реликвию-ПРАВИЛО (ни одного множителя дохода):
-   законы затухания/Хора для нежити (nail/skull/chor/urn/heart/sun),
-   законы пищевой цепи для зверей (fang/range/bough/apex/kcap/hungerFlip),
-   законы Хаоса для демонов (chaos/coin/march/face/rift/crownD).
-   Культистские законы ритуала — глобальные (ritualRuleMods).
-   Освящение распространяет закон на соседние столбы. */
+/* ------- РЕЛИКВИИ 4.0 «Закон и Кара» (v1.4.0) -------
+   Слот столбца держит реликвию-ПРАВИЛО: бафф + ощутимая кара.
+   Законы затухания/Хора для нежити, пищевой цепи для зверей,
+   Хаоса для демонов. Культистские законы ритуала — глобальные
+   (ritualRuleMods). Освящение распространяет закон И кару. */
 function colRelicMap() {
   const m = {};
   if (epoch < RELIC_SLOT_EPOCH) return m;
@@ -100,10 +111,7 @@ function formation(r, c) {
 /* ---------------- РИТУАЛ КУЛЬТИСТОВ (v1.2.7 — ПЕПЕЛ И ПОРЯДОК) ----------------
    У культистов НЕТ ни дохода, ни синергий — вся фракция живёт ВЫПЛАТОЙ
    за проведённый ритуал (двиг — faction_mechanics.js). Здесь строится
-   только ГЕОМЕТРИЯ: цепь ритуала от Алтаря/Хтони + формации + ВНЕШНИЙ КРУГ.
-   v1.2.7: формации больше не требуют ПУСТЫХ клеток — поле 5×5 вмещает
-   несколько ритуальных узлов, а пространство вне цепи работает:
-   культисты рядом с ритуалом (но вне его) — «служители» ВНЕШНЕГО КРУГА. */
+   только ГЕОМЕТРИЯ: цепь ритуала от Алтаря/Хтони + формации + ВНЕШНИЙ КРУГ. */
 const FORM_DEFS = [
   { kind: 'diamond', mult: 2.6, label: 'Ромб' },
   { kind: 'square',  mult: 2.0, label: 'Кольцо' },
@@ -130,18 +138,15 @@ function buildRitualContext() {
       INC_CTX.ritual.add(k); q.push([n.r, n.c]);
     });
   }
-  /* ВНЕШНИЙ КРУГ (v1.2.7): культисты НЕ в цепи, но соседние с ней.
+  /* ВНЕШНИЙ КРУГ: культисты НЕ в цепи, но соседние с ней.
      Цепь строится только по ПРЯМЫМ сторонам (орто), поэтому служители —
-     это культисты ПО ДИАГОНАЛИ от ритуала: они не тянут цепь на себя,
-     но дают выплате и заряду бонус (двиг — computeRitualEngine). */
+     это культисты ПО ДИАГОНАЛИ от ритуала. */
   for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
     const k = r + ',' + c;
     if (INC_CTX.ritual.has(k) || !isCult(r, c)) continue;
     if (getNeighbors8(r, c).some(n => INC_CTX.ritual.has(n.r + ',' + n.c))) INC_CTX.ritualOuter.add(k);
   }
-  /* Формации вокруг каждого источника ритуала (множители СКОРОСТИ заряда).
-     v1.2.7: НИ одна формация не требует пустых клеток:
-     Крест — 4 орто-соседа; Кольцо — все 8 вокруг; Ромб — кольцо + 4 вершины. */
+  /* Формации вокруг каждого источника ритуала (множители СКОРОСТИ заряда). */
   altars.forEach(([ar, ac]) => {
     const orth = [[-1, 0], [1, 0], [0, -1], [0, 1]].map(([dr, dc]) => [ar + dr, ac + dc]);
     const ring = NEI8.map(([dr, dc]) => [ar + dr, ac + dc]);
@@ -172,11 +177,11 @@ function radius2(r, c) {
 
 function factionMult(r, c, card, item) {
   const mech = FACTION_INFO[faction].mechanic;
-  const B = INC_CTX.bld || { grave: {}, obelisk: {}, gates: {}, glacier: {}, pen: {}, pole: {}, spring: {}, pit: {}, wells: 0, mound: 0 };
+  const B = INC_CTX.bld || { grave: {}, graveM: {}, obelisk: {}, gates: {}, gatesM: {}, glacier: {}, glacierM: {}, pen: {}, pole: {}, spring: {}, pit: {}, wells: 0, mound: 0 };
   if (mech === 'chain') {
-    /* «Скованный Смертью» (★5): рядом с ним цепь считается в радиусе 2 */
-    const longChain = getNeighbors(r, c).some(n => n.item.cardId === 'u11');
-    const src = longChain ? radius2(r, c) : getNeighbors(r, c);
+    /* v1.4.0: «Скованный Цепью» больше не тянет цепь нежити — он прикован
+       к зданиям (см. computeIncome и SPECIALS u11). */
+    const src = getNeighbors(r, c);
     const nUndead = src.filter(n => CARDS[n.item.cardId].faction === 'undead').length;
     let m = 1 + 0.08 * nUndead;
     let nearAnchor = false, radius2Count = 0;
@@ -187,126 +192,107 @@ function factionMult(r, c, card, item) {
       if (oid === 'u10') { radius2Count++; if (dr || dc) nearAnchor = true; }
       else if (CARDS[oid].faction === 'undead') radius2Count++;
     }
+    /* «Владыка Тлена» (★5): +10% за каждую нежить в радиусе 2 */
     if (card.id === 'u10') m *= 1 + 0.1 * Math.max(0, radius2Count - 1);
     else if (nearAnchor) m *= 1.25;
     /* Псалмопевец: +10% за каждое своё активное звено */
     if (card.id === 'u12') m *= 1 + 0.10 * getNeighbors(r, c).filter(n => findPair(card, CARDS[n.item.cardId])).length;
-    /* v1.2.6: «Медленный рост» Зомби (u1) — накопленный бафф (тик в faction_mechanics.js) */
+    /* v1.2.6: «Медленный рост» Зомби (u1) — накопленный бафф */
     if (card.id === 'u1' && item.growBuff) m *= 1 + item.growBuff;
-    /* v1.2.5: новые ниши + здания */
     if (card.id === 'u9') m *= 1 + 0.15 * radius2(r, c).filter(n => CARDS[n.item.cardId].faction === 'undead').length; /* Коса */
     if (card.id === 'u7') m *= 1 + 0.08 * nUndead;                                                                /* Кладка */
     if (card.id === 'u0') m *= 1 + 0.15 * radius2(r, c).filter(n => CARDS[n.item.cardId].rarity === 5).length;   /* Гарнизон */
     if (card.id === 'u6') m *= 1 + 0.15 * getNeighbors(r, c).filter(n => { const nc2 = CARDS[n.item.cardId]; return nc2.faction === 'undead' && nc2.rarity === 3; }).length; /* Слёзы */
-    const ga = B.grave[r + ',' + c] || 0;            /* Кладбище: +12% нежити в зоне */
-    if (ga) m *= 1 + 0.12 * Math.min(3, ga);
-    if (B.mound > 0) m *= 1 + 0.03 * INC_CTX.undeadCount; /* Гора костей: +3% за каждую нежить */
+    /* Кладбище: +12% нежити в зоне; прикованное Кладбище — +18% */
+    const ga = B.grave[r + ',' + c] || 0;
+    if (ga) m *= 1 + 0.12 * (B.graveM[r + ',' + c] ? 1.5 : 1) * Math.min(3, ga);
+    /* Гора костей: +3% за каждую нежить; прикованная — +4.5% */
+    if (B.mound > 0) m *= 1 + (B.moundChained ? 0.045 : 0.03) * INC_CTX.undeadCount;
     return m;
   }
   if (mech === 'formation') {
-    /* v1.2.6: у культистов ДОХОДА НЕТ — вся экономика фракции — выплата
-       за проведённый ритуал (двиг в faction_mechanics.js) */
+    /* у культистов ДОХОДА НЕТ — вся экономика фракции — выплата за ритуал */
     return 0;
   }
   if (mech === 'cycle') {
-    /* ФИДБЕК 4: ЗВЕРИ БЕЗ СИНЕРГИЙ. Инкам — исключительно от пищевой цепи:
-       хищники кусают травоядных/падальщиков, травоядные пасутся на флоре,
-       флора лечит хищников и кормится выпасом, падальщики жиреют с смертей. */
+    /* ЗВЕРИ БЕЗ СИНЕРГИЙ. Инкам — исключительно от пищевой цепи. */
     let buffSum = (item.predBuff || 0) + (item.graze || 0) + (item.floraBuff || 0) + (item.scavBuff || 0);
     let m = 1 + buffSum;
-    /* v1.3.0: законные реликвии зверей обрабатываются тиком цепи
-       (fang/kcap/bough/hungerFlip — см. beastCycleTick) */
     const eng = colEngine(c);
     /* Голод хищника (без добычи рядом) — ставит beastCycleTick.
        «Кость Голода» (hungerFlip): голодный хищник НЕ СЛАБЕЕТ */
     if (item.hunger && item.hunger < 1 && !(eng && eng.hungerFlip)) m *= item.hunger;
-    /* v1.1: Лань — Стадность: +6% за соседа-травоядного */
+    /* v1.4.0 КАРА «Кости Голода» (hungerSated): сытый хищник столба −25% */
+    if (eng && eng.hungerSated && !(item.hunger && item.hunger < 1)) m *= 0.75;
     if (card.id === 'b12') m *= 1 + 0.06 * getNeighbors(r, c).filter(n => CARDS[n.item.cardId].diet === 'herb').length;
-    /* v1.1: Колосс — Живая Крепость: жиреет от укусов (fleshyBuff ставит beastCycleTick) */
     if (card.id === 'b17' && item.fleshyBuff) m *= 1 + item.fleshyBuff;
-    /* Древень-флора: +12% за каждого прокормленного (леченого или выпасанного) — в floraBuff */
-    /* «Гидра» (★4): +10% за соседа-хищника */
     if (card.id === 'b9') m *= 1 + 0.10 * getNeighbors(r, c).filter(n => isPredator(CARDS[n.item.cardId])).length;
-    /* «Василиск» (★4): +10% за каждого окаменевшего соседа */
     if (card.id === 'b8') m *= 1 + 0.10 * (item.petrCount || 0);
-    /* «Гидра»: рост от укусов вокруг (ставит beastCycleTick) */
     if (item.hydraBuff && item.hydraBuff > 1) m *= item.hydraBuff;
     return m;
   }
   if (mech === 'chaos') {
-    /* ДЕМОНЫ: УГЛИ — в толпе (2+ рядом) демон копит угли и ВЗРЫВАЕТСЯ
-       предсказуемыми результатами (бафф/превращение/перегрев). */
+    /* ДЕМОНЫ: УГЛИ — в толпе демон копит угли и ВЗРЫВАЕТСЯ. */
     let m = (1 + 0.10 * (item.embers || 0)) * (item.mutBuff || 1);
     if (item.boomUntil && item.boomUntil > gameTime) m *= 2;   /* «Перегрев»: ×2 на 12 сек */
     const nb = getNeighbors(r, c);
-    /* «Кровавый Жрец» (★3): +8% за соседа-демона (стабилизатор) */
+    const eng = colEngine(c);
+    /* v1.4.0 КАРА «Кандалов Легиона» (marchLoner): демон столба без соседей-демонов −30% */
+    if (eng && eng.marchLoner &&
+        !getNeighbors8(r, c).some(n => CARDS[n.item.cardId].faction === 'demon' && !CARDS[n.item.cardId].isBuilding)) m *= 0.7;
+    /* v1.4.0 КАРА «Разлома Ада» (riftDrain): −5% навсегда за каждый свой взрыв */
+    if (item.riftTax) m *= (1 - item.riftTax);
     if (card.id === 'd6') m *= 1 + 0.08 * nb.filter(n => CARDS[n.item.cardId].faction === 'demon').length;
-    /* «Адский Рыцарь» (★4): +6% за соседа-демона */
     if (card.id === 'd8') m *= 1 + 0.06 * nb.filter(n => CARDS[n.item.cardId].faction === 'demon').length;
-    /* «Князь Тьмы» (★5): +10% за демона в радиусе 2 */
     if (card.id === 'd10') m *= 1 + 0.10 * radius2(r, c).filter(n => CARDS[n.item.cardId].faction === 'demon').length;
-    /* v1.1: роли младших демонов и новые карты */
-    if (card.id === 'd0') m *= 1 + 0.08 * nb.filter(n => (n.item.embers || 0) >= 3).length;          /* Бес дразнит */
-    if (card.id === 'd2' && item.harmBuff) m *= 1 + item.harmBuff;                                    /* Гончая чует взрывы */
-    if (card.id === 'd13' && item.tyrBuff && item.tyrBuff > 1) m *= item.tyrBuff;                     /* Пепельный Тиран */
-    if (card.id === 'd14') m *= 1 + 0.10 * radius2(r, c).filter(n => CARDS[n.item.cardId].faction === 'demon').length; /* Кулак Пекла */
-    /* «Кузня Хаоса» Балрога: накопленный бафф */
+    if (card.id === 'd0') m *= 1 + 0.08 * nb.filter(n => (n.item.embers || 0) >= 3).length;
+    if (card.id === 'd2' && item.harmBuff) m *= 1 + item.harmBuff;
+    if (card.id === 'd13' && item.tyrBuff && item.tyrBuff > 1) m *= item.tyrBuff;
+    if (card.id === 'd14') m *= 1 + 0.10 * radius2(r, c).filter(n => CARDS[n.item.cardId].faction === 'demon').length;
     if (card.id === 'd9' && item.balrBuff) m *= item.balrBuff;
-    /* «Голод» (★5): +40% за соседа-демона, соседи теряют 10% */
     if (card.id === 'd11') m *= 1 + 0.40 * nb.filter(n => CARDS[n.item.cardId].faction === 'demon').length;
     else if (nb.some(n => n.item.cardId === 'd11')) m *= 0.9;
-    /* v1.2.5: Мучитель у раскалённых + здания (Врата/Ледник) */
     if (card.id === 'd12') m *= 1 + 0.12 * nb.filter(n => (n.item.embers || 0) >= 3).length;
+    /* Врата Ада: +10% демонов в зоне (прикованные — +15%); Ледник: +8% (+12%) */
     const ga = B.gates[r + ',' + c] || 0, gl = B.glacier[r + ',' + c] || 0;
-    if (ga) m *= 1 + 0.10 * Math.min(2, ga);
-    if (gl) m *= 1 + 0.08 * Math.min(2, gl);
+    if (ga) m *= 1 + 0.10 * (B.gatesM[r + ',' + c] ? 1.5 : 1) * Math.min(2, ga);
+    if (gl) m *= 1 + 0.08 * (B.glacierM[r + ',' + c] ? 1.5 : 1) * Math.min(2, gl);
     return m;
   }
   return 1;
 }
 
-/* ---------------- РАСЧЁТ ДОХОДА (одним проходом) ---------------- */
+/* ---------------- РАСЧЁТ ДОХОДА (три фазы, v1.4.0) ---------------- */
 function computeIncome() {
   const usage = {};           // pairIndex -> число НЕзащищённых активаций (слоты затухания)
-  const pairSeen = {};        // pairIndex -> вес в Хоре (1 обычная, 2 — Хор Забвения; voidr-пары не попадают)
-  const cellActs = {};        // 'r,c' -> [{pair, factor}]
+  const pairSeen = {};        // pairIndex -> вес в Хоре (1 обычная, 3 — Плачущий Камень)
+  const cellActs = {};        // 'r,c' -> [{pair, factor, amp}]
   const linkFactors = {};     // linkKey -> эффективный множитель затухания (тултип, линии; 0 — мертво)
-  const linkWarded = {};      // linkKey -> 1, если звено под Аурой Власти (Лич)
+  const linkRoyal = {};       // linkKey -> 1, звено усилено Знамением Владыки (золотое)
+  const linkLich = {};        // linkKey -> 1, звено под Пактом Тишины Лича (зелено-золотое)
+  const linkedCells = new Set(); // клетки, у которых есть хотя бы одно звено
 
-  /* Спец-флаги ★4/★5: Лич (снятие затухания), Голос Пустоты.
-     ФИДБЕК (раунд 3): зона Лича включает ВСЕ соседние клетки — в т.ч. пустые,
-     чтобы игрок чётко видел, куда попадает эффект.
-     v1.3.1: надбавка за уникальные пары (Хор) УБРАНА — «Глаз Бездны» больше не нужен */
-  let hasLich = false, hasVoice = false;
-  const lichAdj = new Set();
-  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
-    const it = grid[r][c]; if (!it) continue;
-    if (it.cardId === 'u8') {
-      hasLich = true;
-      lichAdj.add(r + ',' + c);
-      for (const [dr, dc] of NEI4) {
-        const nr = r + dr, nc = c + dc;
-        if (nr < 0 || nr >= GRID_SIZE || nc < 0 || nc >= GRID_SIZE) continue;
-        if (playableMask[nr] && playableMask[nr][nc]) lichAdj.add(nr + ',' + nc);
-      }
-    }
-    else if (it.cardId === 'c11') hasVoice = true;
-  }
-
-  /* РИТУАЛ культистов: строится до звеньев — звенья вне ритуала мертвы (фидбек 3) */
   const mech = FACTION_INFO[faction].mechanic;
   if (mech === 'formation') buildRitualContext();
 
-  /* РЕЛИКВИИ 4.0: движок законов по столбцам */
+  /* РЕЛИКВИИ 4.0: движок законов и кар по столбцам */
   rebuildRelicEngine();
-  const skullUse = {};        // pairIndex -> первое звено пары уже под Черепом Владыки
-  const wardedUse = {};       // pairIndex -> сколько звеньев пары уже под Аурой Власти (кап 2)
-  const cryptUse = {};        // pairIndex -> звенья под Склепом (кап 2 на пару)
-  const necroUse = {};        // pairIndex -> звенья Некроманта (кап 2 на пару)
+  const skullUse = {};        // pairIndex -> сколько звеньев пары уже под Черепом Владыки
+  const cryptUse = {};        // pairIndex -> звенья под Склепом (кап 2, прикованный — 3)
+  /* Глобальные кары забега (скан до фазы звеньев): «Сердце Пустоты» высасывает силу, «Штандарт» требует строя */
+  let heartDrainOn = false, bannerOn = false;
+  if (epoch >= RELIC_SLOT_EPOCH) for (const k in relicSlots) {
+    const r = relicById(relicSlots[k]); if (!r) continue;
+    const eng = RELIC_KIND_ENGINE[r.kind]; if (!eng) continue;
+    if (eng.heartDrain) heartDrainOn = true;
+    if (eng.bannerDiscipline) bannerOn = true;
+  }
 
-  /* v1.2.5: ЗДАНИЯ — ауры + зона Склепа + счётчик нежити (Гора костей) */
+  /* v1.2.5: ЗДАНИЯ — ауры + ⛓ прикованные здания + зона Склепа + счётчик нежити */
   INC_CTX.bld = buildBuildingAuras();
+  const INC_B = INC_CTX.bld;
   const cryptZone = buildCryptZone();
+  const cryptChainedZone = INC_CTX.cryptChainedZone || new Set();
   let undeadCount = 0;
   for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
     const it = grid[r][c];
@@ -314,104 +300,187 @@ function computeIncome() {
   }
   INC_CTX.undeadCount = undeadCount;
 
+  /* Клетки Личей и Владык (для Пакта Тишины и Знамения Владыки) + спец-флаги ★5 */
+  const lichCells = [], lordCells = [];
+  let hasVoice = false;
   for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
     const it = grid[r][c]; if (!it) continue;
-    /* прямые соседи вправо и вниз, чтобы звено считалось один раз */
+    if (it.cardId === 'u8') lichCells.push(r + ',' + c);
+    else if (it.cardId === 'u10') lordCells.push(r + ',' + c);
+    else if (it.cardId === 'c11') hasVoice = true;   /* «Голос Пустоты»: повторы культистов не ниже ×0.5 */
+  }
+
+  /* ============ ФАЗА 1: СБОР РЁБЕР ============ */
+  const edges = [];
+  let uniSeq = 0;
+  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
+    const it = grid[r][c]; if (!it) continue;
     for (const [dr, dc] of [[0, 1], [1, 0]]) {
       const nr = r + dr, nc = c + dc;
       if (nr >= GRID_SIZE || nc >= GRID_SIZE || !grid[nr][nc]) continue;
-      const pair = findPair(CARDS[it.cardId], CARDS[grid[nr][nc].cardId]);
-      if (!pair) continue;
-      const idx = pair.idx; /* v1.2.9.1 (perf): кэш индекса вместо indexOf */
+      const it2 = grid[nr][nc];
+      const A = CARDS[it.cardId], Bc = CARDS[it2.cardId];
       const key = r + ',' + c, key2 = nr + ',' + nc;
       const lk = linkKey(r, c, nr, nc);
-      const cardA = CARDS[it.cardId], cardB = CARDS[grid[nr][nc].cardId];
-
-      /* КУЛЬТИСТЫ: звено живо только когда ОБА конца в ритуале (фидбек 3).
-         Мёртвое звено не даёт доход, не жжёт слоты и не попадает в Хор. */
-      if (mech === 'formation' && cardA.faction === 'cultist' && cardB.faction === 'cultist' &&
-          (!INC_CTX.ritual.has(key) || !INC_CTX.ritual.has(key2))) {
-        linkFactors[lk] = 0;
-        continue;
+      let pair = findPair(A, Bc);
+      if (!pair) {
+        /* v1.4.0 ⛓ ПРИКОВАННОЕ ЗДАНИЕ: связывается с ЛЮБОЙ соседней картой */
+        const chainedSide = (A.isBuilding && INC_B.chainedAt && INC_B.chainedAt.has(key) && !Bc.isBuilding) ? key :
+          ((Bc.isBuilding && INC_B.chainedAt && INC_B.chainedAt.has(key2) && !A.isBuilding) ? key2 : null);
+        if (!chainedSide) continue;
+        const other = chainedSide === key ? Bc : A;
+        pair = { kind: 'flat', value: 1.5, idx: 'U' + (uniSeq++),
+          text: 'Прикованное здание + ' + other.name + ' → +1.5/с (цепь)' };
       }
-
-      /* Колонные реликвии (виды): titan — повторы², chain/sun — без повторов */
-      const e1 = colEngine(c), e2 = colEngine(nc);
-      const wardedLink = hasLich && (lichAdj.has(key) || lichAdj.has(key2));
-      const isUndeadPair = cardA.faction === 'undead' && cardB.faction === 'undead';
-      const cryptLink = isUndeadPair && (cryptZone.has(key) || cryptZone.has(key2));   /* Склеп */
-      const necroLink = cardA.id === 'u5' || cardB.id === 'u5';                        /* Тёмная наука Некроманта */
-
-      let factor;
-      if (wardedLink && (wardedUse[idx] || 0) < 2) {
-        /* «Лич» (★4): первые 2 звена КАЖДОЙ пары не слабеют и не жгут слоты */
-        wardedUse[idx] = (wardedUse[idx] || 0) + 1;
-        factor = 1;
-      } else if (cryptLink && (cryptUse[idx] || 0) < 2) {
-        /* «Склеп» (здание): звенья нежити в его зоне не слабеют (первые 2 на пару) */
-        cryptUse[idx] = (cryptUse[idx] || 0) + 1;
-        factor = 1;
-      } else if (necroLink && (necroUse[idx] || 0) < 2) {
-        /* «Тёмная наука» Некроманта: его звенья не слабеют */
-        necroUse[idx] = (necroUse[idx] || 0) + 1;
-        factor = 1;
-      } else {
-        /* v1.3.0 ЗАКОНЫ РЕЛИКВИЙ: защиты от затухания — по правилам.
-           Защищённое звено НЕ ЖЖЁТ слоты затухания (как у Лича/Склепа). */
-        const hasLaw = name => (e1 && e1[name]) || (e2 && e2[name]);
-        const colStack3 = cc => {
-          if (!(cc >= 0 && cc < GRID_SIZE)) return false;
-          for (let rr = 0; rr < GRID_SIZE; rr++) { const ci = grid[rr][cc]; if (ci && (ci.stacks || 1) >= 3) return true; }
-          return false;
-        };
-        /* «Корона Тлена»: звенья столба не затухают — безусловно */
-        if (hasLaw('noDecay')) { factor = 1; }
-        /* «Гробовой Гвоздь» (триггер): пока в столбе стопка ×3 — звенья не затухают */
-        else if (e1 && e1.nailHold && colStack3(c)) factor = 1;
-        else if (e2 && e2.nailHold && colStack3(nc)) factor = 1;
-        /* «Урна Владык»: звено, касающееся стопки, не затухает */
-        else if ((e1 && e1.stackHold && (it.stacks || 1) >= 2) ||
-                 (e2 && e2.stackHold && (grid[nr][nc].stacks || 1) >= 2)) factor = 1;
-        /* «Череп Владыки»: первое звено КАЖДОЙ пары держится */
-        else if (hasLaw('firstHold') && !(skullUse[idx] > 0)) {
-          skullUse[idx] = 1; factor = 1;
-        } else {
-          usage[idx] = (usage[idx] || 0) + 1;
-          /* Повторы: у нежити своя, ЖЁСТКАЯ кривая */
-          const curve = (cardA.faction === 'undead' && cardB.faction === 'undead') ? SYN_DR_UNDEAD : SYN_DR;
-          /* «Плачущий Камень» (v1.3.1): затухание пар столба НЕ УГЛУБЛЯЕТСЯ —
-             максимум первый шаг кривой, дальше звенья держат силу */
-          const fadeCap = ((e1 && e1.slowfade) || (e2 && e2.slowfade)) ? 1 : curve.length - 1;
-          factor = curve[Math.min(usage[idx] - 1, fadeCap)];
-          /* «Сердце Пустоты»: повтор не глушит звено столба до конца */
-          if (factor < 0.35 && hasLaw('revive')) factor = 0.35;
-        }
-      }
-      /* «Костяной Рыцарь»: повтор его пары не слабее ×0.5 */
-      if (cardA.id === 'u4' || cardB.id === 'u4') factor = Math.max(0.5, factor);
-      /* «Голос Пустоты» (★5): повторы у культистов не ниже ×0.5 */
-      if (hasVoice && cardA.faction === 'cultist' && cardB.faction === 'cultist')
-        factor = Math.max(0.5, factor);
-      (cellActs[key] = cellActs[key] || []).push({ pair, factor });
-      (cellActs[key2] = cellActs[key2] || []).push({ pair, factor });
-      linkFactors[lk] = factor;
-      if (wardedLink) linkWarded[lk] = 1;
-
-      /* v1.3.1: пары просто СЧИТАЮТСЯ (достижения «Синергетик»),
-         надбавки за разнообразие больше нет */
-      pairSeen[idx] = 1;
+      edges.push({ r, c, nr, nc, key, key2, lk, pair, aId: it.cardId, bId: it2.cardId });
+      linkedCells.add(key); linkedCells.add(key2);
     }
   }
+
+  /* ============ ФАЗА 2: ГРАФ — ЗНАМЕНИЕ ВЛАДЫКИ + ПАКТ ЛИЧА ============ */
+  const adj = {};
+  edges.forEach((e, i) => { (adj[e.key] = adj[e.key] || []).push(i); (adj[e.key2] = adj[e.key2] || []).push(i); });
+  const royalEdge = new Set(), lichEdge = new Set();
+  /* ЗНАМЕНИЕ ВЛАДЫКИ: вся связная цепь, содержащая Владыку, усиливается.
+     Пример: Владыка — Лич — Некромант — Псалмопевец: ВСЕ считаются
+     связанными с Владыкой (они в его цепи), каждое звено цепи ×1.25. */
+  {
+    const seen = new Set(lordCells);
+    const q = lordCells.slice();
+    while (q.length) {
+      const k = q.shift();
+      (adj[k] || []).forEach(i => {
+        royalEdge.add(i);
+        const e = edges[i];
+        const nk = e.key === k ? e.key2 : e.key;
+        if (!seen.has(nk)) { seen.add(nk); q.push(nk); }
+      });
+    }
+  }
+  /* ПАКТ ТИШИНЫ ЛИЧА: если у Лича активны звенья СО СКЛЕПОМ и с НЕКРОМАНТОМ
+     одновременно — звенья на ДЛИНЕ 2 от Лича не слабеют от повторов. */
+  for (const lk0 of lichCells) {
+    const my = adj[lk0] || [];
+    const hasCrypt = my.some(i => edges[i].aId === 'bl_crypt' || edges[i].bId === 'bl_crypt');
+    const hasNecro = my.some(i => edges[i].aId === 'u5' || edges[i].bId === 'u5');
+    if (!hasCrypt || !hasNecro) continue;
+    const seen = new Set([lk0]);
+    my.forEach(i => {
+      lichEdge.add(i);
+      const e = edges[i];
+      const nk = e.key === lk0 ? e.key2 : e.key;
+      if (seen.has(nk)) return;
+      seen.add(nk);
+      (adj[nk] || []).forEach(j => lichEdge.add(j));
+    });
+  }
+  /* Зона Пакта (для подсветки клеток зелено-золотом) */
+  const lichZoneCells = new Set();
+  lichEdge.forEach(i => { lichZoneCells.add(edges[i].key); lichZoneCells.add(edges[i].key2); });
+
+  /* ============ ФАЗА 3: ЗАТУХАНИЕ, АКТИВАЦИИ, ХОР ============ */
+  const colStack3 = cc => {
+    if (!(cc >= 0 && cc < GRID_SIZE)) return false;
+    for (let rr = 0; rr < GRID_SIZE; rr++) { const ci = grid[rr][cc]; if (ci && (ci.stacks || 1) >= 3) return true; }
+    return false;
+  };
+  for (let i = 0; i < edges.length; i++) {
+    const e = edges[i];
+    const A = CARDS[e.aId], Bc = CARDS[e.bId];
+    const it = grid[e.r][e.c], it2 = grid[e.nr][e.nc];
+    const key = e.key, key2 = e.key2, lk = e.lk, pair = e.pair;
+
+    /* КУЛЬТИСТЫ: звено живо только когда ОБА конца в ритуале (фидбек 3). */
+    if (mech === 'formation' && A.faction === 'cultist' && Bc.faction === 'cultist' &&
+        (!INC_CTX.ritual.has(key) || !INC_CTX.ritual.has(key2))) {
+      linkFactors[lk] = 0;
+      continue;
+    }
+
+    const e1 = colEngine(e.c), e2 = colEngine(e.nc);
+    const isUndeadPair = A.faction === 'undead' && Bc.faction === 'undead';
+    /* Склеп: звенья нежити в его зоне не слабеют (первые 2 на пару; прикованный — 3) */
+    const cryptLink = isUndeadPair && (cryptZone.has(key) || cryptZone.has(key2));
+    const cryptCap = (cryptChainedZone.has(key) || cryptChainedZone.has(key2)) ? 3 : 2;
+
+    let factor;
+    if (lichEdge.has(i)) {
+      /* «Пакт Тишины» Лича: звенья на длине 2 не слабеют и не жгут слоты */
+      factor = 1;
+    } else if (cryptLink && (cryptUse[pair.idx] || 0) < cryptCap) {
+      cryptUse[pair.idx] = (cryptUse[pair.idx] || 0) + 1;
+      factor = 1;
+    } else {
+      const hasLaw = name => (e1 && e1[name]) || (e2 && e2[name]);
+      /* «Гробовой Гвоздь» (триггер): пока в столбе стопка ×3 — звенья не затухают */
+      if (e1 && e1.nailHold && colStack3(e.c)) factor = 1;
+      else if (e2 && e2.nailHold && colStack3(e.nc)) factor = 1;
+      /* «Урна Владык»: звено, касающееся стопки ×2+, не затухает */
+      else if (hasLaw('stackHold') && ((it.stacks || 1) >= 2 || (it2.stacks || 1) >= 2)) factor = 1;
+      /* «Череп Владыки»: первые ДВА звена каждой пары держатся, третьи и далее — МЕРТВЫ */
+      else if (hasLaw('firstHold')) {
+        const used = skullUse[pair.idx] || 0;
+        if (used < 2) { skullUse[pair.idx] = used + 1; factor = 1; }
+        else factor = 0;
+      } else {
+        usage[pair.idx] = (usage[pair.idx] || 0) + 1;
+        /* Повторы: у нежити своя, ЖЁСТКАЯ кривая.
+           «Плачущий Камень» (v1.3.1 slowfade): затухание пар столба НЕ УГЛУБЛЯЕТСЯ */
+        const curve = isUndeadPair ? SYN_DR_UNDEAD : SYN_DR;
+        const fadeCap = ((e1 && e1.slowfade) || (e2 && e2.slowfade)) ? 1 : curve.length - 1;
+        factor = curve[Math.min(usage[pair.idx] - 1, fadeCap)];
+        /* «Сердце Пустоты»: повтор не глушит звено столба до конца */
+        if (factor < 0.35 && hasLaw('revive')) factor = 0.35;
+        /* КАРА «Сердца Пустоты» (heartDrain): вне столба Сердца затухание ВДВОЕ ЖЕСТЧЕ */
+        if (factor < 1 && heartDrainOn && !(e1 && e1.revive) && !(e2 && e2.revive))
+          factor = Math.max(0.02, factor * 0.5);
+        /* КАРА «Гробового Гвоздя»: пока стопки ×3 нет — затухание вдвое жёстче
+           (однократно на звено, даже если оба конца в столбе Гвоздя) */
+        if (factor < 1) {
+          const nailPainHit = (e1 && e1.nailPain && !colStack3(e.c)) || (e2 && e2.nailPain && !colStack3(e.nc));
+          if (nailPainHit) factor = Math.max(0.02, factor * 0.5);
+        }
+      }
+    }
+
+    (cellActs[key] = cellActs[key] || []).push({ pair, factor, amp: royalEdge.has(i) ? 1.25 : 1 });
+    (cellActs[key2] = cellActs[key2] || []).push({ pair, factor, amp: royalEdge.has(i) ? 1.25 : 1 });
+    linkFactors[lk] = factor;
+    if (royalEdge.has(i)) linkRoyal[lk] = 1;
+    if (lichEdge.has(i)) linkLich[lk] = 1;
+    /* «Костяной Рыцарь»: повтор его пары не слабее ×0.5 */
+    if (A.id === 'u4' || Bc.id === 'u4') {
+      const fix = f => f > 0 ? Math.max(0.5, f) : f;
+      factor = fix(factor);
+      cellActs[key][cellActs[key].length - 1].factor = factor;
+      cellActs[key2][cellActs[key2].length - 1].factor = factor;
+      linkFactors[lk] = factor;
+    }
+    /* «Голос Пустоты» (★5): повторы у культистов не ниже ×0.5 */
+    if (hasVoice && A.faction === 'cultist' && Bc.faction === 'cultist') {
+      const fix = f => f > 0 ? Math.max(0.5, f) : f;
+      factor = fix(factor);
+      cellActs[key][cellActs[key].length - 1].factor = factor;
+      cellActs[key2][cellActs[key2].length - 1].factor = factor;
+      linkFactors[lk] = factor;
+    }
+
+    /* v1.3.1: пары просто СЧИТАЮТСЯ (достижения «Синергетик»), надбавки за разнообразие нет */
+    if (factor > 0) pairSeen[pair.idx] = 1;
+  }
+
   const uniquePairs = Object.keys(pairSeen).length;
+  /* v1.3.1: надбавка за уникальные пары УБРАНА — уникальность считается для ачивок */
   const sealMult = 1 + 0.25 * sealLv.rich;
 
   /* Контекст для factionMult: уникальные пары */
   INC_CTX.uniquePairs = uniquePairs;
 
   /* АРМИЯ нежити: бонус за размер непрерывной компоненты (BFS по 4-соседству).
-     v1.2: реликвия «Штандарт Легиона» (kind legion) поднимает кап с ×2 до ×2.6 */
+     «Штандарт Легиона» (kind legion) поднимает кап с ×2 до ×2.6 */
   INC_CTX.armyMult = {};
   let armyBest = 0;
+  INC_CTX.armyBestSet = new Set();
   if (mech === 'chain') {
     let armyCap = 2;
     if (epoch >= RELIC_SLOT_EPOCH) for (const k in relicSlots) {
@@ -434,7 +503,10 @@ function computeIncome() {
         });
       }
       const am = Math.min(armyCap, 1 + 0.015 * (cells.length - 1));
-      if (cells.length > armyBest) armyBest = cells.length;
+      if (cells.length > armyBest) {
+        armyBest = cells.length;
+        INC_CTX.armyBestSet = new Set(cells.map(([cr, cc]) => cr + ',' + cc));
+      }
       cells.forEach(([cr, cc]) => { INC_CTX.armyMult[cr + ',' + cc] = am; });
     }
   }
@@ -447,12 +519,25 @@ function computeIncome() {
     const card = CARDS[it.cardId];
     let flat = 0, mult = 1;
     (cellActs[r + ',' + c] || []).forEach(a => {
-      if (a.pair.kind === 'flat') flat += a.pair.value * it.stacks * a.factor;
-      else mult *= 1 + (a.pair.value - 1) * a.factor;
+      const v = a.pair.value * a.amp; /* Знамение Владыки: звено цепи ×1.25 */
+      if (a.pair.kind === 'flat') flat += v * it.stacks * a.factor;
+      else mult *= 1 + (v - 1) * a.factor;
     });
-    /* РЕЛИКВИИ 4.0: множителей столбца больше НЕТ — только правила */
+    /* ЗАКОНЫ СТОЛБА v1.4.0: кары и Корона Тлена */
+    let colMult = 1;
+    const eng = colEngine(c);
+    if (eng) {
+      /* «Корона Тлена»: прибыль Некроманта/Лича/Владыки в столбе ×2 */
+      if (eng.crownLord && (card.id === 'u5' || card.id === 'u8' || card.id === 'u10')) colMult *= 2;
+      /* КАРА «Урны Владык»: одиночки −50%, стопки +30% */
+      if (eng.urnGreed) colMult *= (it.stacks || 1) >= 2 ? 1.3 : 0.5;
+      /* КАРА «Плачущего Камня»: карты без единого звена −50% */
+      if (eng.chorSorrow && !linkedCells.has(r + ',' + c)) colMult *= 0.5;
+    }
+    /* КАРА «Штандарта Легиона»: нежить вне крупнейшей армии −20% */
+    if (bannerOn && mech === 'chain' && card.faction === 'undead' && !INC_CTX.armyBestSet.has(r + ',' + c)) colMult *= 0.8;
     const val = (card.baseRate * it.stacks * mult + flat) * factionMult(r, c, card, it) * formation(r, c) *
-      (INC_CTX.armyMult[r + ',' + c] || 1);
+      (INC_CTX.armyMult[r + ',' + c] || 1) * colMult;
     perCell[r + ',' + c] = val;
     total += val;
   }
@@ -461,7 +546,7 @@ function computeIncome() {
   /* Временный буст всего дохода: ЖАТВА (Гора костей), вехи, Ускорение */
   total *= activeAltBuff().mult;
   incomeCache = { total, uniquePairs, perCell, pairUsage: usage, armyBest, armyMultOf: INC_CTX.armyMult,
-    linkFactors, linkWarded, lichZone: Array.from(lichAdj) };
+    linkFactors, linkRoyal, linkLich, lichZone: Array.from(lichZoneCells) };
   return total;
 }
 
@@ -475,9 +560,8 @@ function countLinks() {
   return n;
 }
 
-/* Мощь Алтаря: бонус к урону Арены от синергий (v1.2: кап 4, сильнее за звено —
-   петля баланса арена↔алтарь: чем богаче ритуал, тем больнее бьют отряды).
-   v1.2.6: у культистов звеньев нет — мощность растёт от УЧАСТНИКОВ ритуала. */
+/* Мощь Алтаря: бонус к урону Арены от синергий.
+   У культистов звеньев нет — мощность растёт от УЧАСТНИКОВ ритуала. */
 function altarPower() {
   if (FACTION_INFO[faction].mechanic === 'formation')
     return Math.min(4, 1 + 0.05 * (INC_CTX.ritual ? INC_CTX.ritual.size : 0));

@@ -186,6 +186,13 @@ function showCardTooltip(e, card, income, r, c) {
       mechLine += '<div class="tt-synergy"><div class="tt-synergy-title">Угли Хаоса</div>' + st + '</div>';
     }
   }
+  /* v1.4.0: ЗАКОН И КАРА столба (реликвия в этом столбце) */
+  if (r !== undefined && c !== undefined && epoch >= RELIC_SLOT_EPOCH) {
+    const rel = relicAtCol(c);
+    if (rel) mechLine += '<div class="tt-synergy"><div class="tt-synergy-title">⚒ Закон столба: ' + rel.name + '</div>' +
+      '<span style="color:#8fc87f">✅ ' + rel.rule + '</span><br>' +
+      '<span style="color:#e08a8a">❌ ' + rel.curse + '</span></div>';
+  }
   tooltip.innerHTML =
     '<div class="tt-name">' + cardArtHTML(card, 'tt-art', '') + '<span>' + card.name + '</span></div>' +
     '<div class="tt-stars">' + starsOf(card.rarity) + ' · ' + FACTION_INFO[card.faction].name + (card.isBuilding ? ' · постройка' : '') + '</div>' +

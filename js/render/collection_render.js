@@ -136,8 +136,9 @@ function renderRelicTab(cont) {
       relicArtHTML(r, 'relic-pick-img', '') +
       '<span><b>' + (own ? r.name : '???') + '</b> ' + (own ? '★'.repeat(r.rarity) : '') +
       '<br><small style="color:#8fc87f">✅ ' + (own ? r.rule : 'источник: гача с Эпохи ' + RELIC_DROP_EPOCH) + '</small>' +
+      (own ? '<br><small style="color:#e08a8a">❌ ' + r.curse + '</small>' : '') +
       (own ? '<br><small style="color:' + (col !== null ? '#c9a227' : '#8a7a5a') + '">' + (col !== null ? '📍 стоит в столбе ' + (col + 1) + ' (клик — снять)' : 'клик — поставить в столб') + '</small>' +
-        (cultGlobal ? '<br><small style="color:#c9a227">ритуальная — действует на ВЕСЬ ритуал</small>' : '')
+        (cultGlobal ? '<br><small style="color:#c9a227">ритуальная — закон и кара на ВЕСЬ ритуал</small>' : '')
         : '') + '</span></div>';
   }).join('') +
     (RELICS_OWNED.size === 0 ? '<div class="fighter-empty">Реликвий пока нет — падают из гачи с Эпохи ' + RELIC_DROP_EPOCH + '.<br>Слоты столбов — в ряду НАД Алтарём.</div>' : '');
@@ -171,7 +172,9 @@ function placeRelicCol(id, c) {
   const r = relicById(id);
   toast(r.icon + ' «' + r.name + '» встала в столб ' + (c + 1));
   sfx('place');
-  computeIncome(); renderGrid(); updateHUD(); saveRun();
+  computeIncome(); updateHUD(); saveRun();
+  enforceRelicBans(false); /* v1.4.0: кара-запрет немедленно изгоняет чужие карты */
+  renderGrid(); renderCollection();
 }
 
 /* Пересборка селекта редкостей: недоступные скрыты */

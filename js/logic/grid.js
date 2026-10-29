@@ -26,6 +26,8 @@ function hintClass(r, c) {
     if (linked(p, CARDS[it.cardId])) return 'syn-hint';
     return '';
   }
+  /* v1.4.0 КАРА СТОЛБА: карту, запрещённую реликвией, ставить нельзя — красная штриховка */
+  if (!cardAllowedInCol(pendingCard, c)) return 'dead-spot';
   const ns = getNeighbors(r, c);
   /* Здание: подсветка — клетки его будущей ауры уже содержат полезное */
   if (p.isBuilding) {
@@ -77,6 +79,12 @@ function onCellClick(r, c) {
     if (!playableMask[r][c]) return;
     const src = grid[moveSource.r][moveSource.c];
     if (!src) { moveSource = null; renderGrid(); updateBanner(); return; }
+    /* v1.4.0 КАРА СТОЛБА: запрещённую реликвией карту нельзя тащить в её столб */
+    if (!cardAllowedInCol(src.cardId, c)) {
+      const rel = banRelicAtCol(c);
+      toast('⛔ ' + (rel ? '«' + rel.name + '»' : 'Кара столба') + ': «' + CARDS[src.cardId].name + '» не примут в столб ' + (c + 1));
+      return;
+    }
     grid[r][c] = src; grid[moveSource.r][moveSource.c] = item || null;
     moveSource = null;
     computeIncome(); renderGrid(); renderCollection(); updateHUD(); updateBanner();
@@ -100,6 +108,13 @@ function onCellClick(r, c) {
   if (placingMode && pendingCard) {
     if (!playableMask[r][c] || (inventory[pendingCard] || 0) <= 0) return;
     const card = CARDS[pendingCard];
+    /* v1.4.0 КАРА СТОЛБА: реликвия запрещает ставить эту карту в её столб */
+    if (!cardAllowedInCol(pendingCard, c)) {
+      const rel = banRelicAtCol(c);
+      toast('⛔ ' + (rel ? '«' + rel.name + '»' : 'Кара столба') + ': «' + card.name + '» запрещена в столбе ' + (c + 1));
+      sfx('click');
+      return;
+    }
     const hp = cardHp(card.rarity);
     /* ХТОНЬ (★5) встаёт НА МЕСТО Ритуального Алтаря: Алтарь вернётся в коллекцию */
     if (item && (card.id === 'c10' || card.id === 'c11') && item.cardId === 'bl_altar') {
@@ -152,6 +167,8 @@ function bestStackFor(id) {
   for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
     const it = grid[r][c];
     if (!it || it.cardId !== id || it.stacks >= maxStacks()) continue; /* только уже стоящие такие же карты */
+    /* v1.4.0: в столб с карой-запретом авто-стак не кладёт */
+    if (!cardAllowedInCol(id, c)) continue;
     /* v1.2.7: у культистов инкам 0 — приоритет стака = участие в ритуале
        v1.2.9: приоритет уточнён — ЦЕПЬ > ВНЕШНИЙ КРУГ (служители тоже
        дают заряд/выплату, а раньше авто-стак их игнорировал) */

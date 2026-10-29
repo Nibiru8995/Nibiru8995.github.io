@@ -90,7 +90,7 @@ function renderRelicSlots() {
     const c = st + dc;
     const rel = relicAtCol(c);
     if (rel) {
-      slots += '<div class="rsr-slot filled" data-col="' + c + '" style="--relicC:' + RELIC_RARITY_COLOR(rel.rarity) + '" title="' + rel.name + ' — клик: снять">' +
+      slots += '<div class="rsr-slot filled" data-col="' + c + '" style="--relicC:' + RELIC_RARITY_COLOR(rel.rarity) + '" title="' + rel.name + ' — клик: снять\n✅ ' + rel.rule + '\n❌ ' + (rel.curse || '') + '">' +
         relicArtHTML(rel, 'rsr-img', '') + '</div>';
     } else {
       slots += '<div class="rsr-slot empty" data-col="' + c + '" title="Пустой столб — клик: вставить реликвию"><span>+</span></div>';
@@ -117,8 +117,8 @@ function onColSlotClick(c) {
   const cultGlobal = FACTION_INFO[faction].mechanic === 'formation';
   mk('relicPick', '<h2>Реликвия в столб ' + (c + 1) + '</h2>' +
     '<div class="res">' + (cultGlobal
-      ? 'Реликвии культистов — РИТУАЛЬНЫЕ: усиливают весь ритуал сразу, столб не важен.'
-      : 'Бафф подействует на ВСЮ эту колонку Алтаря.') + '</div>' +
+      ? 'Реликвии культистов — РИТУАЛЬНЫЕ: их закон и кара действуют на весь ритуал сразу.'
+      : 'Закон и КАРА реликвии действуют на ВСЮ эту колонку Алтаря.') + '</div>' +
     '<div id="relicPickGrid"></div>' +
     '<div class="btn-row"><button class="btn btn-take" id="relicPickX">Отмена</button></div>', 560);
   $('relicPickX').onclick = () => close_('relicPick');
@@ -126,7 +126,8 @@ function onColSlotClick(c) {
     const r = relicById(id);
     return '<div class="relic-pick" data-id="' + id + '" style="border-color:' + RELIC_RARITY_COLOR(r.rarity) + '">' +
       relicArtHTML(r, 'relic-pick-img', '') + '<span><b>' + r.name + '</b> ' + '★'.repeat(r.rarity) +
-      '<br><small style="color:#8fc87f">✅ ' + r.rule + '</small></span></div>';
+      '<br><small style="color:#8fc87f">✅ ' + r.rule + '</small>' +
+      '<br><small style="color:#e08a8a">❌ ' + r.curse + '</small></span></div>';
   }).join('');
   $('relicPickGrid').querySelectorAll('.relic-pick').forEach(el => {
     el.onclick = () => {
@@ -135,7 +136,9 @@ function onColSlotClick(c) {
       const r = relicById(el.dataset.id);
       toast(r.icon + ' «' + r.name + '» встала в столбец ' + (c + 1));
       sfx('place');
-      computeIncome(); renderGrid(); updateHUD(); saveRun();
+      computeIncome(); updateHUD(); saveRun();
+      enforceRelicBans(false); /* кара-запрет немедленно изгоняет чужие карты */
+      renderGrid();
     };
   });
   open_('relicPick');
@@ -164,8 +167,9 @@ function renderGrid() {
       cell.style.setProperty('--auraC', az.color);
     } else cell.style.removeProperty('--auraC');
     /* ФИДБЕК 1 (раунд 3): ЯРКАЯ золотая зона Ауры Власти — видно на любых клетках,
-       что соседние с Личем попадают под эффект (первые 2 звена без затухания) */
-    if (incomeCache.lichZone && incomeCache.lichZone.indexOf(r + ',' + c) >= 0) cell.classList.add('aura-warded');
+       что соседние с Личем попадают под эффект (первые 2 звена без затухания).
+       v1.4.0: зона Пакта Тишины Лича — зелено-золотая (звенья на длине 2 не слабеют). */
+    if (incomeCache.lichZone && incomeCache.lichZone.indexOf(r + ',' + c) >= 0) cell.classList.add('aura-lich');
     /* РИТУАЛ культистов (фидбек 3): клетки в ритуале, в формациях и ВНЕШНИЙ КРУГ.
        v1.0: живой визуал — мёртвые культисты тускнеют, активный Алтарь
        получает вращающееся кольцо рун, всплеск резонанса — золото. */
@@ -201,7 +205,13 @@ function renderGrid() {
         '<span class="income-badge">' + badgeTxt + '</span>';
       /* РЕЛИКВИИ 3.0: маркер реликвии на карте, стоящей в её столбце (спрайт) */
       const colRel = relicAtCol(c);
-      if (colRel && epoch >= RELIC_SLOT_EPOCH) badges += '<span class="anchor-badge relic-mini" style="color:' + RELIC_RARITY_COLOR(colRel.rarity) + '" title="Столбец под реликвией: ' + colRel.name + '">' + relicArtHTML(colRel, 'relic-mini-img', '') + '</span>';
+      if (colRel && epoch >= RELIC_SLOT_EPOCH) badges += '<span class="anchor-badge relic-mini" style="color:' + RELIC_RARITY_COLOR(colRel.rarity) + '" title="Столбец под реликвией: ' + colRel.name + '\n✅ ' + colRel.rule + '\n❌ ' + (colRel.curse || '') + '">' + relicArtHTML(colRel, 'relic-mini-img', '') + '</span>';
+      /* v1.4.0: ⛓ ПРИКОВАННОЕ ЗДАНИЕ (Скованным Цепью) */
+      if (card.isBuilding && INC_CTX.bld && INC_CTX.bld.chainedAt && INC_CTX.bld.chainedAt.has(r + ',' + c))
+        badges += '<span class="anchor-badge" style="color:#b8c4d4" title="⛓ Приковано Скованным Цепью: абилка срабатывает ДВАЖДЫ, аура ×1.5, звено с любой соседней картой">⛓</span>';
+      /* v1.4.0: ⛓ сам Скованный — маркер, когда его цепь работает */
+      if (card.id === 'u11' && getNeighbors(r, c).some(n => CARDS[n.item.cardId].isBuilding))
+        badges += '<span class="anchor-badge" style="color:#b8c4d4" title="Цепь здания захвачена">⛓</span>';
       /* ЗДАНИЯ: значок постройки + бейдж якоря для Алтаря */
       if (card.isBuilding) badges += '<span class="anchor-badge" style="color:#e8c060" title="Здание">🏛</span>';
       if (RITUAL_SOURCES[card.id]) badges += '<span class="anchor-badge">🔱</span>';
@@ -291,12 +301,16 @@ function specialActive(card, item, r, c) {
     case 'u1': return { active: (item.growBuff || 0) > 0 };
     case 'u2': return { active: r2.some(n => n.item.hp < n.item.maxHp - 0.01) };
     case 'u3': return { active: nb.some(n => n.item.stacks >= 2) };
-    case 'u4': case 'u5': case 'u8': case 'u12':
+    case 'u4': case 'u12':
       return { active: nb.some(n => !!findPair(card, CARDS[n.item.cardId])) };
+    case 'u8':
+      /* Пакт Тишины: активен при звеньях и со Склепом, и с Некромантом */
+      return { active: nb.some(n => n.item.cardId === 'bl_crypt') && nb.some(n => n.item.cardId === 'u5') };
     case 'u6': return { active: nb.some(n => { const q = CARDS[n.item.cardId]; return q.faction === 'undead' && q.rarity === 3; }) };
     case 'u7': return { active: nb.some(n => CARDS[n.item.cardId].faction === 'undead') };
     case 'u9': return { active: r2.some(n => CARDS[n.item.cardId].faction === 'undead') };
-    case 'u11': return { active: nb.some(n => CARDS[n.item.cardId].faction === 'undead') };
+    case 'u10': return { active: nb.some(n => CARDS[n.item.cardId].faction === 'undead') };
+    case 'u11': return { active: nb.some(n => CARDS[n.item.cardId].isBuilding) };
     case 'c1': return { active: nb.some(n => CARDS[n.item.cardId].faction === 'cultist') };
     case 'c2': return { active: nb.some(n => RITUAL_SOURCES[n.item.cardId]) };
     case 'c3': return { active: radius2(r, c).some(n => INC_CTX.ritual && INC_CTX.ritual.has(n.r + ',' + n.c)) };
@@ -349,21 +363,25 @@ function drawSynergies() {
         }
         return;
       }
-      const kind = pair.kind === 'mult' ? 'mult' : 'good';
+      /* v1.4.0: royal — звенья Владыки (золото), chain — связи Скованного со зданиями (цепи) */
+      const kind = pair.kind === 'mult' ? 'mult' : pair.kind === 'chain' ? 'chain' : pair.kind === 'royal' ? 'royal' : 'good';
       const base = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       base.setAttribute('x1', x1); base.setAttribute('y1', y1);
       base.setAttribute('x2', x2); base.setAttribute('y2', y2);
-      base.setAttribute('class', kind === 'mult' ? 'base-mult' : 'base-good');
+      base.setAttribute('class', kind === 'mult' ? 'base-mult' : kind === 'chain' ? 'base-chain' : kind === 'royal' ? 'base-royal' : 'base-good');
       synergySvg.appendChild(base);
       const lk = linkKey(r, c, nb.r, nb.c);
       const lf = incomeCache.linkFactors && incomeCache.linkFactors[lk] !== undefined ? incomeCache.linkFactors[lk] : 1;
-      const warded = !!(incomeCache.linkWarded && incomeCache.linkWarded[lk]);
+      const royal = !!(incomeCache.linkRoyal && incomeCache.linkRoyal[lk]);
+      const lichW = !!(incomeCache.linkLich && incomeCache.linkLich[lk]);
       const flow = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       flow.setAttribute('x1', x1); flow.setAttribute('y1', y1);
       flow.setAttribute('x2', x2); flow.setAttribute('y2', y2);
-      /* faded — реальное затухание из экономики; warded — Аура Власти (Лич);
-         dead — мёртвое звено культистов вне ритуала (фидбек 3) */
-      flow.setAttribute('class', 'syn-flow' + (kind === 'mult' ? ' mult' : '') + (lf === 0 ? ' dead' : lf < 1 ? ' faded' : '') + (warded ? ' warded' : ''));
+      /* faded — реальное затухание из экономики; royal — Знамение Владыки (золото);
+         lich — Пакт Тишины Лича (зелено-золотое); dead — мёртвое звено */
+      flow.setAttribute('class', 'syn-flow' + (kind === 'mult' ? ' mult' : kind === 'chain' ? ' chainflow' : '') +
+        (lf === 0 ? ' dead' : lf < 1 ? ' faded' : '') +
+        (lichW ? ' lich' : royal ? ' royal' : ''));
       synergySvg.appendChild(flow);
     });
   }

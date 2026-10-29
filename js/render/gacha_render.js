@@ -126,9 +126,10 @@ function showDropRelic(relicId) {
   $('dropStars').textContent = '★'.repeat(r.rarity) + ' · РЕЛИКВИЯ · ' + FACTION_INFO[r.faction].name;
   $('dropName').textContent = r.name;
   $('dropEffect').innerHTML = '<span style="color:#8fc87f">✅ ' + r.rule + '</span>' +
+    '<br><span style="color:#e08a8a">❌ ' + r.curse + '</span>' +
     (r.faction === 'cultist'
-      ? '<br><small style="color:#c9a227">Ритуальная: усиливает ВЕСЬ ритуал, столб не важен</small>'
-      : '<br><small style="color:#a08860">Вносит ЗАКОН в один столб Алтаря (Эпоха ' + RELIC_SLOT_EPOCH + '+)</small>');
+      ? '<br><small style="color:#c9a227">Ритуальная: закон и кара на ВЕСЬ ритуал, столб не важен</small>'
+      : '<br><small style="color:#a08860">Вносит ЗАКОН И КАРУ в один столб Алтаря (Эпоха ' + RELIC_SLOT_EPOCH + '+)</small>');
   $('dropFlavor').textContent = '«' + r.lore + '»';
   modalCard.classList.remove('rarity4', 'rarity5');
   playRarityEffect(modalCard, bannerEl, r.rarity === 5 ? 5 : r.rarity === 4 ? 4 : 3);
