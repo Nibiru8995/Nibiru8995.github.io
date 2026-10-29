@@ -125,10 +125,10 @@ function showDropRelic(relicId) {
   el.innerHTML = relicArtHTML(r, 'drop-art', '');
   $('dropStars').textContent = '★'.repeat(r.rarity) + ' · РЕЛИКВИЯ · ' + FACTION_INFO[r.faction].name;
   $('dropName').textContent = r.name;
-  $('dropEffect').innerHTML = '<span style="color:#8fc87f">✅ ' + r.buff + '</span>' +
+  $('dropEffect').innerHTML = '<span style="color:#8fc87f">✅ ' + r.rule + '</span>' +
     (r.faction === 'cultist'
       ? '<br><small style="color:#c9a227">Ритуальная: усиливает ВЕСЬ ритуал, столб не важен</small>'
-      : '<br><small style="color:#a08860">Чистый бафф одного столба Алтаря (Эпоха ' + RELIC_SLOT_EPOCH + '+)</small>');
+      : '<br><small style="color:#a08860">Вносит ЗАКОН в один столб Алтаря (Эпоха ' + RELIC_SLOT_EPOCH + '+)</small>');
   $('dropFlavor').textContent = '«' + r.lore + '»';
   modalCard.classList.remove('rarity4', 'rarity5');
   playRarityEffect(modalCard, bannerEl, r.rarity === 5 ? 5 : r.rarity === 4 ? 4 : 3);
@@ -200,7 +200,7 @@ function showMulti(cardIds, count, relicIds) {
       el.style.setProperty('--cardBg', r.rarity === 5 ? '#4a3010' : '#3a2040');
       el.innerHTML = relicArtHTML(r, 'multi-art', '') +
         '<span class="multi-name">' + r.name + '</span>';
-      el.title = '✅ ' + r.buff;
+      el.title = '✅ ' + r.rule;
       rev.appendChild(el);
       setTimeout(() => { if (r.rarity === 4) el.classList.add('rare4'); else if (r.rarity === 5) el.classList.add('rare5'); }, Math.min(i * 60, 500));
     });

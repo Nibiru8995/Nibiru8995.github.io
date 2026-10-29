@@ -105,7 +105,7 @@
   </div>
 </div>
 
-<footer id="verFoot">версия v1.2.9.3 «Резец Тьмы» · серый мрак, плоский чекан</footer>
+<footer id="verFoot">версия v1.3.0 «Закон Тьмы» · реликвии-правила, Стена Тьмы, блэкджек</footer>
 
 <div id="toast"></div>
 <canvas id="fxCanvas"></canvas>
@@ -135,9 +135,18 @@
 
 <div class="modal show" id="menu" style="z-index:500"><div class="modal-card" style="max-width:340px"><h2 style="font-size:24px">⚜ Гача-Гриндер 2 ⚜</h2><div class="desc">Тёмное Наследие · Эпохи Тьмы</div>
 <button class="btn btn-take" id="menuContinue" style="width:100%;max-width:none">▶ Продолжить</button><button class="btn btn-take" id="menuNew" style="width:100%;max-width:none">✦ Новая игра</button><button class="btn btn-take" id="menuTut" style="width:100%;max-width:none">📖 Обучение</button><button class="btn btn-take" id="menuEpoch" style="width:100%;max-width:none">⚜ Меню Эпохи <small>(печати 🔱, Алтарь)</small></button>
+<div id="wallBox">
+  <div id="wallHead"><span>☠ СТЕНА ТЬМЫ</span><span id="wallRefresh" title="Обновить">⟳</span></div>
+  <div id="wallRows"><div class="wall-empty">Слушаем Тьму…</div></div>
+  <div id="wallSendRow">
+    <span id="wallName" title="Сменить имя">Аноним</span>
+    <input id="wallIn" maxlength="200" placeholder="Слово во Тьму…" autocomplete="off">
+    <button id="wallGo" title="Отправить">➤</button>
+  </div>
+</div>
 <div class="flavor">Крутите карты одной фракции, стройте синергии на Алтаре, качайте Эпохи.</div>
 <div class="flavor" id="menuFlavor">Тёмное Наследие · Эпохи Тьмы</div>
-<div class="flavor" style="color:#a08c56">версия 1.2.9.3 «Резец Тьмы»</div></div></div>
+<div class="flavor" style="color:#a08c56">версия 1.3.0 «Закон Тьмы»</div></div></div>
 <div id="tutPanel"><div id="tutText"></div><div id="tutBtns"><span id="tutStep"></span><button class="mini" id="tutExit">Выйти</button><button class="btn btn-take" id="tutNext" style="max-width:120px;padding:5px 10px">Далее</button></div></div>
 <div id="guidePanel"><div id="guideText"></div><div id="guideBtns"><span id="guideStepLbl"></span><button class="mini" id="guideSkip">Пропустить</button><button class="btn btn-take" id="guideNext" style="max-width:120px;padding:5px 10px">Далее</button></div></div>
 <div id="tooltip"></div><div id="selectionBanner"></div>
@@ -192,6 +201,7 @@
 <script src="js/logic/milestones.js"></script>
 <script src="js/logic/contracts.js"></script>
   <script src="js/logic/leaderboard.js"></script>
+  <script src="js/logic/wall.js"></script>
 <script src="js/logic/guide.js"></script>
 <script src="js/render/hud.js"></script>
 <script src="js/render/fx.js"></script>

@@ -231,6 +231,8 @@ function showMenu() {
   gamePaused = true;
   $('menuContinue').disabled = !hasRunSave() && !gameStarted;
   $('menu').classList.add('show');
+  /* v1.3.0: Стена Тьмы живёт в меню — при каждом открытии просим свежак */
+  if (typeof wallFetch === 'function') setTimeout(wallFetch, 100);
 }
 function hideMenu() { $('menu').classList.remove('show'); gamePaused = false; }
 function restartWith(mode) {
@@ -306,7 +308,7 @@ function wireEvents() {
     close_('hub');
     if (g.dataset.g === 'slots') return openSlots();
     open_('cgModal');
-    ({ aviator: gAviator, roulette: gRoulette, poker: gPoker })[g.dataset.g]();
+    ({ aviator: gAviator, roulette: gRoulette, blackjack: gBlackjack })[g.dataset.g]();
   });
   $('cgClose').onclick = () => { if (busy) return toast('Сначала завершите раунд'); close_('cgModal'); open_('hub'); };
   $('slotCloseBtn').addEventListener('click', () => { if (casinoSpinning) return; close_('casinoModal'); });
@@ -318,7 +320,7 @@ function wireEvents() {
   $('cgBody').addEventListener('click', e => {
     if (e.target.dataset.chip || e.target.dataset.k) rouletteBoardClick(e);
     const a = e.target.dataset.p;
-    if (a) pkAct(a);
+    if (a) bjAct(a);
   });
 
   /* Кнопки ½/×2/МАКС у ставок */
@@ -374,7 +376,7 @@ function wireEvents() {
   /* Клавиши и глобальные события */
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
-      for (const id of ['casinoModal', 'cgModal', 'hub', 'epochWarn', 'factionModal', 'epochModal', 'achvModal', 'dlg', 'dbgModal', 'relicPick', 'relicsModal', 'arenaOverlay', 'contractModal']) {
+      for (const id of ['casinoModal', 'cgModal', 'hub', 'epochWarn', 'factionModal', 'epochModal', 'achvModal', 'dlg', 'dbgModal', 'relicPick', 'relicsModal', 'arenaOverlay', 'contractModal', 'wallNameModal']) {
         const m = $(id);
         if (m && m.classList.contains('show')) {
           if (id === 'casinoModal' && casinoSpinning) return;
@@ -436,6 +438,7 @@ setInterval(() => {
   loadMeta();
   supaPing(); /* v1.2.9.2: уникальный игрок за день */
   maybeAskNick(); /* v1.2.9.2: имя для Таблички Тьмы — спрашиваем один раз */
+  wallInit(); /* v1.3.0: СТЕНА ТЬМЫ — чат в главном меню */
   wireEvents();
   fxInit();
   document.addEventListener('pointerdown', soundUnlock, { once: true });

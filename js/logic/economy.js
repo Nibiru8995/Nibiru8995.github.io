@@ -16,11 +16,13 @@ const NEI8 = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1], [1, -1], [1, 
    bld — ауры зданий (data/buildings.js) */
 let INC_CTX = { uniquePairs: 0, armyMult: {}, ritual: new Set(), ritualOuter: new Set(), formActive: {}, formCell: {}, bld: null, undeadCount: 0 };
 
-/* ------- РЕЛИКВИИ 3.0: движок видов эффектов (фидбек 8) -------
-   Слот столбца держит фракционную реликвию. Вид эффекта описан
-   в RELIC_KIND_ENGINE (data/relics.js); базовый множитель столбца
-   и штраф соседям — colMult/nei. Спец-виды (form/hunt/fertile/apex/
-   king/chaos/hungerFast) применяются во фракционных ветках. */
+/* ------- РЕЛИКВИИ 4.0 «Закон Тьмы» (v1.3.0) -------
+   Слот столбца держит реликвию-ПРАВИЛО (ни одного множителя дохода):
+   законы затухания/Хора для нежити (nail/skull/chor/urn/heart/sun),
+   законы пищевой цепи для зверей (fang/range/bough/apex/kcap/hungerFlip),
+   законы Хаоса для демонов (chaos/coin/march/face/rift/crownD).
+   Культистские законы ритуала — глобальные (ritualRuleMods).
+   Освящение распространяет закон на соседние столбы. */
 function colRelicMap() {
   const m = {};
   if (epoch < RELIC_SLOT_EPOCH) return m;
@@ -212,15 +214,12 @@ function factionMult(r, c, card, item) {
        флора лечит хищников и кормится выпасом, падальщики жиреют с смертей. */
     let buffSum = (item.predBuff || 0) + (item.graze || 0) + (item.floraBuff || 0) + (item.scavBuff || 0);
     let m = 1 + buffSum;
-    /* «Клык Альфы» (реликвия): баффы охоты/выпаса ×1.5 */
+    /* v1.3.0: законные реликвии зверей обрабатываются тиком цепи
+       (fang/kcap/bough/hungerFlip — см. beastCycleTick) */
     const eng = colEngine(c);
-    if (eng && eng.hunt && buffSum > 0) m = 1 + buffSum * 1.5;
-    /* «Ветвь Древеня» (реликвия): флора столбца — баффы кормления ×2 */
-    if (eng && eng.fertile && card.diet === 'flora') m = 1 + buffSum * 2;
-    /* «Корона Зверя» (реликвия): травоядные столбца −25% */
-    if (eng && eng.herbPenalty && card.diet === 'herb') m *= eng.herbPenalty;
-    /* Голод хищника (без добычи рядом) — ставит beastCycleTick */
-    if (item.hunger && item.hunger < 1) m *= item.hunger;
+    /* Голод хищника (без добычи рядом) — ставит beastCycleTick.
+       «Кость Голода» (hungerFlip): голодный хищник НЕ СЛАБЕЕТ */
+    if (item.hunger && item.hunger < 1 && !(eng && eng.hungerFlip)) m *= item.hunger;
     /* v1.1: Лань — Стадность: +6% за соседа-травоядного */
     if (card.id === 'b12') m *= 1 + 0.06 * getNeighbors(r, c).filter(n => CARDS[n.item.cardId].diet === 'herb').length;
     /* v1.1: Колосс — Живая Крепость: жиреет от укусов (fleshyBuff ставит beastCycleTick) */
@@ -298,9 +297,9 @@ function computeIncome() {
   const mech = FACTION_INFO[faction].mechanic;
   if (mech === 'formation') buildRitualContext();
 
-  /* РЕЛИКВИИ 3.0: движок видов по столбцам (фидбек 8) */
+  /* РЕЛИКВИИ 4.0: движок законов по столбцам */
   rebuildRelicEngine();
-  const colR = colRelicMap();
+  const skullUse = {};        // pairIndex -> первое звено пары уже под Черепом Владыки
   const wardedUse = {};       // pairIndex -> сколько звеньев пары уже под Аурой Власти (кап 2)
   const cryptUse = {};        // pairIndex -> звенья под Склепом (кап 2 на пару)
   const necroUse = {};        // pairIndex -> звенья Некроманта (кап 2 на пару)
@@ -357,12 +356,33 @@ function computeIncome() {
         necroUse[idx] = (necroUse[idx] || 0) + 1;
         factor = 1;
       } else {
-        usage[idx] = (usage[idx] || 0) + 1;
-        /* Повторы: у нежити своя, ЖЁСТКАЯ кривая */
-        const curve = (cardA.faction === 'undead' && cardB.faction === 'undead') ? SYN_DR_UNDEAD : SYN_DR;
-        factor = curve[Math.min(usage[idx] - 1, curve.length - 1)];
-        if ((e1 && e1.decaySq) || (e2 && e2.decaySq)) factor = factor * factor;
-        if ((e1 && e1.noDecay) || (e2 && e2.noDecay)) factor = 1;
+        /* v1.3.0 ЗАКОНЫ РЕЛИКВИЙ: защиты от затухания — по правилам.
+           Защищённое звено НЕ ЖЖЁТ слоты затухания (как у Лича/Склепа). */
+        const hasLaw = name => (e1 && e1[name]) || (e2 && e2[name]);
+        const colStack3 = cc => {
+          if (!(cc >= 0 && cc < GRID_SIZE)) return false;
+          for (let rr = 0; rr < GRID_SIZE; rr++) { const ci = grid[rr][cc]; if (ci && (ci.stacks || 1) >= 3) return true; }
+          return false;
+        };
+        /* «Корона Тлена»: звенья столба не затухают — безусловно */
+        if (hasLaw('noDecay')) { factor = 1; }
+        /* «Гробовой Гвоздь» (триггер): пока в столбе стопка ×3 — звенья не затухают */
+        else if (e1 && e1.nailHold && colStack3(c)) factor = 1;
+        else if (e2 && e2.nailHold && colStack3(nc)) factor = 1;
+        /* «Урна Владык»: звено, касающееся стопки, не затухает */
+        else if ((e1 && e1.stackHold && (it.stacks || 1) >= 2) ||
+                 (e2 && e2.stackHold && (grid[nr][nc].stacks || 1) >= 2)) factor = 1;
+        /* «Череп Владыки»: первое звено КАЖДОЙ пары держится */
+        else if (hasLaw('firstHold') && !(skullUse[idx] > 0)) {
+          skullUse[idx] = 1; factor = 1;
+        } else {
+          usage[idx] = (usage[idx] || 0) + 1;
+          /* Повторы: у нежити своя, ЖЁСТКАЯ кривая */
+          const curve = (cardA.faction === 'undead' && cardB.faction === 'undead') ? SYN_DR_UNDEAD : SYN_DR;
+          factor = curve[Math.min(usage[idx] - 1, curve.length - 1)];
+          /* «Сердце Пустоты»: повтор не глушит звено столба до конца */
+          if (factor < 0.35 && hasLaw('revive')) factor = 0.35;
+        }
       }
       /* «Костяной Рыцарь»: повтор его пары не слабее ×0.5 */
       if (cardA.id === 'u4' || cardB.id === 'u4') factor = Math.max(0.5, factor);
@@ -374,10 +394,9 @@ function computeIncome() {
       linkFactors[lk] = factor;
       if (wardedLink) linkWarded[lk] = 1;
 
-      /* Разнообразие: вес пары (noChoir исключает пару, choir утраивает) */
+      /* Разнообразие: вес пары («Плачущий Камень» делает пары громче) */
       let w = 1;
       if ((e1 && e1.choir) || (e2 && e2.choir)) w = 3;
-      if ((e1 && e1.noChoir) || (e2 && e2.noChoir)) w = 0;
       if (w > 0) pairSeen[idx] = Math.max(pairSeen[idx] || 0, w);
     }
   }
@@ -435,14 +454,9 @@ function computeIncome() {
       if (a.pair.kind === 'flat') flat += a.pair.value * it.stacks * a.factor;
       else mult *= 1 + (a.pair.value - 1) * a.factor;
     });
-    /* РЕЛИКВИИ 3.0: множитель столбца + штраф соседним (фидбек 8: дебаффы часто сильнее) */
-    let colM = 1;
-    const eOwn = colEngine(c), eL = colEngine(c - 1), eR = colEngine(c + 1);
-    if (eOwn) colM *= eOwn.colMult;
-    if (eL && eL.nei) colM *= eL.nei;
-    if (eR && eR.nei) colM *= eR.nei;
+    /* РЕЛИКВИИ 4.0: множителей столбца больше НЕТ — только правила */
     const val = (card.baseRate * it.stacks * mult + flat) * factionMult(r, c, card, it) * formation(r, c) *
-      (INC_CTX.armyMult[r + ',' + c] || 1) * colM;
+      (INC_CTX.armyMult[r + ',' + c] || 1);
     perCell[r + ',' + c] = val;
     total += val;
   }

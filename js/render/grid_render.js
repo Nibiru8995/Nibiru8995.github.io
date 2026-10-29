@@ -127,7 +127,7 @@ function onColSlotClick(c) {
     const r = relicById(id);
     return '<div class="relic-pick" data-id="' + id + '" style="border-color:' + RELIC_RARITY_COLOR(r.rarity) + '">' +
       relicArtHTML(r, 'relic-pick-img', '') + '<span><b>' + r.name + '</b> ' + '★'.repeat(r.rarity) +
-      '<br><small style="color:#8fc87f">✅ ' + r.buff + '</small></span></div>';
+      '<br><small style="color:#8fc87f">✅ ' + r.rule + '</small></span></div>';
   }).join('');
   $('relicPickGrid').querySelectorAll('.relic-pick').forEach(el => {
     el.onclick = () => {

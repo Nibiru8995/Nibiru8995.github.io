@@ -135,7 +135,7 @@ function renderRelicTab(cont) {
     return '<div class="relic-pick" data-id="' + r.id + '" style="border-color:' + RELIC_RARITY_COLOR(r.rarity) + (own ? '' : ';opacity:.35') + '">' +
       relicArtHTML(r, 'relic-pick-img', '') +
       '<span><b>' + (own ? r.name : '???') + '</b> ' + (own ? '★'.repeat(r.rarity) : '') +
-      '<br><small style="color:#8fc87f">✅ ' + (own ? r.buff : 'источник: гача с Эпохи ' + RELIC_DROP_EPOCH) + '</small>' +
+      '<br><small style="color:#8fc87f">✅ ' + (own ? r.rule : 'источник: гача с Эпохи ' + RELIC_DROP_EPOCH) + '</small>' +
       (own ? '<br><small style="color:' + (col !== null ? '#c9a227' : '#8a7a5a') + '">' + (col !== null ? '📍 стоит в столбе ' + (col + 1) + ' (клик — снять)' : 'клик — поставить в столб') + '</small>' +
         (cultGlobal ? '<br><small style="color:#c9a227">ритуальная — действует на ВЕСЬ ритуал</small>' : '')
         : '') + '</span></div>';

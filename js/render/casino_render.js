@@ -1,13 +1,13 @@
 'use strict';
 /* ============================================================
    РЕНДЕР: КАЗИНО (render/casino_render.js)
-   Хаб, слоты, авиатор, рулетка, покер. Математика — logic/casino_logic.js.
+   Хаб, слоты, авиатор, рулетка, блэкджек (v1.3.0 — покер заменён по ТЗ). Математика — logic/casino_logic.js.
    Минимальная ставка MIN_BET (data/casino.js). Казино открывается
    в Эпохе 4 (CASINO_EPOCH, проверка ниже).
    ============================================================ */
 
 /* ---------------- Хаб ---------------- */
-mk('hub', '<h2>🎰 Казино</h2><div class="hubg"><button data-g="slots">🎰<br>Слоты</button><button data-g="aviator">✈<br>Авиатор</button><button data-g="roulette">🎡<br>Рулетка</button><button data-g="poker">🃏<br>Покер</button></div><button class="btn btn-take" style="align-self:center" id="hubX">Закрыть</button>');
+mk('hub', '<h2>🎰 Казино</h2><div class="hubg"><button data-g="slots">🎰<br>Слоты</button><button data-g="aviator">✈<br>Авиатор</button><button data-g="roulette">🎡<br>Рулетка</button><button data-g="blackjack">🂡<br>Блэкджек</button></div><button class="btn btn-take" style="align-self:center" id="hubX">Закрыть</button>');
 mk('cgModal', '<div id="cgBody"></div><button class="btn btn-take" id="cgClose" style="align-self:center">Назад</button>');
 
 function openCasino() {
@@ -253,89 +253,116 @@ function rSpin() {
   }, 4300);
 }
 
-/* ---------------- Покер: Техасский холдем 1 на 1 ---------------- */
-let pk = null, pkLast = '';
-function gPoker() { $('cgBody').innerHTML = '<h2>🃏 Холдем 1 на 1</h2><div id="pkT"></div>'; pkIdle(); }
-function pkIdle() {
-  $('pkT').innerHTML = '<div class="res">Против бота. Обе стороны вносят блайнд-анте. Улицы: префлоп, флоп, тёрн, ривер. Ставка = размер блайнда, рейз = ещё 2 блайнда. Нужно минимум 6 блайндов.</div>' +
-    betUI('pkBet', MIN_BET) + '<div class="btn-row"><button class="btn btn-take" data-p="deal">РАЗДАТЬ</button></div><div class="res">' + pkLast + '</div>';
+/* ---------------- БЛЭКДЖЕК (v1.3.0 — вместо покера) ----------------
+   Стол 1 на 1, шуе из 4 колод. Блэкджек платит 3:2, дилер добирает до 17.
+   Кнопки: ЕЩЁ / ХВАТИТ / УДВОИТЬ (только первый ход) / НОВАЯ РАЗДАЧА.
+   Математика — logic/casino_logic.js (bjShoe/bjHandVal...). */
+let bj = null, bjLast = '';
+function gBlackjack() { $('cgBody').innerHTML = '<h2>🂡 Блэкджек</h2><div id="bjT"></div>'; bjIdle(); }
+function bjIdle() {
+  $('bjT').innerHTML = '<div class="res">Стол 1 на 1 против дилера. Цель — набрать ближе к 21, не перебрав. ' +
+    'Блэкджек (21 с двух карт) платит 3:2, ничья возвращает ставку, перебор проигрывает сразу. ' +
+    'Дилер добирает до 17 включительно.</div>' +
+    betUI('bjBet', MIN_BET) + '<div class="btn-row"><button class="btn btn-take" data-p="deal">РАЗДАТЬ</button></div>' +
+    '<div class="res">' + bjLast + '</div>';
 }
-function pkR(show) {
-  const c = x => '<span class="pc ' + (pIsRed(x) ? 'r' : '') + '">' + pCard(x) + '</span>';
-  const h = '<span class="pc back">?</span>', ph = pk.phase;
-  $('pkT').innerHTML = '<div>Бот: ' + (show ? pk.b.map(c).join('') : h + h) + '</div>' +
-    '<div class="pkb">' + (pk.bd.map(c).join('') || '<small>стол пуст</small>') + '</div>' +
-    '<div>Вы: ' + pk.p.map(c).join('') + '</div>' +
-    '<div class="res">Банк: ' + fmt(pk.pot) + ' 💎 · ' + pk.msg + '</div><div class="btn-row">' +
-    (ph === 'p' ? '<button class="btn btn-take" data-p="check">Чек</button><button class="btn btn-take" data-p="bet">Ставка ' + fmt(pk.B) + '</button>'
-      : ph === 'owe' ? '<button class="btn btn-take" data-p="call">Колл ' + fmt(pk.owe) + '</button>' +
-        (pk.owe === pk.B ? '<button class="btn btn-take" data-p="raise">Рейз +' + fmt(2 * pk.B) + '</button>' : '')
-        : '<button class="btn btn-take" data-p="again">Новая раздача</button>') +
-    (ph !== 'end' ? '<button class="btn btn-take" data-p="fold">Фолд</button>' : '') + '</div>';
+function bjMoney(c) { return '<span class="pc ' + (bjRed(c) ? 'r' : '') + '">' + bjCard(c) + '</span>'; }
+function bjScore(hand) {
+  const v = bjHandVal(hand);
+  return '<b style="color:' + (v > 21 ? '#ff8080' : v === 21 ? '#ffd34d' : '#e8dcc8') + '">' + v + '</b>';
 }
-function pkPay(x) {
-  if (x > crystals) { toast('Не хватает 💎'); return false; }
-  crystals -= x; pk.pc += x; pk.pot += x; updateHUD();
-  return true;
+function bjRender(showDealer, note) {
+  const dh = bj.dHand, ph = bj.pHand;
+  const hideHole = !showDealer && dh.length;
+  const dTxt = hideHole
+    ? bjMoney(dh[0]) + '<span class="pc back">?</span>'
+    : dh.map(bjMoney).join(' ');
+  const dVal = hideHole ? bjRankVal(dh[0]) : bjHandVal(dh);
+  $('bjT').innerHTML =
+    '<div>Дилер: ' + dTxt + ' ' + (hideHole ? '' : '· ' + bjScore(dh)) + (bj.dBust ? ' · <span style="color:#ff8080">ПЕРЕБОР</span>' : '') + '</div>' +
+    '<div class="pkb"><small>Шуе: ' + bj.shoe.length + ' карт · Банк: ' + fmt(bj.pot) + ' 💎</small></div>' +
+    '<div>Вы: ' + ph.map(bjMoney).join(' ') + ' · ' + bjScore(ph) + (bj.pBust ? ' · <span style="color:#ff8080">ПЕРЕБОР</span>' : '') + '</div>' +
+    '<div class="res">' + (note || bj.msg) + '</div><div class="btn-row">' +
+    (bj.phase === 'play'
+      ? '<button class="btn btn-take" data-p="hit">ЕЩЁ</button><button class="btn btn-take" data-p="stand">ХВАТИТ</button>' +
+        (bj.first ? '<button class="btn btn-take" data-p="double">УДВОИТЬ</button>' : '') +
+        '<button class="btn btn-take" data-p="surrender">Сдаться</button>'
+      : '<button class="btn btn-take" data-p="again">НОВАЯ РАЗДАЧА</button>') + '</div>';
 }
-function pkEnd(w, msg) {
-  const p = w > 0 ? pk.pot : w === 0 ? Math.floor(pk.pot / 2) : 0;
+function bjSettle(msg) {
+  let p = 0;
+  if (bj.outcome === 'win') p = bj.pot * 2;              // ставка + выигрыш 1:1
+  else if (bj.outcome === 'bj') p = bj.pot + Math.floor(bj.pot * BJ_PAY); // 3:2
+  else if (bj.outcome === 'push') p = bj.pot;            // ничья — возврат
+  else if (bj.outcome === 'surr') p = Math.floor(bj.pot / 2); // сдача — половина
   crystals += p; updateHUD();
-  rec('poker', p - pk.pc);
-  if (p - pk.pc > 0) stats.casinoBest = Math.max(stats.casinoBest, (p / pk.pc) || 0);
-  pk.phase = 'end'; pk.msg = msg + (p ? ' (+' + fmt(p) + ' 💎)' : '');
-  pkLast = 'Итог прошлой раздачи: ' + (p - pk.pc >= 0 ? '+' : '') + fmt(p - pk.pc) + ' 💎';
-  busy = 0; pkR(true); checkAchievements();
+  const net = p - bj.pot;
+  rec('blackjack', net);
+  if (net > 0) stats.casinoBest = Math.max(stats.casinoBest, p / bj.pot);
+  bj.phase = 'end';
+  bj.msg = msg + (net > 0 ? ' <b>(+' + fmt(net) + ' 💎)</b>' : net === 0 ? ' (возврат)' : ' (−' + fmt(-net) + ' 💎)');
+  bjLast = 'Итог прошлой раздачи: ' + (net >= 0 ? '+' : '−') + fmt(Math.abs(net)) + ' 💎';
+  busy = 0; bjRender(true); checkAchievements();
 }
-function pkNext() {
-  if (++pk.st > 3) {
-    const a = pBest(pk.p.concat(pk.bd)), b = pBest(pk.b.concat(pk.bd));
-    const n = s => POKER_HAND_NAMES[Math.floor(s / 1e7)];
-    return pkEnd(a > b ? 1 : a < b ? -1 : 0, 'Вскрытие: у вас ' + n(a) + ', у бота ' + n(b) + '. ' + (a > b ? 'Вы победили!' : a < b ? 'Бот победил.' : 'Ничья.'));
+function bjDeal() {
+  const bet = validateBet(Math.floor(+$('bjBet').value));
+  if (!bet) return;
+  crystals -= bet; updateHUD();
+  if (!bj || !bj.shoe || bj.shoe.length < 15) bj = { shoe: bjShoe(BJ_DECKS) };
+  bj.pot = bet; bj.pHand = []; bj.dHand = []; bj.pBust = false; bj.dBust = false;
+  bj.phase = 'play'; bj.first = true; bj.msg = 'Ваш ход'; bj.outcome = null;
+  bj.pHand.push(bj.shoe.pop(), bj.shoe.pop());
+  bj.dHand.push(bj.shoe.pop(), bj.shoe.pop());
+  busy = 1;
+  const pBJ = bjIsBlackjack(bj.pHand), dBJ = bjIsBlackjack(bj.dHand);
+  if (pBJ || dBJ) { bj.pBust = false; bj.dBust = false; bj.phase = 'end';
+    if (pBJ && dBJ) { bj.outcome = 'push'; return bjSettle('У обоих БЛЭКДЖЕК — ничья.'); }
+    if (pBJ) { bj.outcome = 'bj'; return bjSettle('🂡 БЛЭКДЖЕК! Платит 3:2.'); }
+    bj.outcome = 'lose'; return bjSettle('У дилера блэкджек. Ставка потеряна.');
   }
-  for (let i = pk.st === 1 ? 3 : 1; i > 0; i--) pk.bd.push(pk.d.pop());
-  pk.phase = 'p'; pk.owe = 0;
-  pk.msg = ['', 'Флоп', 'Тёрн', 'Ривер'][pk.st] + ' — ваш ход';
-  pkR();
+  bjRender(false);
 }
-function pkAct(a) {
-  if (!pk && a !== 'deal') return;
-  if (a === 'deal') {
-    const B = validateBet(Math.floor(+$('pkBet').value));
-    if (!B) return;
-    if (crystals < B * 6) return toast('Нужно минимум 6 блайндов: ' + fmt(B * 6) + ' 💎');
-    crystals -= B; updateHUD();
-    const d = mkDeck();
-    pk = { d, p: [d.pop(), d.pop()], b: [d.pop(), d.pop()], bd: [], B, pot: 2 * B, pc: B, st: 0, phase: 'p', msg: 'префлоп — ваш ход', owe: 0 };
-    busy = 1;
-    return pkR();
-  }
-  if (a === 'again') return pkIdle();
-  if (a === 'fold') return pkEnd(-1, 'Вы сбросили карты.');
-  const e = () => pEquity(pk.b, pk.bd, 140);
-  if (pk.phase === 'p') {
-    if (a === 'check') {
-      const q = e();
-      if (q > 0.62 && Math.random() < 0.8 || q < 0.4 && Math.random() < 0.1) {
-        pk.pot += pk.B; pk.owe = pk.B; pk.phase = 'owe'; pk.msg = 'бот ставит ' + fmt(pk.B); pkR();
-      } else { pk.msg = 'бот чекает'; pkNext(); }
-    } else if (a === 'bet') {
-      if (!pkPay(pk.B)) return;
-      const q = e();
-      if (q < 0.38 && Math.random() > 0.12) return pkEnd(1, 'Бот сбросил карты.');
-      if (q > 0.75 && Math.random() < 0.5) {
-        pk.pot += 3 * pk.B; pk.owe = 2 * pk.B; pk.phase = 'owe'; pk.msg = 'бот рейзит!'; pkR();
-      } else { pk.pot += pk.B; pkNext(); }
-    }
-  } else if (pk.phase === 'owe') {
-    if (a === 'call') { if (pkPay(pk.owe)) pkNext(); }
-    else if (a === 'raise') {
-      if (!pkPay(pk.owe + 2 * pk.B)) return;
-      const q = e();
-      if (q < 0.5 && Math.random() > 0.1) return pkEnd(1, 'Бот не потянул рейз.');
-      pk.pot += 2 * pk.B; pkNext();
-    }
-  }
+function bjHit() {
+  if (!bj || bj.phase !== 'play') return;
+  bj.pHand.push(bj.shoe.pop());
+  bj.first = false;
+  if (bjBusted(bj.pHand)) { bj.pBust = true; bj.outcome = 'lose'; return bjSettle('Перебор — ' + bjHandVal(bj.pHand) + '. Ставка уходит Тьме.'); }
+  bj.msg = 'Ваш ход'; bjRender(false);
+}
+function bjDouble() {
+  if (!bj || bj.phase !== 'play' || !bj.first) return;
+  if (bj.pot > crystals) { toast('Не хватает 💎 для удвоения'); return; }
+  crystals -= bj.pot; bj.pot *= 2; updateHUD();
+  bj.pHand.push(bj.shoe.pop());
+  bj.first = false;
+  if (bjBusted(bj.pHand)) { bj.pBust = true; bj.outcome = 'lose'; return bjSettle('Перебор после удвоения — ' + bjHandVal(bj.pHand) + '.'); }
+  return bjStand();
+}
+function bjSurrender() {
+  if (!bj || bj.phase !== 'play' || !bj.first) return;
+  bj.outcome = 'surr';
+  bjSettle('Вы сдались — половина ставки возвращается.');
+}
+function bjStand() {
+  if (!bj || bj.phase !== 'play') return;
+  bj.first = false;
+  /* Дилер добирает до 17 включительно (мягкие 17 — тоже останавливается) */
+  while (bjHandVal(bj.dHand) < BJ_DEALER_HIT) bj.dHand.push(bj.shoe.pop());
+  const dv = bjHandVal(bj.dHand), pv = bjHandVal(bj.pHand);
+  bj.dBust = dv > 21;
+  if (bj.dBust) { bj.outcome = 'win'; return bjSettle('Дилер перебрал (' + dv + ') — победа!'); }
+  if (pv > dv) { bj.outcome = 'win'; return bjSettle(pv + ' против ' + dv + ' — победа!'); }
+  if (pv < dv) { bj.outcome = 'lose'; return bjSettle(dv + ' против ' + pv + ' — дилер сильнее.'); }
+  bj.outcome = 'push'; return bjSettle('Ничья ' + pv + ':' + dv + ' — ставка возвращается.');
+}
+function bjAct(a) {
+  if (!bj && a !== 'deal') return;
+  if (a === 'deal') return bjDeal();
+  if (a === 'again') return bjIdle();
+  if (a === 'hit') return bjHit();
+  if (a === 'stand') return bjStand();
+  if (a === 'double') return bjDouble();
+  if (a === 'surrender') return bjSurrender();
 }
 
 /* Общая строка ставки */
