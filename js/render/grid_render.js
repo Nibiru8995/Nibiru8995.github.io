@@ -431,12 +431,25 @@ function drawSynergies() {
 /* v1.5.0: звено нежити — тень (читаемость на картах), туман, ржавая цепь.
    mode: plain | big (⛓ Скованный со зданием) | royal (Владыка — магия тьмы) |
    lich (Пакт Тишины). Погасшие звенья из экономики (faded/dead) теряют туман. */
-/* v1.5.2 «Три Цепи»: звено нежити = ОДИН СПРАЙТ из трёх ржавых цепей
-   (assets/fx/chain_rust.png, 72x26, альфа затухает к краям — связка
-   «тонет в тумане» у центров карт). Растягивается по связи, у вертикальных
-   поворачивается. mode: plain | big (⛓ Скованный — шире) | royal (Владыка) |
-   lich (Пакт Лича). По всем цепям бежит лёгкая пульсация, магия светится
-   только когда творится, туман живёт своей фазой. */
+/* v1.5.3 «Три Нити»: звено нежити = ОДИН СПРАЙТ из трёх ТОНКИХ ржавых цепей
+   (assets/fx/chain_rust.png + chain_rust_v.png — бесшовные тайлы 64x18 / 18x64,
+   три раздельные нити ~4px с просветами, как на эскизе). Натягивается
+   SVG-паттерном userSpaceOnUse: шаг звеньев всегда 1:1 — растяжение/сжатие
+   связи НЕ мылит звенья (урок v1.5.2: спрайт 72x26 stretch = жгуты).
+   ВАЖНО (Chromium): у rect с pattern-заливкой НЕ должно быть transform
+   (rotate/наклон/90°) и у паттерна patternTransform — плитка тогда
+   рисуется со сдвигом (фантомные цепи мимо rect); поэтому вертикальный
+   вариант — ОТДЕЛЬНЫЙ PNG, а наклон убран (на эскизе цепи прямые).
+   mode: plain | big (⛓ Скованный — ярче, искра) | royal | lich. По всем
+   цепям бежит лёгкая пульсация, магия светится только когда творится,
+   туман живёт своей фазой. */
+const UG_PAT_DEFS =
+  '<pattern id="ugPatH" patternUnits="userSpaceOnUse" width="64" height="18">' +
+  '<image href="assets/fx/chain_rust.png" xlink:href="assets/fx/chain_rust.png"' +
+  ' x="0" y="0" width="64" height="18" preserveAspectRatio="none"/></pattern>' +
+  '<pattern id="ugPatV" patternUnits="userSpaceOnUse" width="18" height="64">' +
+  '<image href="assets/fx/chain_rust_v.png" xlink:href="assets/fx/chain_rust_v.png"' +
+  ' x="0" y="0" width="18" height="64" preserveAspectRatio="none"/></pattern>';
 function drawUgLink(coords, mode, lf, isMult) {
   const faded = lf !== undefined && lf > 0 && lf < 1, dead = lf === 0;
   const st = (faded ? ' faded' : dead ? ' dead' : '');
@@ -444,21 +457,31 @@ function drawUgLink(coords, mode, lf, isMult) {
   const L = Math.hypot(coords.x2 - coords.x1, coords.y2 - coords.y1);
   /* 1) тень-подложка по ширине связки: читаемость на пёстрых картах */
   mkLine('ug-shadow' + st, coords);
-  /* 2) спрайт трёх цепей + лёгкий детерминированный наклон ±1.4° */
+  /* 2) спрайт трёх цепей плиткой (без искажений и без transform —
+     см. примечание про Chromium выше) */
+  /* defs с паттернами пересоздаём после каждого wipe (innerHTML='' в
+     drawSynergies их стирает) — проверяем по DOM, не по флагу */
+  if (!synergySvg.querySelector('defs')) {
+    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    defs.innerHTML = UG_PAT_DEFS;
+    synergySvg.appendChild(defs);
+  }
   const seed = Math.round(coords.x1 * 5 + coords.y1 * 11);
-  const j = ((seed % 5) - 2) * 0.7;
-  const bh = mode === 'big' ? 30 : 26;
-  const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
-  img.setAttribute('class', 'ug-spr' + (mode === 'big' ? ' big' : '') + st);
-  img.setAttribute('x', String(coords.x1));
-  img.setAttribute('y', (coords.y1 - bh / 2).toFixed(1));
-  img.setAttribute('width', L.toFixed(1));
-  img.setAttribute('height', String(bh));
-  img.setAttribute('preserveAspectRatio', 'none');
-  img.setAttribute('transform', 'rotate(' + (horiz ? j : 90 + j) + ' ' + coords.x1 + ' ' + coords.y1 + ')');
-  img.setAttribute('href', 'assets/fx/chain_rust.png');
-  img.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', 'assets/fx/chain_rust.png');
-  synergySvg.appendChild(img);
+  const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  r.setAttribute('class', 'ug-spr' + (mode === 'big' ? ' big' : '') + st);
+  if (horiz) {
+    r.setAttribute('x', String(coords.x1));
+    r.setAttribute('y', (coords.y1 - 9).toFixed(1));
+    r.setAttribute('width', L.toFixed(1));
+    r.setAttribute('height', '18');
+  } else {
+    r.setAttribute('x', (coords.x1 - 9).toFixed(1));
+    r.setAttribute('y', String(coords.y1));
+    r.setAttribute('width', '18');
+    r.setAttribute('height', L.toFixed(1));
+  }
+  r.setAttribute('fill', horiz ? 'url(#ugPatH)' : 'url(#ugPatV)');
+  synergySvg.appendChild(r);
   /* 3) лёгкая пульсация по всем цепям: тёплый отблеск медленно бежит,
      у каждой связи своя фаза — связки не пульсируют строем */
   const p = mkLine('ug-pulse' + st, coords);
