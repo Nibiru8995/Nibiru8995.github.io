@@ -445,31 +445,41 @@ function drawSynergies() {
 }
 
 /* ============================================================
-   v1.5.7 «ПОЛНЫЕ ОКОВЫ» — звено нежити тянется во всю кромку.
-   ГЕОМЕТРИЯ: связь идёт вдоль ОБЩЕГО края карт на всю его высоту
-   (горизонтальные соседи) / ширину (вертикальные соседи) — сплошная
-   цепная нить по шву, от угла карты до угла. Центры карт свободны.
-   СПРАЙТ: банда из ПЯТИ по-разному натянутых цепочек толщиной 36px
-   (укрупнённые кольца — «потолще»), холодное кладбищенское железо,
-   тяжёлые кольца в середине, провисшие нити, костяная бусина, могильная
-   патина (генератор scripts/gen_chains_sprite.py). Плитки на глобальной
-   сетке 24px внутри клипа звена (уроки v1.5.2/3: растяжение = каша;
-   ни pattern'ов, ни transform).
-   ПРОБЛЕСКИ: вдоль цепи на всю её длину бежит узкий проблеск лунной
-   стали (glint_pale). Свечение — ТА ЖЕ геометрия цепей в яркой палитре
-   с мягким колокольным окном, поэтому оно ВСЕГДА лежит ровно на звеньях.
+   v1.5.8 «ПОПЕРЕЧНЫЕ ОКОВЫ» — цепь СКРЕПЛЯЕТ карты.
+   УРОК v1.5.7 (фидбек): «как цепи, которые держат два объекта,
+   могут идти ВДОЛЬ этих объектов?» — никак. Цепь, которая держит,
+   идёт ПОПЕРЁК шва, от карты к карте — как скоба/стежок.
+   ГЕОМЕТРИЯ: банда лежит на ОБЩЕМ крае карт во всю его высоту
+   (соседи в ряду — вертикальный шов) / ширину (соседи в столбце —
+   горизонтальный шов), толщина 36px (18px на каждую карту, центры
+   свободны). Внутри — цепочки-скобы ПОПЕРЁК шва: горизонтальные
+   (chains_x) на вертикальном шве, вертикальные (chains_y) на
+   горизонтальном, распределены по всей длине кромки; концы цепей
+   растворяются альфой — «ныряют» под кромку карты.
+   СПРАЙТ: 4 по-разному натянутых цепи в плитке 36x24: тугая мелкая,
+   тяжёлые кольца с дырой, провисшая с костяной бусиной, тонкая нить;
+   холодное кладбищенское железо, патина (генератор
+   scripts/gen_chains_sprite.py). Стопка/ряд плиток с периодом 24px
+   внутри клипа звена (уроки v1.5.2/3: растяжение = каша; ни
+   pattern'ов, ни transform).
+   ПРОБЛЕСКИ: свет бежит ВДОЛЬ ЦЕПИ — поперёк шва, от карты к карте;
+   плитки света стоят по всей кромке и едут синхронно, накрывая всю
+   связку. Свечение — ТА ЖЕ геометрия цепей в яркой палитре с
+   колокольным окном, поэтому оно ВСЕГДА лежит ровно на звеньях.
    ОСОБЫЕ СВЯЗИ (royal — Владыка, lich — Пакт Тишины, big — Скованный,
    mult — пары-множители) вместо тихого проблеска получают ЯРКИЙ
    ФИОЛЕТОВЫЙ отблеск (glint_royal) — шире, ярче и быстрее.
    Состояние звена из экономики (faded/dead) гасит всю банду (CSS
    .ug-band); мёртвое звено не светится вовсе.
    ============================================================ */
-const UG_TILE = 24, UG_BAND = 36; /* толщина банды 26 → 36 («потолще») */
+const UG_TILE = 24, UG_BAND = 36; /* 24 — период стопки вдоль шва, 36 — толщина банды поперёк */
 /* v1.5.6.1: ASSET_VER_Q (utils.js) — анти-кэш суффикс на спрайтах звена */
 const UG_IMG = {
-  bandH: 'assets/fx/chains_h.png' + ASSET_VER_Q, bandV: 'assets/fx/chains_v.png' + ASSET_VER_Q,
-  paleH: 'assets/fx/glint_pale_h.png' + ASSET_VER_Q, paleV: 'assets/fx/glint_pale_v.png' + ASSET_VER_Q,
-  royalH: 'assets/fx/glint_royal_h.png' + ASSET_VER_Q, royalV: 'assets/fx/glint_royal_v.png' + ASSET_VER_Q
+  /* _x — плитки для ВЕРТИКАЛЬНОГО шва (цепи поперёк идут горизонтально),
+     _y — для ГОРИЗОНТАЛЬНОГО шва (цепи поперёк идут вертикально) */
+  bandX: 'assets/fx/chains_x.png' + ASSET_VER_Q, bandY: 'assets/fx/chains_y.png' + ASSET_VER_Q,
+  paleX: 'assets/fx/glint_pale_x.png' + ASSET_VER_Q, paleY: 'assets/fx/glint_pale_y.png' + ASSET_VER_Q,
+  royalX: 'assets/fx/glint_royal_x.png' + ASSET_VER_Q, royalY: 'assets/fx/glint_royal_y.png' + ASSET_VER_Q
 };
 /* SMIL-анимация атрибута (x/y) с отрицательным begin — детерминированная
    фаза у каждой связи, без «строя» проблесков после перерисовки поля */
@@ -487,17 +497,18 @@ function drawUgLink(coords, mode, lf, isMult) {
   const NS = 'http://www.w3.org/2000/svg';
   const faded = lf !== undefined && lf > 0 && lf < 1, dead = lf === 0;
   const st = (faded ? ' faded' : dead ? ' dead' : '');
-  /* v1.5.7: банда идёт ВДОЛЬ ШВА: у соседей в одном ряду шов вертикальный
-     (x1===x2 — сегмент сверху вниз), у соседей в столбце — горизонтальный
-     (y1===y2). Горизонтальная банда = меняется X (плитки chains_h в ряд). */
+  /* v1.5.8: цепь-скоба ПОПЕРЁК шва: у соседей в ряду шов вертикальный
+     (x1===x2) — цепи chains_x идут горизонтально, от левой карты к
+     правой; у соседей в столбце шов горизонтальный (y1===y2) — цепи
+     chains_y идут вертикально, от верхней карты к нижней. */
   const horiz = coords.x1 !== coords.x2;
   const L = Math.hypot(coords.x2 - coords.x1, coords.y2 - coords.y1);
   /* 1) тень-подложка вдоль шва: читаемость тёмного металла на пёстрых картах */
   mkLine('ug-shadow' + st, coords);
   /* 2) банда цепей: клип по звену + плитки на глобальной сетке.
-     v1.5.7: плитки идут ВДОЛЬ ШВА от угла карты до угла: горизонтальная
-     банда (шов между картами-соседями по столбцу) — chains_h (24×36)
-     в ряд слева направо; вертикальная (соседи в ряду) — chains_v (36×24)
+     v1.5.8: скобы поперёк шва, распределены по всей кромке.
+     Горизонтальный шов (соседи в столбце) — chains_y (24x36) в ряд
+     слева направо; вертикальный (соседи в ряду) — chains_x (36x24)
      стопкой сверху вниз. */
   let defs = synergySvg.querySelector('defs');
   if (!defs) {
@@ -529,7 +540,7 @@ function drawUgLink(coords, mode, lf, isMult) {
     im.setAttribute('style', 'image-rendering:pixelated');
     return im;
   };
-  const bandHref = horiz ? UG_IMG.bandH : UG_IMG.bandV;
+  const bandHref = horiz ? UG_IMG.bandY : UG_IMG.bandX;
   if (horiz) {
     for (let x = coords.x1; x < coords.x2; x += UG_TILE)
       g.appendChild(mkIm(bandHref, x, by, UG_TILE, UG_BAND));
@@ -538,27 +549,32 @@ function drawUgLink(coords, mode, lf, isMult) {
       g.appendChild(mkIm(bandHref, bx, y, UG_BAND, UG_TILE));
   }
   synergySvg.appendChild(g);
-  /* 3) проблеск: узкое окно света бежит ВДОЛЬ цепи во всю её длину;
-     мёртвое звено не светится вовсе */
+  /* 3) проблеск: свет бежит ВДОЛЬ ЦЕПИ — ПОПЕРЁК шва, от карты к карте;
+     плитки света стоят по всей кромке (те же позиции, что у банды) и
+     едут синхронно — волна накрывает всю связку разом; мёртвое звено
+     не светится вовсе */
   if (!dead) {
     const special = mode === 'royal' || mode === 'lich' || mode === 'big' || isMult;
-    const href = special ? (horiz ? UG_IMG.royalH : UG_IMG.royalV)
-                         : (horiz ? UG_IMG.paleH : UG_IMG.paleV);
-    const gl = mkIm(href, 0, 0, horiz ? UG_TILE : UG_BAND, horiz ? UG_BAND : UG_TILE);
-    gl.setAttribute('class', 'ug-glint');
+    const href = special ? (horiz ? UG_IMG.royalY : UG_IMG.royalX)
+                         : (horiz ? UG_IMG.paleY : UG_IMG.paleX);
     const dur = special ? 2.6 : 4.2;
     const phase = (Math.abs(Math.round(coords.x1 * 7 + coords.y1 * 13)) % 97) / 97;
-    const travel = L + UG_TILE;
+    const gw = horiz ? UG_TILE : UG_BAND, gh = horiz ? UG_BAND : UG_TILE;
+    const mkGlint = (x, y, attr, from, to) => {
+      const q = mkIm(href, x, y, gw, gh);
+      q.setAttribute('class', 'ug-glint');
+      q.appendChild(ugAnim(attr, from, to, dur, phase));
+      g.appendChild(q);
+    };
     if (horiz) {
-      gl.setAttribute('x', (bx - UG_TILE).toFixed(1));
-      gl.setAttribute('y', by.toFixed(1));
-      gl.appendChild(ugAnim('x', bx - UG_TILE, bx + travel, dur, phase));
+      /* плитка света 24x36 въезжает сверху шва и выезжает снизу:
+         y от (by - 36) до (by + 36) — окно проходит всю толщу банды */
+      for (let x = coords.x1; x < coords.x2; x += UG_TILE)
+        mkGlint(x, by - UG_BAND, 'y', by - UG_BAND, by + UG_BAND);
     } else {
-      gl.setAttribute('x', bx.toFixed(1));
-      gl.setAttribute('y', (by - UG_TILE).toFixed(1));
-      gl.appendChild(ugAnim('y', by - UG_TILE, by + travel, dur, phase));
+      for (let y = coords.y1; y < coords.y2; y += UG_TILE)
+        mkGlint(bx - UG_BAND, y, 'x', bx - UG_BAND, bx + UG_BAND);
     }
-    g.appendChild(gl);
   }
 }
 function updateGridStats() {

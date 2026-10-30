@@ -1,30 +1,37 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ============================================================
-# v1.5.7 «ПОЛНЫЕ ОКОВЫ» — генератор спрайтов цепей нежити.
+# v1.5.8 «ПОПЕРЕЧНЫЕ ОКОВЫ» — генератор спрайтов цепей нежити.
 #
-# Рисует БЕЗ СУПЕРСЭМПЛИНГА — честный пиксель-арт, каждый пиксель
-# ставится вручную (урок v1.5.2: растяжение/сглаживание = каша).
+# УРОК v1.5.8 (фидбек игрока): «как цепи, которые держат два
+# объекта, могут идти ВДОЛЬ этих объектов?» — никак. Цепь,
+# которая СКРЕПЛЯЕТ две карты, идёт ПОПЕРЁК шва, от карты к
+# карте, как скоба/стежок. Банда по-прежнему во всю кромку
+# (вся высота/ширина общего края) — но цепочки внутри
+# перпендикулярны шву и распределены по всей его длине.
 #
-# assets/fx/chains_h.png      24x36 — бандa из ПЯТИ цепочек (гориз.),
-#                                     толщина банды 36px (v1.5.6 — 26)
-# assets/fx/chains_v.png      36x24 — то же, повёрнуто (вертик.)
-# assets/fx/glint_pale_h.png  24x36 — холодный проблеск (та же
-#                                     геометрия цепей, яркая сталь,
-#                                     мягкое колокольное окно) — свечение
-#                                     ВСЕГДА лежит ровно на звеньях
-# assets/fx/glint_royal_h.png 24x36 — яркий фиолетовый отблеск особых
-#                                     связей (шире и ярче)
-# assets/fx/glint_*_v.png           — вертикальные варианты
+# Рисуется БЕЗ СУПЕРСЭМПЛИНГА — честный пиксель-арт, каждый
+# пиксель ставится вручную (урок v1.5.2).
 #
-# v1.5.7: связь идёт ВО ВСЮ КРОМКУ карт (по всей высоте/ширине общего
-# края), поэтому вдоль шва цепь тянется непрерывно — тайл стыкуется по
-# ходу цепи. Звенья укрупнены («потолще»): T1 6x4, T3 8x5, T5 3x2.
-#
-# Требование бесшовности: период каждой цепочки делит 24 — тайл
-# стыкуется сам с собой без шва.
+# assets/fx/chains_x.png      36x24 — ВЕРТИКАЛЬНЫЙ шов (соседи в ряду):
+#                                   4 ГОРИЗОНТАЛЬНЫЕ цепи поперёк шва;
+#                                   стопка по Y с периодом 24 — бесшовно.
+#                                   По X тайл НЕ стыкуется: длина цепи =
+#                                   вся толщина банды 36px, концы
+#                                   растворяются альфой — цепь «ныряет»
+#                                   под кромку карты.
+# assets/fx/chains_y.png      24x36 — ГОРИЗОНТАЛЬНЫЙ шов (соседи в
+#                                   столбце): то же, оси поменяны.
+# assets/fx/glint_pale_x.png  36x24 — холодный проблеск: та же геометрия
+#                                   цепей в яркой стали с колокольным
+#                                   окном ВДОЛЬ цепи (свет бежит поперёк
+#                                   шва, от карты к карте).
+# assets/fx/glint_royal_x.png 36x24 — яркий фиолетовый отблеск особых
+#                                   связей (окно шире и ярче).
+# assets/fx/glint_*_y.png           — варианты для горизонтального шва.
 # ============================================================
 import os
+import math
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -61,45 +68,41 @@ ROYAL = {  # фиолетовая магия тьмы — яркий отбле�
     'g': (122, 85, 200, 255), 'G': (163, 127, 232, 255),
 }
 
-TW, TH = 24, 36  # тайл: 24 по ходу цепи, 36 поперёк банды (v1.5.7: было 26)
+# chains_x: 36 ПОПЕРЁК шва (толщина банды), 24 вдоль шва (период стопки)
+BW, BH = 36, 24
 
 # ---------- штампы звеньев (пиксели ставятся вручную) ----------
-# Свет сверху-слева: блик ТОЛЬКО на голове звена, тело целиком, тень снизу-справа.
-# Прочность силуэта важнее деталей: на 1x дырки-точки превращаются в шум.
-# v1.5.7 «потолще»: звенья укрупнены на размер против v1.5.6.
-# обычное звено, 6x4 — тело НЕПРЕРЫВНО вокруг дыры 2x2, засечка-провал
-# тёмная, но видимая: урок живого прогона — чистый контур 'O' (люм ~17)
-# на карте #17171а превращает цепь в рассыпанные штрихи
-T1 = ['.hhmm.',
+# Свет сверху-слева: блик ТОЛЬКО на голове звена, тело целиком, тень
+# снизу-справа. Тело звена НЕПРЕРЫВНО вокруг дыры — чистый контур 'O'
+# на карте #17171a рассыпает цепь в штрихи (урок живого прогона).
+T1 = ['.hhmm.',      # обычное звено 6x4, период 6
       'hl..mm',
       'dm..md',
       '.dddd.']
-# тяжёлое звено, 8x5 — крупная дыра 4x3 читается как кольцо
-T3 = ['.hhmmmm.',
+T3 = ['.hhmmmm.',    # тяжёлое звено 8x5, крупная дыра — кольцо
       'hm....md',
       'dm....md',
       'dm....md',
       '.dddddd.']
-# тонкая цепь, 3x2 (период 3)
-T5 = ['hmm',
+T5 = ['hmm',         # тонкая цепь 3x2, период 3
       'ddm']
-# бусина-кость, 3x4 (вставлена в провисшую цепочку)
-BONE = ['BBB',
+BONE = ['BBB',       # бусина-кость 3x4 (вставлена в провисшую цепь)
         'bBb',
         'bBb',
         'bbb']
 
-import math
 
-def wave(x, amp):
-    """Гладкая периодическая волна провиса: dy 0..amp по всему тайлу."""
-    return int(round(amp * (1 - math.cos(2 * math.pi * (x % TW) / TW)) / 2))
+def sag(x, period=18):
+    """Провис цепи: плавная волна 0..1px вдоль цепочки."""
+    return int(round((1 - math.cos(2 * math.pi * x / period)) / 2))
 
 
-def build_band():
-    """Банда из пяти по-разному натянутых цепочек, 24x36, бесшовная по X.
-    v1.5.7: пять нитей распущены на всю толщину банды 36px."""
-    im = Image.new('RGBA', (TW, TH), (0, 0, 0, 0))
+def build_cross_x():
+    """ВЕРТИКАЛЬНЫЙ шов: 4 горизонтальные цепи-скобы поперёк шва, 36x24.
+    Каждая цепь длиной во всю толщу банды (36px) — от кромки левой карты
+    до кромки правой. Стопка по Y с периодом 24 — бесшовно; по X тайл
+    не стыкуется, концы цепей растворяются альфой (ныряют под кромку)."""
+    im = Image.new('RGBA', (BW, BH), (0, 0, 0, 0))
     px = im.load()
 
     def stamp(x, y, rows):
@@ -107,42 +110,43 @@ def build_band():
             for i, ch in enumerate(row):
                 if ch == '.':
                     continue
-                xx = (x + i) % TW          # заворот через край тайла — бесшовность
-                yy = y + j
-                if 0 <= yy < TH:
+                xx, yy = x + i, y + j
+                if 0 <= xx < BW and 0 <= yy < BH:
                     px[xx, yy] = PAL[ch]
 
-    # --- цепь 0: тугая мелкая (y2..5), период 6, без провиса ---
-    for x in range(0, TW, 6):
-        stamp(x, 2, T1)
+    # --- скоба 0: тугая мелкая (y0..3), период 6 — ровно 6 звеньев ---
+    for x in range(0, BW, 6):
+        stamp(x, 0, T1)
 
-    # --- цепь 1: провисшая (y9..14), волна до +3, сдвиг фазы ---
-    for x in range(0, TW, 6):
-        stamp(x + 1, 9 + wave(x + 6, 3), T1)
+    # --- скоба 1: тяжёлые крупные кольца (y6..10), период 9 ---
+    for x in range(0, BW, 9):
+        stamp(x, 6, T3)
 
-    # --- цепь 2: тяжёлые крупные кольца, тугая (y16..20), период 8 ---
-    for x in range(0, TW, 8):
-        stamp(x, 16, T3)
-
-    # --- цепь 3: слабина (y25..30), волна до +1; на x=12 — костяная бусина ---
-    for x in range(0, TW, 6):
-        xx = x % TW
-        if xx == 12:
-            stamp(x, 25 + wave(x + 2, 1), BONE)
+    # --- скоба 2: провисшая (y13..17), волна ±1; костяная бусина на x19 ---
+    for x in range(0, BW, 6):
+        if x == 18:
+            stamp(19, 13 + sag(19), BONE)
         else:
-            stamp(x, 25 + wave(x + 2, 1), T1)
+            stamp(x, 13 + sag(x + 3), T1)
 
-    # --- цепь 4: тонкая тугая (y33..34), период 3 ---
-    for x in range(0, TW, 3):
-        stamp(x, 33, T5)
+    # --- скоба 3: тонкая тугая (y19..20), период 3 ---
+    for x in range(0, BW, 3):
+        stamp(x, 19, T5)
 
-    # лёгкая патина на паре звеньев (кладбищенский налёт)
-    accents = [(8, 3, 'g'), (20, 4, 'G'), (3, 10, 'g'), (14, 18, 'G'), (6, 26, 'g'), (21, 27, 'G')]
-    for xx, yy, ch in accents:
+    # патина (кладбищенский налёт) и спекуляр на тяжёлом кольце
+    for xx, yy, ch in [(4, 1, 'g'), (22, 2, 'G'), (12, 7, 'g'), (30, 8, 'G'),
+                       (7, 14, 'g'), (27, 15, 'G'), (15, 19, 'g')]:
         px[xx, yy] = PAL[ch]
-    # спекуляр: холодный блик на звене тяжёлой цепи
-    px[9, 16] = PAL['p']
-    px[17, 16] = PAL['p']
+    px[10, 6] = PAL['p']
+    px[2, 0] = PAL['p']
+
+    # концы цепей ныряют под кромку: альфа-фейд на крайних столбцах
+    fade = {0: .35, 1: .7, BW - 2: .7, BW - 1: .35}
+    for x, k in fade.items():
+        for y in range(BH):
+            r, g, b, a = px[x, y]
+            if a:
+                px[x, y] = (r, g, b, int(a * k))
     return im
 
 
@@ -160,90 +164,97 @@ def repalette(band, pal):
     return out
 
 
-def bell_window(img, steps):
-    """Колокольное окно яркости по X: сам проблеск — узкая полоса света.
-    steps: альфа по дистанции от центра тайла (пиксель-арт ступени)."""
+def bell_x(img, steps):
+    """Колокольное окно яркости ВДОЛЬ цепи (по X): узкая полоса света,
+    которая в игре едет поперёк шва. Окно НЕ бесшовное по X — тайл по X
+    не стыкуется, свет гаснет к краям банды сам."""
     w, h = img.size
     out = Image.new('RGBA', (w, h), (0, 0, 0, 0))
     po, pi = out.load(), img.load()
-    cx = w // 2
+    cx = (w - 1) / 2
     for y in range(h):
         for x in range(w):
             r, g, b, a = pi[x, y]
             if a == 0:
                 continue
-            dist = min(abs(x - cx), w - abs(x - cx))  # окно бесшовно по тайлу
-            al = steps[dist] if dist < len(steps) else 0
+            d = int(round(abs(x - cx)))
+            al = steps[d] if d < len(steps) else 0
             if al <= 0:
                 continue
             po[x, y] = (r, g, b, int(a * al))
     return out
 
 
-def mock_scene(band, glint, gpx, zoom, phase):
-    """Макет связи: тёмный фон, две «карты», между ними стежок с бандой.
-    phase — позиция центра проблеска вдоль связи (px). Всё в реальных px,
-    в конце — NEAREST-зум для разглядывания."""
-    card_w, gap = 74, 5
-    W, H = card_w * 2 + gap, 96
+def mock_scene_v(band, glint, zoom, phase):
+    """Макет ВЕРТИКАЛЬНОГО шва: две карты в ряду, банда-стопка между ними.
+    phase — позиция окна проблеска поперёк шва (px). NEAREST-зум."""
+    card_h, gap = 74, 5
+    W, H = 96, card_h
     scene = Image.new('RGBA', (W, H), (12, 14, 12, 255))
     sc = scene.load()
-    for cx in range(card_w):                      # карты — как .card: тёмные с рамкой
-        for cy in range(14, 82):
-            for x0 in (0, card_w + gap):
-                x = x0 + cx
-                edge = cx in (0, card_w - 1) or cy in (14, 81)
-                sc[x, cy] = (96, 82, 122, 255) if edge else (23, 23, 26, 255)
-    y_c = 48                                      # тень-подложка в зазоре
-    for x in range(card_w - 1, card_w + gap + 1):
-        for dy in range(-5, 6):
-            sc[x, y_c + dy] = (5, 6, 5, 255)
-    x0, x1 = card_w - gpx, card_w + gap + gpx     # банда: глобальная фаза тайлов
-    ty = y_c - band.height // 2
-    x = (x0 // band.width) * band.width
-    while x < x1:
-        scene.alpha_composite(band, (x, ty))
-        x += band.width
-    if glint:                                     # ОДНО окно проблеска
-        scene.alpha_composite(glint, (x0 + phase - glint.width // 2, ty))
-    box = (x0 - 10, y_c - 16, x1 + 10, y_c + 16)
+    # две «карты» слева и справа от шва (шов по центру x=48)
+    for side in (0, 1):
+        x0 = side * (43 + gap)
+        for cx in range(43):
+            for cy in range(card_h):
+                edge = cx in (0, 42) or cy in (0, card_h - 1)
+                sc[x0 + cx, cy] = (96, 82, 122, 255) if edge else (23, 23, 26, 255)
+    # тень-подложка вдоль шва
+    for dy in range(card_h):
+        for dx in range(-5, 6):
+            xx = 43 + gap // 2 + 1 + dx
+            if 0 <= xx < W:
+                sc[xx, dy] = (5, 6, 5, 255)
+    # банда: стопка плиток chains_x вдоль всего шва
+    bx = 43 + gap // 2 + 1 - band.width // 2
+    y = 0
+    while y < card_h:
+        scene.alpha_composite(band, (bx, y))
+        y += band.height
+    if glint:
+        scene.alpha_composite(glint, (bx - glint.width + phase, 8))
+    box = (bx - 14, 0, bx + band.width + 14, card_h)
     return scene.crop(box).resize(((box[2] - box[0]) * zoom, (box[3] - box[1]) * zoom),
                                   Image.NEAREST)
 
 
 def main():
     os.makedirs(FX, exist_ok=True)
-    band = build_band()
-    band_v = band.transpose(Image.ROTATE_90)
+    x_band = build_cross_x()
+    y_band = x_band.transpose(Image.TRANSPOSE)   # оси поменяны, свет сверху сохранён
 
-    pale = bell_window(repalette(band, PALE), [1.0, 0.62, 0.28, 0.10])
-    royal = bell_window(repalette(band, ROYAL), [1.0, 0.82, 0.55, 0.30, 0.14, 0.05])
-    pale_v = pale.transpose(Image.ROTATE_90)
-    royal_v = royal.transpose(Image.ROTATE_90)
+    pale_x = bell_x(repalette(x_band, PALE), [1.0, .9, .78, .64, .5, .37, .26, .17, .1, .05])
+    royal_x = bell_x(repalette(x_band, ROYAL), [1.0, .95, .88, .8, .7, .6, .5, .4, .3, .22, .15, .09, .04])
+    pale_y = pale_x.transpose(Image.TRANSPOSE)
+    royal_y = royal_x.transpose(Image.TRANSPOSE)
 
-    band.save(os.path.join(FX, 'chains_h.png'))
-    band_v.save(os.path.join(FX, 'chains_v.png'))
-    pale.save(os.path.join(FX, 'glint_pale_h.png'))
-    pale_v.save(os.path.join(FX, 'glint_pale_v.png'))
-    royal.save(os.path.join(FX, 'glint_royal_h.png'))
-    royal_v.save(os.path.join(FX, 'glint_royal_v.png'))
+    x_band.save(os.path.join(FX, 'chains_x.png'))
+    y_band.save(os.path.join(FX, 'chains_y.png'))
+    pale_x.save(os.path.join(FX, 'glint_pale_x.png'))
+    pale_y.save(os.path.join(FX, 'glint_pale_y.png'))
+    royal_x.save(os.path.join(FX, 'glint_royal_x.png'))
+    royal_y.save(os.path.join(FX, 'glint_royal_y.png'))
+
+    # старые «вдоль шва» спрайты v1.5.6/7 больше не нужны — безжалостная чистка
+    for old in ['chains_h.png', 'chains_v.png', 'glint_pale_h.png', 'glint_pale_v.png',
+                'glint_royal_h.png', 'glint_royal_v.png']:
+        p = os.path.join(FX, old)
+        if os.path.exists(p):
+            os.remove(p)
     print('sprites written to', FX)
 
     # ---------- превью для контроля (в репо не идёт) ----------
-    Z = 10
-    comp_p = Image.alpha_composite(band, pale)
-    comp_r = Image.alpha_composite(band, royal)
-    tiles = [band, comp_p, comp_r]
-    sheet = Image.new('RGBA', (TW * Z + 40, (TH * Z + 20) * len(tiles) + 20), (14, 16, 14, 255))
+    Z = 8
+    comp_p = Image.alpha_composite(x_band, pale_x)
+    comp_r = Image.alpha_composite(x_band, royal_x)
+    tiles = [x_band, comp_p, comp_r]
+    sheet = Image.new('RGBA', (BW * Z + 40, (BH * Z + 20) * len(tiles) + 20), (14, 16, 14, 255))
     for i, t in enumerate(tiles):
-        big = t.resize((TW * Z, TH * Z), Image.NEAREST)
-        sheet.paste(big, (20, 20 + i * (TH * Z + 20)), big)
-
-    # макеты связей (3x): без проблеска / проблеск слева / фиолетовый в центре
-    g = 6
-    mocks = [mock_scene(band, None, g, 3, 0),
-             mock_scene(band, pale, g, 3, 2),
-             mock_scene(band, royal, g, 3, 5)]
+        big = t.resize((BW * Z, BH * Z), Image.NEAREST)
+        sheet.paste(big, (20, 20 + i * (BH * Z + 20)), big)
+    mocks = [mock_scene_v(x_band, None, 4, 0),
+             mock_scene_v(x_band, pale_x, 4, 26),
+             mock_scene_v(x_band, royal_x, 4, 20)]
     mw = max(m.width for m in mocks)
     y = sheet.height + 10
     sheet2 = Image.new('RGBA', (max(sheet.width, mw + 40), y + sum(m.height + 10 for m in mocks)),
