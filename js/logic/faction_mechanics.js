@@ -210,9 +210,16 @@ function computeRitualEngine() {
   return E;
 }
 
+/* v1.5.9 (perf): движок ритуала пересчитывается 10 раз/с вместо каждого
+   кадра (он сканирует цепь, стаки, здания). Скорость заряда между
+   пересчётами неизменна — шкала и цифры на экране те же самые. */
+let _ritualEngineAt = -1;
 function ritualChargeTick(dt) {
-  RITUAL_ENGINE = computeRitualEngine();
-  INC_CTX.ritualCellSpeed = RITUAL_ENGINE.cellSpeed;
+  if (_ritualEngineAt < 0 || gameTime - _ritualEngineAt >= 0.1) {
+    RITUAL_ENGINE = computeRitualEngine();
+    INC_CTX.ritualCellSpeed = RITUAL_ENGINE.cellSpeed;
+    _ritualEngineAt = gameTime;
+  }
   if (RITUAL_ENGINE.speed <= 0) return;
   const before = ritualResonance;
   ritualResonance = Math.min(100, ritualResonance + dt * RITUAL_ENGINE.speed);
@@ -558,7 +565,9 @@ function beastCycleTick() {
     }
   });
 
-  if (changed) { computeIncome(); renderGrid(); renderCollection(); updateHUD(); }
+  /* v1.5.9 (perf): renderCollection не нужен — тик зверей меняет поле,
+     но не инвентарь (укусы/смерти не трогают коллекцию) */
+  if (changed) { computeIncome(); renderGrid(); updateHUD(); }
 }
 
 /* ================= ДЕМОНЫ: УГЛИ v1.2.5 =================
@@ -573,6 +582,7 @@ function beastCycleTick() {
    coin — взрыв поджигает соседа; crownD — чужие взрывы кормят. */
 function demonEmberTick() {
   let changed = false;
+  let mutated = false; /* v1.5.9 (perf): коллекция перестраивается только при превращении */
   const chaosCols = {}, marchCols = {}, faceCols = {}, riftCols = {}, coinCols = {}, crownDCols = {};
   if (epoch >= RELIC_SLOT_EPOCH) for (const k in relicSlots) {
     const r = relicById(relicSlots[k]);
@@ -658,6 +668,7 @@ function demonEmberTick() {
         const oldName = card.name;
         it.cardId = newId; it.mutBuff = 1; it.embers = 0;
         discovered.add(newId);
+        mutated = true; /* v1.5.9: открыта новая карта — коллекцию обновим */
         fxAtCell(r, c, ['#c030c0', '#ff40ff', '#fff'], 18, 'big');
         fxFloatFromCell(r, c, 'ПРЕВРАЩЕНИЕ', '#ff60ff');
         toast('🔥 ' + oldName + ' превратился в ' + CARDS[newId].name + '!', 'demon', 25);
@@ -726,5 +737,8 @@ function demonEmberTick() {
       }
     }
   }
-  if (changed) { computeIncome(); renderGrid(); renderCollection(); updateHUD(); }
+  /* v1.5.9 (perf): renderCollection здесь не нужен — тик углей не меняет
+     инвентарь (полный ребилд коллекции с картинками каждые 8с давал
+     заметный фриз). Перестраиваем только при превращении (discovered). */
+  if (changed) { computeIncome(); renderGrid(); if (mutated) renderCollection(); updateHUD(); }
 }

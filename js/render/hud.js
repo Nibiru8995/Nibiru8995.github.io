@@ -6,31 +6,45 @@
    баннер режимов, тултип карт.
    ============================================================ */
 
-/* Скрытие недоступных фич: до разблокировки их ВООБЩЕ НЕ ВИДНО */
+/* Скрытие недоступных фич: до разблокировки их ВООБЩЕ НЕ ВИДНО.
+   v1.5.9 (perf): пишем в style/class только при изменении — вызывается 5 раз/с. */
 function applyFeatureLocks() {
   const arenaOn = epochHasArena(epoch);
   const casinoOn = epochHasCasino(epoch);
   /* v1.2.7: арена — компактный док под гридом + оверлей «поле боя» */
   const arenaDock = $('arenaDock'), arenaOverlay = $('arenaOverlay'), fightersPanel = $('fightersPanel');
-  if (arenaDock) arenaDock.style.display = arenaOn ? '' : 'none';
+  if (arenaDock && _hud.flDock !== arenaOn) { _hud.flDock = arenaOn; arenaDock.style.display = arenaOn ? '' : 'none'; }
   /* v1.3.1: живой мини-визуал боя живёт вместе с панелью дока */
   const arenaMini = $('arenaMini');
-  if (arenaMini) arenaMini.style.display = arenaOn ? '' : 'none';
-  if (arenaOverlay) arenaOverlay.classList.toggle('hidden-feature', !arenaOn);
-  if (fightersPanel) fightersPanel.style.display = arenaOn ? '' : 'none';
-  ['bulkDup', 'bulk1', 'bulkAll'].forEach(id => { const b = $(id); if (b) b.style.display = arenaOn ? '' : 'none'; });
+  if (arenaMini && _hud.flMini !== arenaOn) { _hud.flMini = arenaOn; arenaMini.style.display = arenaOn ? '' : 'none'; }
+  if (arenaOverlay && _hud.flOvl !== arenaOn) { _hud.flOvl = arenaOn; arenaOverlay.classList.toggle('hidden-feature', !arenaOn); }
+  if (fightersPanel && _hud.flFig !== arenaOn) { _hud.flFig = arenaOn; fightersPanel.style.display = arenaOn ? '' : 'none'; }
+  ['bulkDup', 'bulk1', 'bulkAll'].forEach(id => { const b = $(id); if (b && _hud['fl' + id] !== arenaOn) { _hud['fl' + id] = arenaOn; b.style.display = arenaOn ? '' : 'none'; } });
   const cb = $('casinoBtn');
-  if (cb) cb.style.display = casinoOn ? '' : 'none';
+  if (cb && _hud.flCas !== casinoOn) { _hud.flCas = casinoOn; cb.style.display = casinoOn ? '' : 'none'; }
   /* v1.2.9: контракты скрыты в обучении/чит-режиме — прогресс там не идёт */
   const ctb = $('contractsBtn');
-  if (ctb) ctb.style.display = noSave ? 'none' : '';
+  const ctbShow = !noSave;
+  if (ctb && _hud.flContr !== ctbShow) { _hud.flContr = ctbShow; ctb.style.display = ctbShow ? '' : 'none'; }
 }
 
 /* v1.2.9.1 (perf): тяжёлые подрендеры (applyFeatureLocks, строка статистики
    поля, слоты реликвий, шкала ритуала, бейдж контрактов) — раз в 200мс,
    остальное (числа кристаллов/ставки/кнопки Эпохи) — каждый кадр.
-   Прямые вызовы updateHUD() (без timestamp) как раньше — всё сразу. */
+   Прямые вызовы updateHUD() (без timestamp) как раньше — всё сразу.
+   v1.5.9 (perf): диффинг DOM — updateHUD зовётся 60 раз/с, а почти все
+   его значения меняются редко. Пишем в DOM только изменённые значения
+   (кэш последних строк) — убирает лишние style recalс и перерисовки.
+   Текст на экране и логика — без изменений. */
 let hudHeavyLast = 0;
+const _hud = {};   // кэш последних записанных значений (diffing)
+function hudSet(key, el, prop, val) {
+  if (_hud[key] === val) return;
+  _hud[key] = val;
+  if (prop === 'innerHTML') el.innerHTML = val;
+  else if (prop === 'pct') el.style.setProperty('--pct', val);
+  else el.textContent = val;
+}
 
 function updateHUD(now) {
   const heavy = now === undefined || (now - hudHeavyLast) >= 200;
@@ -38,9 +52,9 @@ function updateHUD(now) {
     if (now !== undefined) hudHeavyLast = now;
     applyFeatureLocks();
   }
-  $('crystals').textContent = fmt(crystals);
-  $('sealsTop').textContent = fmt(seals);
-  $('rate').textContent = '+' + calculateIncome().toFixed(2) + '/сек';
+  hudSet('cr', $('crystals'), 'text', fmt(crystals));
+  hudSet('se', $('sealsTop'), 'text', fmt(seals));
+  hudSet('rate', $('rate'), 'text', '+' + calculateIncome().toFixed(2) + '/сек');
 
   /* Pity — гарантия до старшей ДОСТУПНОЙ редкости (показ у кнопок круток).
      «Череп Владыки» (реликвия) приближает ★4-гарантию.
@@ -51,7 +65,7 @@ function updateHUD(now) {
   if (unlocked.includes(5)) pity += 'до ★4: ' + Math.max(0, p4m - pity4) + '<br>до ★5: ' + Math.max(0, 80 - pity5);
   else if (unlocked.includes(4)) pity += 'до ★4: ' + Math.max(0, p4m - pity4);
   else pity += 'до ★3: ' + Math.max(0, p4m - pity4);
-  $('pity').innerHTML = pity;
+  hudSet('pity', $('pity'), 'innerHTML', pity);
 
   const rc = rollCost();
   /* v1.2.9.1: бесплатная часть пачки списывается сперва, поэтому
@@ -60,22 +74,25 @@ function updateHUD(now) {
     const el = $('roll' + n);
     const freeN = Math.min(freeRolls, n);
     const paidN = n - freeN;
-    el.disabled = false;
+    const free = paidN === 0;
+    if (el.disabled !== false) el.disabled = false;
     const cost = el.querySelector('.cost');
-    if (paidN === 0) {
-      cost.textContent = n === 1 ? 'Бесплатно ×' + freeRolls : 'Бесплатно';
-      el.classList.add('free-roll');
-      el.disabled = false;
+    if (free) {
+      hudSet('rollc' + n, cost, 'text', n === 1 ? 'Бесплатно ×' + freeRolls : 'Бесплатно');
+      if (!el.classList.contains('free-roll')) el.classList.add('free-roll');
       return;
     }
-    el.classList.remove('free-roll');
-    el.disabled = crystals < paidN * rc;
-    if (cost) cost.textContent = fmt(paidN * rc) + (freeN ? ' (×' + freeN + ' бесплатные)' : '');
+    if (el.classList.contains('free-roll')) el.classList.remove('free-roll');
+    const dis = crystals < paidN * rc;
+    if (el.disabled !== dis) el.disabled = dis;
+    if (cost) hudSet('rollc' + n, cost, 'text', fmt(paidN * rc) + (freeN ? ' (×' + freeN + ' бесплатные)' : ''));
   });
   /* v1.2.9.1: «ВСЕ ДЕНЬГИ» — честный счётчик: платные по текущей цене + бесплатные */
   const allN = Math.floor(Math.max(0, crystals) / rc) + freeRolls;
-  $('rollAll').disabled = allN <= 0;
-  $('rollAll').querySelector('.cost').textContent = '×' + fmtShort(allN) + ' круток';
+  const rollAllEl = $('rollAll');
+  const allDis = allN <= 0;
+  if (rollAllEl.disabled !== allDis) rollAllEl.disabled = allDis;
+  hudSet('rollAllC', rollAllEl.querySelector('.cost'), 'text', '×' + fmtShort(allN) + ' круток');
 
   /* Большая кнопка ЭПОХИ над Алтарём: всегда кликабельна —
      порог достигнут → Вознесение, нет → открыть Меню Эпохи.
@@ -85,22 +102,20 @@ function updateHUD(now) {
   const p = epochProgress();
   const upBtn = $('epochUpBtn');
   const label = $('epochBtnLabel');
-  if (label) label.innerHTML = 'Эпоха ' + epoch + ' <small class="ep-name">· ' + epochName(epoch) + '</small>';
+  hudSet('epLbl', label, 'innerHTML', 'Эпоха ' + epoch + ' <small class="ep-name">· ' + epochName(epoch) + '</small>');
   if (canEpochUp()) {
     upBtn.disabled = false;
-    upBtn.classList.remove('notready');
-    upBtn.classList.add('ready');
-    upBtn.style.setProperty('--pct', '100%');
-    upBtn.querySelector('.cost').textContent = 'Начать Эпоху ' + (epoch + 1) + ' «' + epochName(epoch + 1) + '» → +' + epochSealsGain(epoch) + ' печатей';
+    if (!upBtn.classList.contains('ready')) { upBtn.classList.remove('notready'); upBtn.classList.add('ready'); }
+    hudSet('epPct', upBtn, 'pct', '100%');
+    hudSet('epCost', upBtn.querySelector('.cost'), 'text', 'Начать Эпоху ' + (epoch + 1) + ' «' + epochName(epoch + 1) + '» → +' + epochSealsGain(epoch) + ' печатей');
   } else {
     upBtn.disabled = false;
-    upBtn.classList.remove('ready');
-    upBtn.classList.add('notready');
-    upBtn.style.setProperty('--pct', (Math.floor(p.pct * 100)) + '%');
-    upBtn.querySelector('.cost').textContent = fmtShort(p.earned) + ' / ' + fmtShort(p.threshold) + ' · ' + Math.floor(p.pct * 100) + '%';
+    if (!upBtn.classList.contains('notready')) { upBtn.classList.remove('ready'); upBtn.classList.add('notready'); }
+    hudSet('epPct', upBtn, 'pct', (Math.floor(p.pct * 100)) + '%');
+    hudSet('epCost', upBtn.querySelector('.cost'), 'text', fmtShort(p.earned) + ' / ' + fmtShort(p.threshold) + ' · ' + Math.floor(p.pct * 100) + '%');
   }
   const achvBtnCost = $('achvBtn') && $('achvBtn').querySelector('.cost');
-  if (achvBtnCost) achvBtnCost.textContent = achvCount() + ' / ' + ACHIEVEMENTS.length;
+  if (achvBtnCost) hudSet('achvC', achvBtnCost, 'text', achvCount() + ' / ' + ACHIEVEMENTS.length);
   /* живой индикатор армии/бафов в строке над Алтарём */
   if (heavy) {
     if (typeof updateGridStats === 'function') updateGridStats();

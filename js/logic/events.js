@@ -93,9 +93,16 @@ function omenIconHTML(type) {
   const m = OMEN_META[type];
   return '<img class="omen-img" src="' + m.img + '" alt="" onerror="cardArtFail(this,\'omen-ic\',\'' + m.icon + '\')">';
 }
+/* v1.5.9 (perf): слой знамений перестраивается только когда список
+   знамений/размер поля реально изменились (renderOmens зовётся из
+   каждого renderGrid, а знамения меняются раз в минуты). */
+let _omensSig = null;
 function renderOmens() {
   const layer = document.getElementById('omenLayer');
   if (!layer) return;
+  const sig = playableSize + '|' + omens.map(o => o.r + '-' + o.c + '-' + o.type).join(',');
+  if (sig === _omensSig) return;
+  _omensSig = sig;
   layer.innerHTML = '';
   const n = playableSize, st = gridStart();
   omens.forEach(o => {

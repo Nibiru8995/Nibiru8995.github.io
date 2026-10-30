@@ -36,42 +36,90 @@ function loadBattleBg() {
   if (battleBg || battleBgTried) return;
   battleBgTried = true;
   const img = new Image();
-  img.onload = () => { battleBg = img; };
+  img.onload = () => { battleBg = img; _bgCache = null; }; /* v1.5.9: сброс кэша статики */
   img.src = 'assets/arena/battlefield.jpg';
 }
 
 /* «Часы» атмосферы — тикают всегда, даже вне боя (туман/пепел в превью) */
 function ambTime() { return performance.now() / 1000; }
 
-function drawBattleBg(ctx) {
-  if (battleBg) { ctx.drawImage(battleBg, 0, 0, ARENA.FIELD_W, ARENA.FIELD_H); }
+/* ============================================================
+   v1.5.9 (perf): КАНАС АРЕНЫ БЕЗ ПОСТОЯННОГО ПЕРЕСЧЕТА.
+   drawBattleBg раньше КАЖДЫЙ кадр (и в мини-доке 60 раз/с, и в
+   оверлее) создавал 3-4 градиента (фон-фолбэк, 2 пятна тумана,
+   виньетка) — дорогие операции. Теперь:
+   - статика (картинка фона + тени «дорог войны») рисуется ОДИН раз
+     в офскрин-канвас и дальше кладётся одним drawImage;
+   - туман — предзапечённый спрайт того же градиента, двигается так же;
+   - виньетка — кэшированный объект градиента (координаты фиксированы).
+   Пиксели кадра — те же самые; меняется только способ их получения.
+   ============================================================ */
+let _bgCache = null, _fogSprites = {}, _vgCache = new WeakMap();
+
+function staticBgCanvas() {
+  if (_bgCache) return _bgCache;
+  const c = document.createElement('canvas');
+  c.width = ARENA.FIELD_W; c.height = ARENA.FIELD_H;
+  const x = c.getContext('2d');
+  if (!x) return null;
+  if (battleBg) x.drawImage(battleBg, 0, 0, ARENA.FIELD_W, ARENA.FIELD_H);
   else {
     /* v1.3.1: без ассета — холодный серо-синий склеп вместо тёплого градиента */
-    const g = ctx.createLinearGradient(0, 0, 0, ARENA.FIELD_H);
+    const g = x.createLinearGradient(0, 0, 0, ARENA.FIELD_H);
     g.addColorStop(0, '#0e1013'); g.addColorStop(0.6, '#14171b'); g.addColorStop(1, '#0a0c0e');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, ARENA.FIELD_W, ARENA.FIELD_H);
-    ctx.strokeStyle = '#00000055'; ctx.lineWidth = 1;
+    x.fillStyle = g; x.fillRect(0, 0, ARENA.FIELD_W, ARENA.FIELD_H);
+    x.strokeStyle = '#00000055'; x.lineWidth = 1;
     for (let y = 70; y < ARENA.FIELD_H; y += 34) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(ARENA.FIELD_W, y); ctx.stroke();
+      x.beginPath(); x.moveTo(0, y); x.lineTo(ARENA.FIELD_W, y); x.stroke();
     }
   }
-  const t = ambTime();
   /* Три полосы движения — мягкая тень «дорог войны» */
-  ctx.fillStyle = 'rgba(0,0,0,0.14)';
-  [96, 160, 224].forEach(ly => {
-    ctx.fillRect(0, ly - 22, ARENA.FIELD_W, 44);
-  });
+  x.fillStyle = 'rgba(0,0,0,0.14)';
+  [96, 160, 224].forEach(ly => { x.fillRect(0, ly - 22, ARENA.FIELD_W, 44); });
+  _bgCache = c;
+  return c;
+}
+
+function fogSprite(fr) {
+  if (_fogSprites[fr]) return _fogSprites[fr];
+  const c = document.createElement('canvas');
+  c.width = c.height = Math.ceil(fr * 2);
+  const x = c.getContext('2d');
+  if (!x) return null;
+  const fog = x.createRadialGradient(fr, fr, 10, fr, fr, fr);
+  fog.addColorStop(0, 'rgba(150,158,168,0.10)');
+  fog.addColorStop(1, 'rgba(150,158,168,0)');
+  x.fillStyle = fog;
+  x.fillRect(0, 0, fr * 2, fr * 2);
+  _fogSprites[fr] = c;
+  return c;
+}
+
+function cachedVignette(ctx, inner, outer, alpha) {
+  let vg = _vgCache.get(ctx);
+  if (!vg) {
+    vg = ctx.createRadialGradient(ARENA.FIELD_W / 2, ARENA.FIELD_H / 2, inner, ARENA.FIELD_W / 2, ARENA.FIELD_H / 2, outer);
+    vg.addColorStop(0, 'rgba(0,0,0,0)');
+    vg.addColorStop(1, 'rgba(0,0,0,' + alpha + ')');
+    _vgCache.set(ctx, vg);
+  }
+  return vg;
+}
+
+function drawBattleBg(ctx) {
+  const bg = staticBgCanvas();
+  if (bg) ctx.drawImage(bg, 0, 0, ARENA.FIELD_W, ARENA.FIELD_H);
+  else { ctx.fillStyle = '#0e1013'; ctx.fillRect(0, 0, ARENA.FIELD_W, ARENA.FIELD_H); }
+  const t = ambTime();
   /* Дрейфующий туман: два мягких пятна, гуляют в противофазе
-     v1.3.1: холодный серый туман кладбища вместо тёплого */
+     v1.3.1: холодный серый туман кладбища вместо тёплого
+     v1.5.9: спрайт того же градиента — пиксель-в-пиксель */
   for (let i = 0; i < 2; i++) {
     const fx = ARENA.FIELD_W * (0.3 + 0.4 * i) + Math.sin(t * 0.11 + i * 2.7) * 90;
     const fy = 60 + i * 90 + Math.cos(t * 0.09 + i * 1.9) * 26;
     const fr = 150 + i * 60;
-    const fog = ctx.createRadialGradient(fx, fy, 10, fx, fy, fr);
-    fog.addColorStop(0, 'rgba(150,158,168,0.10)');
-    fog.addColorStop(1, 'rgba(150,158,168,0)');
-    ctx.fillStyle = fog;
-    ctx.fillRect(fx - fr, fy - fr, fr * 2, fr * 2);
+    const sp = fogSprite(fr);
+    if (sp) ctx.drawImage(sp, fx - fr, fy - fr, fr * 2, fr * 2);
   }
   /* Пепел/искры в воздухе — медленно плывут вверх; в вайбе склепа — пепельно-голубые */
   for (let i = 0; i < 14; i++) {
@@ -82,11 +130,8 @@ function drawBattleBg(ctx) {
     ctx.fillStyle = i % 3 ? 'rgba(190,200,215,' + a + ')' : 'rgba(230,240,255,' + (a * 0.7) + ')';
     ctx.fillRect(px, py, 2, 2);
   }
-  /* Виньетка + тёмная кайма */
-  const vg = ctx.createRadialGradient(ARENA.FIELD_W / 2, ARENA.FIELD_H / 2, 130, ARENA.FIELD_W / 2, ARENA.FIELD_H / 2, 340);
-  vg.addColorStop(0, 'rgba(0,0,0,0)');
-  vg.addColorStop(1, 'rgba(0,0,0,0.5)');
-  ctx.fillStyle = vg;
+  /* Виньетка + тёмная кайма (градиент кэшируется) */
+  ctx.fillStyle = cachedVignette(ctx, 130, 340, 0.5);
   ctx.fillRect(0, 0, ARENA.FIELD_W, ARENA.FIELD_H);
 }
 
@@ -217,8 +262,16 @@ function imgCache(src) {
   return im.complete && im.naturalWidth ? im : null;
 }
 
-/* Статичные армии для предпросмотра (до боя): те же позиции, что в spawnBattle */
+/* Статичные армии для предпросмотра (до боя): те же позиции, что в spawnBattle.
+   v1.5.9 (perf): превью строится заново только когда сменились волна/отряд —
+   раньше аллокации и сортировка были каждый кадр простоя. */
+let _pvCache = null, _pvKey = null;
 function previewArmies() {
+  const wave = arenaState.enemy;
+  const key = (wave ? wave.floor + '|' + wave.room + '|' + wave.name : '-') + '#' +
+    Object.keys(fighters).map(id => id + ':' + fighters[id] + ':' + (fighterHpState[id] ? Math.round(fighterHpState[id]) : '')).join(',') + '#' +
+    (battle.active ? 1 : 0);
+  if (_pvCache && _pvKey === key) return _pvCache;
   const W = ARENA.FIELD_W;
   const out = { hero: [], foe: [] };
   buildHeroSquads().forEach((s, i) => {
@@ -229,7 +282,6 @@ function previewArmies() {
       x: 110 + Math.floor(i / 3) * 46, y: laneY(i), bob: i * 1.3, flash: 0, lunge: 0, slash: 0
     });
   });
-  const wave = arenaState.enemy;
   (wave ? wave.units : []).forEach((d, i) => {
     out.foe.push({
       side: 'foe', rarity: d.rarity, k: d.k, boss: !!d.boss, dead: false, deadT: 0,
@@ -237,6 +289,7 @@ function previewArmies() {
       x: W - 110 - Math.floor(i / 3) * 46, y: laneY(i), bob: i * 1.7, flash: 0, lunge: 0, slash: 0
     });
   });
+  _pvCache = out; _pvKey = key;
   return out;
 }
 
@@ -481,13 +534,16 @@ function renderArenaDockVisual() {
   } else { foePct.textContent = '—'; foeFill.style.width = '0%'; }
   foeName.textContent = fname;
 
-  /* Отряд-иконки: мини-арты текущих бойцов, павшие — тускнеют */
+  /* Отряд-иконки: мини-арты текущих бойцов, павшие — тускнеют.
+     v1.5.9 (perf): innerHTML перестраивается только при смене состава/
+     состояния бойцов (раньше — 5 раз/с с пересозданием img-спрайтов). */
   const heroes = battle.active ? battle.units.filter(u => u.side === 'hero') : null;
-  let html = '';
+  let html = '', sqSig = '';
   if (heroes) {
     heroes.forEach(u => {
       const card = CARDS[u.cardId || u.id];
       const dead = u.hp <= 0;
+      sqSig += (u.cardId || u.id) + (dead ? '!' : '') + ';';
       const art = card ? cardArtHTML(card, 'ad-art', '') : '<img class="ad-art">';
       html += '<span class="ad-unit' + (dead ? ' dead' : '') + '">' + art + '</span>';
     });
@@ -497,10 +553,14 @@ function renderArenaDockVisual() {
       if (!card) return;
       const st = fighterHpState[id];
       const dead = st && st.hp <= 0;
+      sqSig += id + (dead ? '!' : '') + ';';
       html += '<span class="ad-unit' + (dead ? ' dead' : '') + '">' + cardArtHTML(card, 'ad-art', '') + '</span>';
     });
   }
-  squadEl.innerHTML = html || '<span>отряд пуст</span>';
+  if (squadEl.__sig !== sqSig) {
+    squadEl.__sig = sqSig;
+    squadEl.innerHTML = html || '<span>отряд пуст</span>';
+  }
 }
 
 /* ============================================================
@@ -528,9 +588,8 @@ function renderMini() {
     units = pv.hero.concat(pv.foe).sort((a, b) => a.y - b.y);
   }
   units.forEach(u => drawUnit(ctx, u, imgCache, battle.active ? battle.t : ambTime()));
-  /* мягкая виньетка мини-поля */
-  const vg = ctx.createRadialGradient(ARENA.FIELD_W / 2, ARENA.FIELD_H / 2, 90, ARENA.FIELD_W / 2, ARENA.FIELD_H / 2, 300);
-  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.42)');
+  /* мягкая виньетка мини-поля (градиент кэшируется) */
+  const vg = cachedVignette(ctx, 90, 300, 0.42);
   ctx.fillStyle = vg;
   ctx.fillRect(0, 0, ARENA.FIELD_W, ARENA.FIELD_H);
 }

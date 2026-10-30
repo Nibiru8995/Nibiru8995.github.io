@@ -547,6 +547,15 @@ function computeIncome() {
   total *= activeAltBuff().mult;
   incomeCache = { total, uniquePairs, perCell, pairUsage: usage, armyBest, armyMultOf: INC_CTX.armyMult,
     linkFactors, linkRoyal, linkLich, lichZone: Array.from(lichZoneCells) };
+  /* v1.5.9 (perf): движок ритуала обновляется ВМЕСТЕ с контекстом (INC_CTX) —
+     раньше он пересчитывался на КАЖДОМ кадре (60 раз/с), теперь — при каждом
+     пересчёте дохода (10 Гц и при любых изменениях поля). Шкала ритуала,
+     бейджи ⚡ и статистика читают всегда свежий движок, как и раньше. */
+  if (mech === 'formation' && typeof computeRitualEngine === 'function') {
+    RITUAL_ENGINE = computeRitualEngine();
+    INC_CTX.ritualCellSpeed = RITUAL_ENGINE.cellSpeed;
+    if (typeof _ritualEngineAt !== 'undefined') _ritualEngineAt = gameTime;
+  }
   return total;
 }
 

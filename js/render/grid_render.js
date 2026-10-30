@@ -64,10 +64,15 @@ function buildAuraMap() {
 function buildGrid() {
   applyGridMetrics();
   gridEl.innerHTML = '';
-  const n = playableSize;
-  for (let i = 0; i < n * n; i++) {
+  const n = playableSize, st = gridStart();
+  for (let dr = 0; dr < n; dr++) for (let dc = 0; dc < n; dc++) {
+    const r = st + dr, c = st + dc;
     const cell = document.createElement('div');
-    cell.className = 'cell';
+    cell.className = 'cell playable';
+    cell.dataset.r = r; cell.dataset.c = c;
+    /* v1.5.9 (perf): onclick назначается ОДИН раз — r/c клетки постоянны,
+       пока её не пересоздаст buildGrid (смена размера Алтаря) */
+    cell.onclick = () => onCellClick(r, c);
     gridEl.appendChild(cell);
   }
   renderGrid();
@@ -150,126 +155,209 @@ function onColSlotClick(c) {
   open_('relicPick');
 }
 
+/* ============================================================
+   v1.5.9 (perf): ИНКРЕМЕНТАЛЬНЫЙ РЕНДЕР ПОЛЯ.
+   Раньше renderGrid стирал и пересобирал DOM ВСЕХ клеток (innerHTML='')
+   при любом изменении — тик демонов (угли каждые 8с) давал кадр-фриз
+   на 15-40мс: пересоздание карт с картинками, слушателями и SVG.
+   Теперь у каждой клетки — сигнатура состояния; перерисовывается только
+   изменившаяся клетка, причём при сохранной СТРУКТУРЕ (карта/бейджи)
+   обновляются только ТЕКСТЫ бейджей и классы — без пересборки DOM.
+   Разметка, классы, бейджи и слушатели — байт-в-байт прежние:
+   визуал и поведение не меняются вовсе.
+   ============================================================ */
 function renderGrid() {
   /* Защита: при смене размера Алтаря клетки пересоздаются автоматически */
   if (gridEl.children.length !== playableSize * playableSize) { buildGrid(); return; }
   const n = playableSize, st = gridStart();
   const cells = gridEl.children;
   const auraMap = buildAuraMap();
+  const mech = FACTION_INFO[faction].mechanic;
+  const relicsOn = epoch >= RELIC_SLOT_EPOCH;
+  const colRelCache = {};
+  const colRelOf = c => relicsOn ? (colRelCache[c] !== undefined ? colRelCache[c] : (colRelCache[c] = relicAtCol(c))) : null;
   for (let dr = 0; dr < n; dr++) for (let dc = 0; dc < n; dc++) {
     const r = st + dr, c = st + dc;
     const cell = cells[dr * n + dc];
     const item = grid[r][c];
-    cell.innerHTML = ''; cell.className = 'cell playable';
-    cell.dataset.r = r; cell.dataset.c = c;
-    cell.onclick = () => onCellClick(r, c);
-    if (r === 4 && c === 4) cell.classList.add('center-cell');
-    /* ФИДБЕК (раунд 3): аура — подсветка ВСЕХ клеток зоны (вкл. пустые).
-       v1.2.7: старый цвет ауры снимаем — иначе клетка «помнит» прошлую ауру. */
-    const az = auraMap[r + ',' + c];
-    if (az) {
-      cell.classList.add('aura-zone');
-      if (az.big) cell.classList.add('r2');
-      if (az.live) cell.classList.add('aura-live'); /* v1.5.0: дышит, когда работает */
-      cell.style.setProperty('--auraC', az.color);
-    } else cell.style.removeProperty('--auraC');
-    /* ФИДБЕК 1 (раунд 3): ЯРКАЯ золотая зона Ауры Власти — видно на любых клетках,
-       что соседние с Личем попадают под эффект (первые 2 звена без затухания).
-       v1.4.0: зона Пакта Тишины Лича — зелено-золотая (звенья на длине 2 не слабеют). */
-    if (incomeCache.lichZone && incomeCache.lichZone.indexOf(r + ',' + c) >= 0) cell.classList.add('aura-lich');
-    /* РИТУАЛ культистов (фидбек 3): клетки в ритуале, в формациях и ВНЕШНИЙ КРУГ.
-       v1.0: живой визуал — мёртвые культисты тускнеют, активный Алтарь
-       получает вращающееся кольцо рун, всплеск резонанса — золото. */
-    if (INC_CTX.ritual && INC_CTX.ritual.has(r + ',' + c)) cell.classList.add('ritual-cell');
-    else if (INC_CTX.ritualOuter && INC_CTX.ritualOuter.has(r + ',' + c)) cell.classList.add('ritual-outer');
-    if (INC_CTX.formCell && INC_CTX.formCell[r + ',' + c]) cell.classList.add('ritual-part');
+    const key = r + ',' + c;
+    const az = auraMap[key];
 
-    if (moveMode && moveSource && moveSource.r === r && moveSource.c === c) cell.classList.add('move-source');
-    else if (moveMode && moveSource && !item) cell.classList.add('move-target');
-    else if (placingMode && pendingCard && !item) cell.classList.add('place-target');
-
+    /* --- классы клетки (аура/ритуал/режимы) --- */
+    let cls = 'cell playable';
+    if (r === 4 && c === 4) cls += ' center-cell';
+    if (az) { cls += ' aura-zone'; if (az.big) cls += ' r2'; if (az.live) cls += ' aura-live'; }
+    if (incomeCache.lichZone && incomeCache.lichZone.indexOf(key) >= 0) cls += ' aura-lich';
+    if (INC_CTX.ritual && INC_CTX.ritual.has(key)) cls += ' ritual-cell';
+    else if (INC_CTX.ritualOuter && INC_CTX.ritualOuter.has(key)) cls += ' ritual-outer';
+    if (INC_CTX.formCell && INC_CTX.formCell[key]) cls += ' ritual-part';
+    if (moveMode && moveSource && moveSource.r === r && moveSource.c === c) cls += ' move-source';
+    else if (moveMode && moveSource && !item) cls += ' move-target';
+    else if (placingMode && pendingCard && !item) cls += ' place-target';
     const hc = hintClass(r, c);
-    if (hc) cell.classList.add(hc);
+    if (hc) cls += ' ' + hc;
 
-      if (item) {
-      const card = CARDS[item.cardId];
-      const cardEl = document.createElement('div');
-      cardEl.className = 'card star' + card.rarity + ' f-' + card.faction;
-      cardEl.style.setProperty('--glow', rarityColor(card.rarity));
-      cardEl.style.setProperty('--cardBg', rarityBg(card.rarity));
-      const income = calcCardIncome(r, c);
-      const damaged = item.hp < item.maxHp - 0.01;
-      const hpPct = damaged ? Math.max(0, (item.hp / item.maxHp) * 100) : 100;
-      const hpColor = hpPct > 50 ? '#40d040' : hpPct > 20 ? '#e0c040' : '#ff3030';
-      /* v1.2.6: у культистов инкам 0 — бейдж показывает ВКЛАД В РИТУАЛ (⚡) */
-      let badgeTxt = income.toFixed(2);
-      if (FACTION_INFO[faction].mechanic === 'formation' && card.faction === 'cultist' && !card.isBuilding) {
-        const cs = (INC_CTX.ritualCellSpeed && INC_CTX.ritualCellSpeed[r + ',' + c]) || 0;
-        badgeTxt = cs > 0 ? '⚡' + cs.toFixed(2) : '· · ·';
+    if (!item) {
+      /* пустая клетка: только классы и цвет ауры */
+      const sig = 'E|' + cls + '|' + (az ? az.color : '');
+      if (cell.__sig !== sig) {
+        cell.__sig = sig; cell.__struct = ''; cell.__refs = null;
+        if (cell.className !== cls) cell.className = cls;
+        if (az) cell.style.setProperty('--auraC', az.color);
+        else if (cell.style.getPropertyValue('--auraC')) cell.style.removeProperty('--auraC');
+        if (cell.firstChild) cell.innerHTML = '';
       }
-      let badges = '<span class="faction-dot" style="background:' + FACTION_INFO[card.faction].color + '"></span>' +
-        '<span class="card-name">' + card.name + '</span>' +
-        '<span class="income-badge">' + badgeTxt + '</span>';
-      /* РЕЛИКВИИ 3.0: маркер реликвии на карте, стоящей в её столбце (спрайт) */
-      const colRel = relicAtCol(c);
-      if (colRel && epoch >= RELIC_SLOT_EPOCH) badges += '<span class="anchor-badge relic-mini" style="color:' + RELIC_RARITY_COLOR(colRel.rarity) + '" title="Столбец под реликвией: ' + colRel.name + '\n✅ ' + colRel.rule + '\n❌ ' + (colRel.curse || '') + '">' + relicArtHTML(colRel, 'relic-mini-img', '') + '</span>';
-      /* v1.4.0: ⛓ ПРИКОВАННОЕ ЗДАНИЕ (Скованным Цепью) */
-      if (card.isBuilding && INC_CTX.bld && INC_CTX.bld.chainedAt && INC_CTX.bld.chainedAt.has(r + ',' + c))
-        badges += '<span class="anchor-badge" style="color:#b8c4d4" title="⛓ Приковано Скованным Цепью: кулдаун абилки вдвое короче, аура ×1.5, звено с любой соседней картой">⛓</span>';
-      /* v1.4.0: ⛓ сам Скованный — маркер, когда его цепь работает */
-      if (card.id === 'u11' && getNeighbors(r, c).some(n => CARDS[n.item.cardId].isBuilding))
-        badges += '<span class="anchor-badge" style="color:#b8c4d4" title="Цепь здания захвачена">⛓</span>';
-      /* ЗДАНИЯ: значок постройки + бейдж якоря для Алтаря */
-      if (card.isBuilding) badges += '<span class="anchor-badge" style="color:#e8c060" title="Здание">🏛</span>';
-      if (RITUAL_SOURCES[card.id]) badges += '<span class="anchor-badge">🔱</span>';
-      /* Уникальная механика (SPECIALS): ✦ светится, когда особенность СЕЙЧАС работает —
-         тусклый значок означает, что бонусы карты не задействованы */
-      if (SPECIALS[card.id]) {
-        const sa = specialActive(card, item, r, c);
-        badges += '<span class="anchor-badge sp-badge' + (sa.active ? ' on' : '') + '" title="' +
-          (sa.active ? 'Особенность активна' : 'Особенность не задействована') + ': ' + (SPECIALS[card.id] || '').replace(/"/g, '') + '">✦</span>';
-        /* v1.5.0 «если активно — дышит»: работающая особенность мерцает,
-           спящая — стоит тихо. Здания исключены: их пассивка «активна» всегда,
-           вспышка-каст они получают в момент срабатывания (fx-live) */
-        if (sa.active && !card.isBuilding) cardEl.classList.add('sp-live');
-      }
-      /* Таймерные способности: бейджи перезарядки (v1.2.6: + Зомби-рост, Кладбище, Врата) */
-      if (card.id === 'bl_mound') badges += '<span class="cd-badge" data-cd="mound"></span>';
-      if (card.id === 'd9') badges += '<span class="cd-badge" data-cd="balr"></span>';
-      if (card.id === 'u1') badges += '<span class="cd-badge" data-cd="grow" data-r="' + r + '" data-c2="' + c + '"></span>';
-      if (card.id === 'bl_grave') badges += '<span class="cd-badge" data-cd="grave"></span>';
-      if (card.id === 'bl_gates') badges += '<span class="cd-badge" data-cd="gates"></span>';
-      /* ДЕМОНЫ: угли Хаоса (0..5) — оранжевые ромбы */
-      if (FACTION_INFO[faction].mechanic === 'chaos' && item.embers > 0)
-        badges += '<span class="ember-badge">' + '◆'.repeat(item.embers) + '</span>';
-      /* ДЕМОНЫ: перегрев (×2) */
-      if (FACTION_INFO[faction].mechanic === 'chaos' && item.boomUntil > gameTime)
-        badges += '<span class="mut-badge" style="color:#ff6040">×2</span>';
-      /* ДЕМОНЫ: накопленный бафф мутаций */
-      if (item.mutBuff && item.mutBuff !== 1 && FACTION_INFO[faction].mechanic === 'chaos')
-        badges += '<span class="mut-badge">▲</span>';
-      /* ЗВЕРИ: сытость (▲) и голод (▼) по рациону */
-      if (FACTION_INFO[faction].mechanic === 'cycle') {
-        const fed = (item.predBuff || 0) + (item.graze || 0) + (item.floraBuff || 0) + (item.scavBuff || 0);
-        if (fed > 0) badges += '<span class="mut-badge" style="color:#8fc87f">▲</span>';
-        if (item.hunger !== undefined && item.hunger < 1) badges += '<span class="mut-badge" style="color:#e05a5a">▼</span>';
-      }
-      if (item.stacks > 1) badges += '<span class="stack-badge">x' + item.stacks + '</span>';
-      cardEl.innerHTML = (damaged ? '<div class="hp-bar" style="width:' + hpPct + '%;background:' + hpColor + ';color:' + hpColor + ';"></div>' : '') +
-        cardArtHTML(card, 'card-art', 'glyph') + badges;
-      if (formation(r, c) > 1) cardEl.classList.add('in-formation');
-      /* v1.5.0: таймерная способность сработала (fxUntil от fxMarkBuildings) — вспышка-каст */
-      if (item.fxUntil > gameTime) cardEl.classList.add('fx-live');
-      /* v1.2.6: активный источник ритуала — кольцо рун */
-      if (FACTION_INFO[faction].mechanic === 'formation' && card.faction === 'cultist') {
-        const k = r + ',' + c;
-        if (RITUAL_SOURCES[card.id] && INC_CTX.formActive[k]) cardEl.classList.add('altar-active');
-      }
-      cardEl.addEventListener('mouseenter', e => showCardTooltip(e, card, income, r, c));
-      cardEl.addEventListener('mousemove', moveTooltip);
-      cardEl.addEventListener('mouseleave', hideTooltip);
-      cell.appendChild(cardEl);
+      continue;
     }
+
+    const card = CARDS[item.cardId];
+    const income = calcCardIncome(r, c);
+    const damaged = item.hp < item.maxHp - 0.01;
+    const hpPct = damaged ? Math.max(0, (item.hp / item.maxHp) * 100) : 100;
+    const hpColor = hpPct > 50 ? '#40d040' : hpPct > 20 ? '#e0c040' : '#ff3030';
+    let badgeTxt = income.toFixed(2);
+    if (mech === 'formation' && card.faction === 'cultist' && !card.isBuilding) {
+      const cs = (INC_CTX.ritualCellSpeed && INC_CTX.ritualCellSpeed[key]) || 0;
+      badgeTxt = cs > 0 ? '⚡' + cs.toFixed(2) : '· · ·';
+    }
+    const colRel = colRelOf(c);
+    const chainedB = card.isBuilding && INC_CTX.bld && INC_CTX.bld.chainedAt && INC_CTX.bld.chainedAt.has(key);
+    const u11chain = card.id === 'u11' && getNeighbors(r, c).some(n2 => CARDS[n2.item.cardId].isBuilding);
+    const hasSp = !!SPECIALS[card.id];
+    const sa = hasSp ? specialActive(card, item, r, c) : null;
+    const inForm = formation(r, c) > 1;
+    const fxLive = item.fxUntil > gameTime;
+    const boomOn = mech === 'chaos' && item.boomUntil > gameTime;
+    const mutOn = mech === 'chaos' && item.mutBuff && item.mutBuff !== 1;
+    let fed = 0, hungry = false;
+    if (mech === 'cycle') {
+      fed = (item.predBuff || 0) + (item.graze || 0) + (item.floraBuff || 0) + (item.scavBuff || 0);
+      hungry = item.hunger !== undefined && item.hunger < 1;
+    }
+    const emberN = (mech === 'chaos' && item.embers > 0) ? item.embers : 0;
+
+    /* --- СТРУКТУРА: что требует пересборки DOM (наличие элементов/атрибутов) --- */
+    const struct = item.cardId + '#' + item.stacks +
+      '|' + (damaged ? 'D' : '') +
+      '|' + (emberN ? 'e' : '') + (mutOn ? 'm' : '') + (boomOn ? 'b' : '') +
+      (fed > 0 ? 'f' : '') + (hungry ? 'h' : '') +
+      '|' + (colRel ? colRel.id : '') +
+      '|' + (chainedB ? 'C' : '') + (u11chain ? 'U' : '') +
+      '|' + (hasSp ? (sa.active ? 'A' : 'a') : '-') +
+      '|' + card.rarity + card.faction;
+    const sig = struct +
+      '|' + badgeTxt + '|' + (emberN || '') +
+      '|' + cls + '|' + (az ? az.color : '') +
+      '|' + (inForm ? 'F' : '') + (fxLive ? 'X' : '') +
+      '|' + (INC_CTX.formActive && INC_CTX.formActive[key] ? 'AF' : '') +
+      '|' + (damaged ? Math.round(hpPct) + hpColor : '');
+    if (cell.__sig === sig) continue;
+
+    const R = cell.__refs;
+    if (R && cell.__struct === struct) {
+      /* --- ЛЁГКИЙ ПАТЧ: структура та же — обновляем тексты/классы/стили --- */
+      cell.__sig = sig;
+      if (cell.className !== cls) cell.className = cls;
+      if (az) { if (R.auraC !== az.color) { R.auraC = az.color; cell.style.setProperty('--auraC', az.color); } }
+      else if (cell.style.getPropertyValue('--auraC')) { R.auraC = null; cell.style.removeProperty('--auraC'); }
+      if (R.income.textContent !== badgeTxt) R.income.textContent = badgeTxt;
+      if (R.ember) { const t = '◆'.repeat(emberN); if (R.ember.textContent !== t) R.ember.textContent = t; }
+      if (R.hpbar) {
+        const w = hpPct + '%';
+        if (R.hpbar.style.width !== w) { R.hpbar.style.width = w; R.hpbar.style.background = hpColor; R.hpbar.style.color = hpColor; }
+      }
+      if (R.sp) {
+        if (R.spOn !== sa.active) { R.spOn = sa.active; R.sp.classList.toggle('on', sa.active); R.sp.setAttribute('title', (sa.active ? 'Особенность активна' : 'Особенность не задействована') + ': ' + (SPECIALS[card.id] || '').replace(/"/g, '')); }
+      }
+      R.card.classList.toggle('sp-live', !!(hasSp && sa.active && !card.isBuilding));
+      R.card.classList.toggle('in-formation', inForm);
+      R.card.classList.toggle('fx-live', fxLive);
+      R.card.classList.toggle('altar-active', !!(mech === 'formation' && RITUAL_SOURCES[card.id] && INC_CTX.formActive && INC_CTX.formActive[key]));
+      cell.__curIncome = income;
+      continue;
+    }
+
+    /* --- ПОЛНАЯ ПЕРЕСБОРКА КЛЕТКИ (разметка прежняя) --- */
+    cell.__sig = sig; cell.__struct = struct;
+    cell.className = cls;
+    if (az) { cell.style.setProperty('--auraC', az.color); } else if (cell.style.getPropertyValue('--auraC')) cell.style.removeProperty('--auraC');
+    cell.innerHTML = '';
+    const cardEl = document.createElement('div');
+    cardEl.className = 'card star' + card.rarity + ' f-' + card.faction;
+    cardEl.style.setProperty('--glow', rarityColor(card.rarity));
+    cardEl.style.setProperty('--cardBg', rarityBg(card.rarity));
+    /* v1.2.6: у культистов инкам 0 — бейдж показывает ВКЛАД В РИТУАЛ (⚡) */
+    let badges = '<span class="faction-dot" style="background:' + FACTION_INFO[card.faction].color + '"></span>' +
+      '<span class="card-name">' + card.name + '</span>' +
+      '<span class="income-badge">' + badgeTxt + '</span>';
+    /* РЕЛИКВИИ 3.0: маркер реликвии на карте, стоящей в её столбце (спрайт) */
+    if (colRel) badges += '<span class="anchor-badge relic-mini" style="color:' + RELIC_RARITY_COLOR(colRel.rarity) + '" title="Столбец под реликвией: ' + colRel.name + '\n✅ ' + colRel.rule + '\n❌ ' + (colRel.curse || '') + '">' + relicArtHTML(colRel, 'relic-mini-img', '') + '</span>';
+    /* v1.4.0: ⛓ ПРИКОВАННОЕ ЗДАНИЕ (Скованным Цепью) */
+    if (chainedB)
+      badges += '<span class="anchor-badge" style="color:#b8c4d4" title="⛓ Приковано Скованным Цепью: кулдаун абилки вдвое короче, аура ×1.5, звено с любой соседней картой">⛓</span>';
+    /* v1.4.0: ⛓ сам Скованный — маркер, когда его цепь работает */
+    if (u11chain)
+      badges += '<span class="anchor-badge" style="color:#b8c4d4" title="Цепь здания захвачена">⛓</span>';
+    /* ЗДАНИЯ: значок постройки + бейдж якоря для Алтаря */
+    if (card.isBuilding) badges += '<span class="anchor-badge" style="color:#e8c060" title="Здание">🏛</span>';
+    if (RITUAL_SOURCES[card.id]) badges += '<span class="anchor-badge">🔱</span>';
+    /* Уникальная механика (SPECIALS): ✦ светится, когда особенность СЕЙЧАС работает —
+       тусклый значок означает, что бонусы карты не задействованы */
+    if (hasSp) {
+      badges += '<span class="anchor-badge sp-badge' + (sa.active ? ' on' : '') + '" title="' +
+        (sa.active ? 'Особенность активна' : 'Особенность не задействована') + ': ' + (SPECIALS[card.id] || '').replace(/"/g, '') + '">✦</span>';
+      /* v1.5.0 «если активно — дышит»: работающая особенность мерцает,
+         спящая — стоит тихо. Здания исключены: их пассивка «активна» всегда,
+         вспышка-каст они получают в момент срабатывания (fx-live) */
+      if (sa.active && !card.isBuilding) cardEl.classList.add('sp-live');
+    }
+    /* Таймерные способности: бейджи перезарядки (v1.2.6: + Зомби-рост, Кладбище, Врата) */
+    if (card.id === 'bl_mound') badges += '<span class="cd-badge" data-cd="mound"></span>';
+    if (card.id === 'd9') badges += '<span class="cd-badge" data-cd="balr"></span>';
+    if (card.id === 'u1') badges += '<span class="cd-badge" data-cd="grow" data-r="' + r + '" data-c2="' + c + '"></span>';
+    if (card.id === 'bl_grave') badges += '<span class="cd-badge" data-cd="grave"></span>';
+    if (card.id === 'bl_gates') badges += '<span class="cd-badge" data-cd="gates"></span>';
+    /* ДЕМОНЫ: угли Хаоса (0..5) — оранжевые ромбы */
+    if (emberN)
+      badges += '<span class="ember-badge">' + '◆'.repeat(emberN) + '</span>';
+    /* ДЕМОНЫ: перегрев (×2) */
+    if (boomOn)
+      badges += '<span class="mut-badge" style="color:#ff6040">×2</span>';
+    /* ДЕМОНЫ: накопленный бафф мутаций */
+    if (mutOn)
+      badges += '<span class="mut-badge">▲</span>';
+    /* ЗВЕРИ: сытость (▲) и голод (▼) по рациону */
+    if (mech === 'cycle') {
+      if (fed > 0) badges += '<span class="mut-badge" style="color:#8fc87f">▲</span>';
+      if (hungry) badges += '<span class="mut-badge" style="color:#e05a5a">▼</span>';
+    }
+    if (item.stacks > 1) badges += '<span class="stack-badge">x' + item.stacks + '</span>';
+    cardEl.innerHTML = (damaged ? '<div class="hp-bar" style="width:' + hpPct + '%;background:' + hpColor + ';color:' + hpColor + ';"></div>' : '') +
+      cardArtHTML(card, 'card-art', 'glyph') + badges;
+    if (inForm) cardEl.classList.add('in-formation');
+    /* v1.5.0: таймерная способность сработала (fxUntil от fxMarkBuildings) — вспышка-каст */
+    if (fxLive) cardEl.classList.add('fx-live');
+    /* v1.2.6: активный источник ритуала — кольцо рун */
+    if (mech === 'formation' && card.faction === 'cultist') {
+      if (RITUAL_SOURCES[card.id] && INC_CTX.formActive[key]) cardEl.classList.add('altar-active');
+    }
+    /* v1.5.9: income читается из cell.__curIncome — тултип всегда показывает
+       актуальный доход, даже когда клетка обновилась лёгким патчем */
+    cell.__curIncome = income;
+    cardEl.addEventListener('mouseenter', e => showCardTooltip(e, card, cell.__curIncome, r, c));
+    cardEl.addEventListener('mousemove', moveTooltip);
+    cardEl.addEventListener('mouseleave', hideTooltip);
+    cell.appendChild(cardEl);
+    /* v1.5.9: кэш ссылок на бейджи для лёгкого патча */
+    cell.__refs = {
+      card: cardEl,
+      income: cardEl.querySelector('.income-badge'),
+      ember: cardEl.querySelector('.ember-badge'),
+      hpbar: cardEl.querySelector('.hp-bar'),
+      sp: hasSp ? cardEl.querySelector('.sp-badge') : null,
+      spOn: hasSp ? sa.active : null,
+      auraC: az ? az.color : null
+    };
   }
   drawSynergies();
   updateGridStats();
@@ -383,24 +471,87 @@ function mkLine(cls, coords) {
   return l;
 }
 
+/* ============================================================
+   v1.5.9 (perf): drawSynergies БЕЗ LAYOUT-THRASHING.
+   Раньше на каждое звено было 1-4 вызова getBoundingClientRect
+   (принудительный layout) и полная пересборка SVG при каждом
+   renderGrid. Теперь:
+   1) спецификации связей собираются одним проходом БЕЗ обращений
+      к layout; если они не изменились с прошлой отрисовки — SVG
+      не трогается вовсе (SMIL/CSS-анимации не рестартуют);
+   2) при реальной перерисовке все прямоугольники читаются ОДНИМ
+      проходом (один forced layout вместо десятков).
+   Геометрия, классы и порядок элементов SVG — прежние.
+   ============================================================ */
+let _synSig = null;
+
 function drawSynergies() {
-  synergySvg.innerHTML = '';
   const ug = FACTION_INFO[faction].mechanic === 'chain'; /* v1.5.0: цепи — тема нежити */
-  /* v1.5.6: связь рисуют спрайты chains_h/chains_v + проблески glint_* */
   const n = playableSize, st = gridStart();
+  /* --- Проход 1: сбор спецификаций связей (без layout-чтений) --- */
+  const specs = [];
+  for (let r = st; r < st + n; r++) for (let c = st; c < st + n; c++) {
+    const item = grid[r][c]; if (!item) continue;
+    const card = CARDS[item.cardId];
+    for (const [dr, dc] of [[1, 0], [0, 1]]) {
+      const nr = r + dr, nc = c + dc;
+      if (nr >= GRID_SIZE || nc >= GRID_SIZE) continue;
+      const it2 = grid[nr][nc]; if (!it2) continue;
+      if (nr >= st + n || nc >= st + n) continue; /* за пределами поля карт нет (инвариант игры) */
+      const nCard = CARDS[it2.cardId];
+      const pair = findPair(card, nCard);
+      if (!pair) {
+        if (ug && card.faction === 'undead' && nCard.faction === 'undead')
+          specs.push({ horiz: r === nr, mode: 'plain', lf: undefined, isMult: false });
+        continue;
+      }
+      const kind = pair.kind === 'mult' ? 'mult' : pair.kind === 'chain' ? 'chain' : pair.kind === 'royal' ? 'royal' : 'good';
+      const lk = linkKey(r, c, nr, nc);
+      const lf = incomeCache.linkFactors && incomeCache.linkFactors[lk] !== undefined ? incomeCache.linkFactors[lk] : 1;
+      const royal = !!(incomeCache.linkRoyal && incomeCache.linkRoyal[lk]);
+      const lichW = !!(incomeCache.linkLich && incomeCache.linkLich[lk]);
+      if (ug) {
+        const mode = royal ? 'royal' : lichW ? 'lich' : kind === 'chain' ? 'big' : 'plain';
+        specs.push({ horiz: r === nr, mode, lf, isMult: kind === 'mult' });
+      } else {
+        specs.push({ horiz: r === nr, kind, lf, lichW, royal });
+      }
+    }
+  }
+  /* Сигнатура: состав связей + режим + вьюпорт (resize меняет координаты —
+     тогда принудительно перерисовываем; вызов из resize-обработчика придёт
+     с той же сигнатурой связей, но новым размером окна). */
+  let sig = (ug ? 'U' : 'L') + n + '|' + window.innerWidth + 'x' + window.innerHeight + '|' + specs.map(s =>
+    s.horiz ? 'h' : 'v').join('') + '#' + specs.map(s =>
+    (s.mode || s.kind) + (s.lf === undefined ? '' : ':' + s.lf) + (s.royal ? 'R' : '') + (s.lichW ? 'W' : '') + (s.isMult ? 'M' : '')).join(';');
+  if (sig === _synSig) return;
+  _synSig = sig;
+
+  synergySvg.innerHTML = '';
   const sr = synergySvg.getBoundingClientRect();
   const cellAt = (r, c) => gridEl.children[(r - st) * n + (c - st)];
-  const cx = (c) => { const b = cellAt(st, c).getBoundingClientRect(); return b.left - sr.left + b.width / 2; };
-  const cy = (r) => { const b = cellAt(r, st).getBoundingClientRect(); return b.top - sr.top + b.height / 2; };
+  /* v1.5.9: ВСЕ прямоугольники читаются одним проходом (один forced layout) */
+  const rects = new Array(n * n), cardRects = new Array(n * n);
+  for (let dr = 0; dr < n; dr++) for (let dc = 0; dc < n; dc++) {
+    const cell = cellAt(st + dr, st + dc);
+    rects[dr * n + dc] = cell.getBoundingClientRect();
+    const ca = cell.firstElementChild;
+    cardRects[dr * n + dc] = ca ? ca.getBoundingClientRect() : null;
+  }
+  const rectOf = (r, c) => rects[(r - st) * n + (c - st)];
+  const cardRectOf = (r, c) => {
+    const cr = cardRects[(r - st) * n + (c - st)];
+    return cr || rectOf(r, c);
+  };
+  const cx = (c) => { const b = rectOf(st, c); return b.left - sr.left + b.width / 2; };
+  const cy = (r) => { const b = rectOf(r, st); return b.top - sr.top + b.height / 2; };
   /* v1.5.7: геометрия цепи — ВО ВСЮ КРОМКУ: связь идёт вдоль ОБЩЕГО края
      карт по всей его высоте/ширине. Горизонтальные соседи — вертикальный
      шов (вся высота карты), вертикальные соседи — горизонтальный шов
      (вся ширина карты). Центры карт свободны: банда лежит только на
      стыке клеток. Координаты — из прямоугольников самих карт. */
   const ugLinkCoords = !ug ? null : (r, c, nr, nc) => {
-    const ca = cellAt(r, c), cb = cellAt(nr, nc);
-    const ea = ca.querySelector('.card') || ca, eb = cb.querySelector('.card') || cb;
-    const ra = ea.getBoundingClientRect(), rb = eb.getBoundingClientRect();
+    const ra = cardRectOf(r, c), rb = cardRectOf(nr, nc);
     if (r === nr) {
       const mx = (ra.right + rb.left) / 2 - sr.left;
       return { x1: mx, y1: ra.top - sr.top, x2: mx, y2: ra.bottom - sr.top };
@@ -408,30 +559,33 @@ function drawSynergies() {
     const my = (ra.bottom + rb.top) / 2 - sr.top;
     return { x1: ra.left - sr.left, y1: my, x2: ra.right - sr.left, y2: my };
   };
+  let si = 0;
   for (let r = st; r < st + n; r++) for (let c = st; c < st + n; c++) {
     const item = grid[r][c]; if (!item) continue;
     const card = CARDS[item.cardId];
-    getNeighbors(r, c).forEach(nb => {
-      const isForward = (r < nb.r) || (r === nb.r && c < nb.c);
-      if (!isForward) return;
-      const nCard = CARDS[nb.item.cardId];
-      const coords = { x1: cx(c), y1: cy(r), x2: cx(nb.c), y2: cy(nb.r) };
+    for (const [dr, dc] of [[1, 0], [0, 1]]) {
+      const nr = r + dr, nc = c + dc;
+      if (nr >= GRID_SIZE || nc >= GRID_SIZE) continue;
+      const it2 = grid[nr][nc]; if (!it2) continue;
+      if (nr >= st + n || nc >= st + n) continue;
+      const nCard = CARDS[it2.cardId];
       const pair = findPair(card, nCard);
       if (!pair) {
         /* Цепь нежити: соседство без пары всё равно даёт бонус */
-        if (ug && card.faction === 'undead' && nCard.faction === 'undead') drawUgLink(ugLinkCoords(r, c, nb.r, nb.c), 'plain', undefined, false);
-        return;
+        if (ug && card.faction === 'undead' && nCard.faction === 'undead') drawUgLink(ugLinkCoords(r, c, nr, nc), 'plain', undefined, false);
+        continue;
       }
       const kind = pair.kind === 'mult' ? 'mult' : pair.kind === 'chain' ? 'chain' : pair.kind === 'royal' ? 'royal' : 'good';
-      const lk = linkKey(r, c, nb.r, nb.c);
+      const lk = linkKey(r, c, nr, nc);
       const lf = incomeCache.linkFactors && incomeCache.linkFactors[lk] !== undefined ? incomeCache.linkFactors[lk] : 1;
       const royal = !!(incomeCache.linkRoyal && incomeCache.linkRoyal[lk]);
       const lichW = !!(incomeCache.linkLich && incomeCache.linkLich[lk]);
+      const coords = { x1: cx(c), y1: cy(r), x2: cx(nc), y2: cy(nr) };
       if (ug) {
         /* вся связь нежити = тёмная банда цепей; особые связи получают фиолетовый отблеск */
         const mode = royal ? 'royal' : lichW ? 'lich' : kind === 'chain' ? 'big' : 'plain';
-        drawUgLink(ugLinkCoords(r, c, nb.r, nb.c), mode, lf, kind === 'mult');
-        return;
+        drawUgLink(ugLinkCoords(r, c, nr, nc), mode, lf, kind === 'mult');
+        continue;
       }
       /* прежний вид (культисты/звери/демоны): линия синергии + бегущий поток.
          faded — реальное затухание из экономики; royal — Знамение Владыки;
@@ -440,7 +594,7 @@ function drawSynergies() {
       mkLine('syn-flow' + (kind === 'mult' ? ' mult' : kind === 'chain' ? ' chainflow' : '') +
         (lf === 0 ? ' dead' : lf < 1 ? ' faded' : '') +
         (lichW ? ' lich' : royal ? ' royal' : ''), coords);
-    });
+    }
   }
 }
 
