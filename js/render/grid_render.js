@@ -462,10 +462,11 @@ function drawSynergies() {
    (CSS .ug-band); мёртвое звено не светится вовсе.
    ============================================================ */
 const UG_TILE = 24, UG_BAND = 26;
+/* v1.5.6.1: ASSET_VER_Q (utils.js) — анти-кэш суффикс на спрайтах звена */
 const UG_IMG = {
-  bandH: 'assets/fx/chains_h.png', bandV: 'assets/fx/chains_v.png',
-  paleH: 'assets/fx/glint_pale_h.png', paleV: 'assets/fx/glint_pale_v.png',
-  royalH: 'assets/fx/glint_royal_h.png', royalV: 'assets/fx/glint_royal_v.png'
+  bandH: 'assets/fx/chains_h.png' + ASSET_VER_Q, bandV: 'assets/fx/chains_v.png' + ASSET_VER_Q,
+  paleH: 'assets/fx/glint_pale_h.png' + ASSET_VER_Q, paleV: 'assets/fx/glint_pale_v.png' + ASSET_VER_Q,
+  royalH: 'assets/fx/glint_royal_h.png' + ASSET_VER_Q, royalV: 'assets/fx/glint_royal_v.png' + ASSET_VER_Q
 };
 /* SMIL-анимация атрибута (x/y) с отрицательным begin — детерминированная
    фаза у каждой связи, без «строя» проблесков после перерисовки поля */
