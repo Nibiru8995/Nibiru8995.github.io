@@ -370,11 +370,10 @@ function specialActive(card, item, r, c) {
 }
 
 /* SVG-линии: парные синергии + цепи нежити (координаты — по открытым клеткам).
-   v1.5.0: у НЕЖИТИ все связи — ржавые цепи. v1.5.5: цепь — стежок между
-   КРОМКАМИ соседних карт (центры карт свободны, как на эскизе игрока).
-   Светится и движется только магия: знамение Владыки (лиловая цепь тьмы),
-   Пакт Лича (призрачный свет), Скованный Цепью (искра натяжения по звеньям).
-   Прочие фракции — прежний вид. */
+   v1.5.0: у НЕЖИТИ все связи — цепи. v1.5.6: связь — банда из пяти тёмных
+   цепочек между самыми кромками карт (центры карт свободны).
+   Светится и бежит только свет по металлу: холодный проблеск по всем цепям,
+   яркий фиолетовый — по особым связям. Прочие фракции — прежний вид. */
 function mkLine(cls, coords) {
   const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
   l.setAttribute('x1', coords.x1); l.setAttribute('y1', coords.y1);
@@ -387,20 +386,20 @@ function mkLine(cls, coords) {
 function drawSynergies() {
   synergySvg.innerHTML = '';
   const ug = FACTION_INFO[faction].mechanic === 'chain'; /* v1.5.0: цепи — тема нежити */
-  /* v1.5.2: SVG-шаблоны звеньев убраны — связь рисует спрайт chain_rust.png */
+  /* v1.5.6: связь рисуют спрайты chains_h/chains_v + проблески glint_* */
   const n = playableSize, st = gridStart();
   const sr = synergySvg.getBoundingClientRect();
   const cellAt = (r, c) => gridEl.children[(r - st) * n + (c - st)];
   const cx = (c) => { const b = cellAt(st, c).getBoundingClientRect(); return b.left - sr.left + b.width / 2; };
   const cy = (r) => { const b = cellAt(r, st).getBoundingClientRect(); return b.top - sr.top + b.height / 2; };
-  /* v1.5.5: геометрия цепи — от кромки до кромки: захват g ≈ четверть края
-     каждой карты + шов между клетками (3-5px). Центр карты не накрывается.
-     Координаты берутся из прямоугольников самих карт, а не клеток. */
+  /* v1.5.6: геометрия цепи — задевает ТОЛЬКО САМЫЙ КРАЙ карты: захват
+     g ≈ 9% края (3..8px) + шов между клетками (3-5px). Центр карты
+     свободен целиком. Координаты — из прямоугольников самих карт. */
   const ugLinkCoords = !ug ? null : (r, c, nr, nc) => {
     const ca = cellAt(r, c), cb = cellAt(nr, nc);
     const ea = ca.querySelector('.card') || ca, eb = cb.querySelector('.card') || cb;
     const ra = ea.getBoundingClientRect(), rb = eb.getBoundingClientRect();
-    const g = Math.round(ra.width * 0.26);
+    const g = Math.max(3, Math.min(8, Math.round(ra.width * 0.09)));
     if (r === nr) return { x1: ra.right - sr.left - g, y1: ra.top - sr.top + ra.height / 2,
                            x2: rb.left - sr.left + g, y2: rb.top - sr.top + rb.height / 2 };
     return { x1: ra.left - sr.left + ra.width / 2, y1: ra.bottom - sr.top - g,
@@ -426,7 +425,7 @@ function drawSynergies() {
       const royal = !!(incomeCache.linkRoyal && incomeCache.linkRoyal[lk]);
       const lichW = !!(incomeCache.linkLich && incomeCache.linkLich[lk]);
       if (ug) {
-        /* вся связь нежити = ржавая цепь; сверху — только настоящая магия */
+        /* вся связь нежити = тёмная банда цепей; особые связи получают фиолетовый отблеск */
         const mode = royal ? 'royal' : lichW ? 'lich' : kind === 'chain' ? 'big' : 'plain';
         drawUgLink(ugLinkCoords(r, c, nb.r, nb.c), mode, lf, kind === 'mult');
         return;
@@ -442,58 +441,63 @@ function drawSynergies() {
   }
 }
 
-/* v1.5.5 «Фикс Цепей»: звено нежити — тень (читаемость), ржавые цепи, магия.
-   mode: plain | big (⛓ Скованный со зданием) | royal (Владыка — магия тьмы) |
-   lich (Пакт Тишины). Погасшие звенья из экономики (faded/dead) гаснут.
-   ГЕОМЕТРИЯ — стежок между кромками карт (см. ugLinkCoords): v1.5.2/3 шили
-   от центров, v1.5.4 тянула цепь поверх всей карты; обе геометрии неверны
-   (фидбек игрока: «цепи не должны идти поверх всей карты»).
-   БАНДА ЦЕПЕЙ: пиксель-арт тайл 32x22 (3 ржавые цепи, звенья «лицом/с
-   ребра», период 8px), плитки-КАРТИНКИ на глобальной сетке 32px внутри
-   клипа звена (уроки v1.5.2/3: растяжение = каша; transform/patternTransform
-   = фантомы Chromium — ни pattern'ов, ни transform).
-   ПЕРЕЛИВАНИЕ: тёплая волна света — общий linearGradient + SMIL, одна на
-   всю сеть (не «рандомный червь», а единый свет по металлу).
-   ТУМАНА НА ЗВЕНЬЯХ НЕТ: аур у юнитов не существует — снят и с обычных
-   звеньев, и с Пакта Лича; туманные зоны остались только у зданий
-   (настоящий радиус механики). Состояние звена читается с банды:
-   faded/dead гасят её целиком (CSS .ug-band). */
-const UG_TILE = 32, UG_BAND = 22;
-const UG_SHEEN_STOPS =
-  '<stop offset="0" stop-color="#e8b878" stop-opacity="0"/>' +
-  '<stop offset=".12" stop-color="#e8b878" stop-opacity=".07"/>' +
-  '<stop offset=".25" stop-color="#ffd9a0" stop-opacity=".18"/>' +
-  '<stop offset=".38" stop-color="#e8b878" stop-opacity=".07"/>' +
-  '<stop offset=".52" stop-color="#e8b878" stop-opacity="0"/>' +
-  '<stop offset="1" stop-color="#e8b878" stop-opacity="0"/>';
-const UG_DEFS =
-  /* период градиента 140 = вектору анимации — петля бесшовная */
-  '<linearGradient id="ugSheenH" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="140" y2="0" spreadMethod="repeat">' +
-  UG_SHEEN_STOPS +
-  '<animateTransform attributeName="gradientTransform" type="translate" from="0 0" to="140 0" dur="7.2s" repeatCount="indefinite"/></linearGradient>' +
-  '<linearGradient id="ugSheenV" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="140" spreadMethod="repeat">' +
-  UG_SHEEN_STOPS +
-  '<animateTransform attributeName="gradientTransform" type="translate" from="0 0" to="0 140" dur="7.2s" repeatCount="indefinite"/></linearGradient>';
+/* ============================================================
+   v1.5.6 «ПЕПЕЛЬНЫЕ ОКОВЫ» — звено нежити полностью перерисовано.
+   СПРАЙТ: банда из ПЯТИ по-разному натянутых цепочек — холодное
+   кладбищенское железо, тяжёлые кольца в центре, провисшие нити,
+   костяная бусина, могильная патина (генератор scripts/gen_chains_sprite.py).
+   ГЕОМЕТРИЯ: цепь задевает только самый край карт (см. ugLinkCoords).
+   ПЛИТКИ-КАРТИНКИ на глобальной сетке 24px внутри клипа звена
+   (уроки v1.5.2/3: растяжение = каша; transform/pattern = фантомы
+   Chromium — ни pattern'ов, ни transform).
+   ПРОБЛЕСКИ: вдоль цепей на полную высоту/ширину банды бежит узкий
+   проблеск лунной стали (glint_pale). Свечение — ТА ЖЕ геометрия цепей
+   в яркой палитре с мягким колокольным окном, поэтому оно ВСЕГДА лежит
+   ровно на звеньях (не туманное пятно поверх карт, как прежний ug-sheen).
+   ОСОБЫЕ СВЯЗИ (royal — Владыка, lich — Пакт Тишины, big — Скованный,
+   mult — пары-множители) вместо тихого проблеска получают ЯРКИЙ
+   ФИОЛЕТОВЫЙ отблеск (glint_royal) — шире, ярче и быстрее.
+   Прежняя тёплая волна ug-sheen, линии ug-magic и спрайты chain_rust*
+   удалены. Состояние звена из экономики (faded/dead) гасит всю банду
+   (CSS .ug-band); мёртвое звено не светится вовсе.
+   ============================================================ */
+const UG_TILE = 24, UG_BAND = 26;
+const UG_IMG = {
+  bandH: 'assets/fx/chains_h.png', bandV: 'assets/fx/chains_v.png',
+  paleH: 'assets/fx/glint_pale_h.png', paleV: 'assets/fx/glint_pale_v.png',
+  royalH: 'assets/fx/glint_royal_h.png', royalV: 'assets/fx/glint_royal_v.png'
+};
+/* SMIL-анимация атрибута (x/y) с отрицательным begin — детерминированная
+   фаза у каждой связи, без «строя» проблесков после перерисовки поля */
+function ugAnim(attr, from, to, dur, phase) {
+  const a = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+  a.setAttribute('attributeName', attr);
+  a.setAttribute('from', from.toFixed(1));
+  a.setAttribute('to', to.toFixed(1));
+  a.setAttribute('dur', dur + 's');
+  a.setAttribute('begin', (-(phase * dur)).toFixed(2) + 's');
+  a.setAttribute('repeatCount', 'indefinite');
+  return a;
+}
 function drawUgLink(coords, mode, lf, isMult) {
   const NS = 'http://www.w3.org/2000/svg';
   const faded = lf !== undefined && lf > 0 && lf < 1, dead = lf === 0;
   const st = (faded ? ' faded' : dead ? ' dead' : '');
   const horiz = coords.y1 === coords.y2;
   const L = Math.hypot(coords.x2 - coords.x1, coords.y2 - coords.y1);
-  /* 1) тень-подложка по ширине связки: читаемость на пёстрых картах */
+  /* 1) тень-подложка: читаемость тёмного металла на пёстрых картах */
   mkLine('ug-shadow' + st, coords);
-  /* 2) банды трёх цепей: клип по звену + плитки на глобальной сетке
-     (defs пересоздаём после каждого wipe — проверяем по DOM) */
+  /* 2) банда цепей: клип по звену + плитки на глобальной сетке */
   let defs = synergySvg.querySelector('defs');
   if (!defs) {
     defs = document.createElementNS(NS, 'defs');
-    defs.innerHTML = UG_DEFS;
     synergySvg.appendChild(defs);
   }
   const n = drawUgLink._n = (drawUgLink._n || 0) + 1;
-  const bx = horiz ? coords.x1 : coords.x1 - 11;
-  const by = horiz ? coords.y1 - 11 : coords.y1;
-  const bw = horiz ? L : 22, bh = horiz ? 22 : L;
+  const half = UG_BAND / 2;
+  const bx = horiz ? coords.x1 : coords.x1 - half;
+  const by = horiz ? coords.y1 - half : coords.y1;
+  const bw = horiz ? L : UG_BAND, bh = horiz ? UG_BAND : L;
   const cp = document.createElementNS(NS, 'clipPath');
   cp.setAttribute('id', 'ugc' + n);
   const cr = document.createElementNS(NS, 'rect');
@@ -504,45 +508,45 @@ function drawUgLink(coords, mode, lf, isMult) {
   const g = document.createElementNS(NS, 'g');
   g.setAttribute('clip-path', 'url(#ugc' + n + ')');
   g.setAttribute('class', 'ug-band' + st);
-  const href = horiz ? 'assets/fx/chain_rust.png' : 'assets/fx/chain_rust_v.png';
+  const mkIm = (href, x, y, w, h) => {
+    const im = document.createElementNS(NS, 'image');
+    im.setAttribute('href', href); im.setAttributeNS('http://www.w3.org/1999/xlink', 'href', href);
+    im.setAttribute('x', x.toFixed(1)); im.setAttribute('y', y.toFixed(1));
+    im.setAttribute('width', String(w)); im.setAttribute('height', String(h));
+    im.setAttribute('style', 'image-rendering:pixelated');
+    return im;
+  };
+  const bandHref = horiz ? UG_IMG.bandH : UG_IMG.bandV;
   if (horiz) {
-    for (let x = Math.floor(coords.x1 / UG_TILE) * UG_TILE; x < coords.x2; x += UG_TILE) {
-      const im = document.createElementNS(NS, 'image');
-      im.setAttribute('href', href); im.setAttributeNS('http://www.w3.org/1999/xlink', 'href', href);
-      im.setAttribute('x', String(x)); im.setAttribute('y', by.toFixed(1));
-      im.setAttribute('width', String(UG_TILE)); im.setAttribute('height', String(UG_BAND));
-      im.setAttribute('style', 'image-rendering:pixelated');
-      g.appendChild(im);
-    }
+    for (let x = Math.floor(coords.x1 / UG_TILE) * UG_TILE; x < coords.x2; x += UG_TILE)
+      g.appendChild(mkIm(bandHref, x, by, UG_TILE, UG_BAND));
   } else {
-    for (let y = Math.floor(coords.y1 / UG_TILE) * UG_TILE; y < coords.y2; y += UG_TILE) {
-      const im = document.createElementNS(NS, 'image');
-      im.setAttribute('href', href); im.setAttributeNS('http://www.w3.org/1999/xlink', 'href', href);
-      im.setAttribute('x', bx.toFixed(1)); im.setAttribute('y', String(y));
-      im.setAttribute('width', String(UG_BAND)); im.setAttribute('height', String(UG_TILE));
-      im.setAttribute('style', 'image-rendering:pixelated');
-      g.appendChild(im);
-    }
-  }
-  /* 3) переливание: тёплая волна света по металлу (внутри того же клипа).
-     Мёртвое звено не светится вовсе, гаснущее — вполовину */
-  if (!dead) {
-    const sh = document.createElementNS(NS, 'rect');
-    sh.setAttribute('class', 'ug-sheen' + (faded ? ' faded' : ''));
-    sh.setAttribute('x', bx.toFixed(1)); sh.setAttribute('y', by.toFixed(1));
-    sh.setAttribute('width', bw.toFixed(1)); sh.setAttribute('height', bh.toFixed(1));
-    sh.setAttribute('fill', horiz ? 'url(#ugSheenH)' : 'url(#ugSheenV)');
-    g.appendChild(sh);
+    for (let y = Math.floor(coords.y1 / UG_TILE) * UG_TILE; y < coords.y2; y += UG_TILE)
+      g.appendChild(mkIm(bandHref, bx, y, UG_BAND, UG_TILE));
   }
   synergySvg.appendChild(g);
-  /* 4) магия поверх металла — только когда она реально творится:
-     знамение Владыки (royal), Пакт Лича (lich), искра Скованного (big) */
-  if (mode === 'royal' || mode === 'lich' || mode === 'big') {
-    const m = mkLine('ug-magic ' + (mode === 'royal' ? 'royal' : mode === 'lich' ? 'lich' : 'glint') + st, coords);
-    m.style.animationDelay = (-(Math.abs(Math.round(coords.x1 * 7 + coords.y1 * 13)) % 40) / 10) + 's';
+  /* 3) проблеск: узкое окно света бежит вдоль цепей на полную высоту
+     (ширину) банды; мёртвое звено не светится вовсе */
+  if (!dead) {
+    const special = mode === 'royal' || mode === 'lich' || mode === 'big' || isMult;
+    const href = special ? (horiz ? UG_IMG.royalH : UG_IMG.royalV)
+                         : (horiz ? UG_IMG.paleH : UG_IMG.paleV);
+    const gl = mkIm(href, 0, 0, UG_TILE, UG_BAND);
+    gl.setAttribute('class', 'ug-glint');
+    const dur = special ? 2.6 : 4.2;
+    const phase = (Math.abs(Math.round(coords.x1 * 7 + coords.y1 * 13)) % 97) / 97;
+    const travel = L + UG_TILE;
+    if (horiz) {
+      gl.setAttribute('x', (bx - UG_TILE).toFixed(1));
+      gl.setAttribute('y', by.toFixed(1));
+      gl.appendChild(ugAnim('x', bx - UG_TILE, bx + travel, dur, phase));
+    } else {
+      gl.setAttribute('x', bx.toFixed(1));
+      gl.setAttribute('y', (by - UG_TILE).toFixed(1));
+      gl.appendChild(ugAnim('y', by - UG_TILE, by + travel, dur, phase));
+    }
+    g.appendChild(gl);
   }
-  /* 5) тумана на звеньях НЕТ (v1.5.5): цепи стоят чистыми. Состояние звена
-     читается с самой банды: faded/dead гасят её целиком (CSS .ug-band) */
 }
 function updateGridStats() {
   const inc = calculateIncome();

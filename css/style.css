@@ -1023,42 +1023,22 @@ body[data-faction="demon"] .cell, body[data-faction="demon"] .cell.playable { ba
 body[data-faction="demon"] .cell.playable:hover { background:#161110; }
 
 /* ============================================================
-   v1.5.0 — СВЯЗИ НЕЖИТИ: РЖАВЫЕ ЦЕПИ (SVG-паттерн)
-   v1.5.4 «Ржавые Узы» — цепи крепятся к краям карт, пиксель-арт тайл,
-   тёплое переливание вместо «белого червя»; туман остался только на
-   обычных звеньях и Пакте Лича (у Владыки/Скованного аур нет).
-   Движется и мерцает только магия и свет переливания.
-   Прочие фракции держат прежний вид (syn-flow и др.).
+   v1.5.6 «ПЕПЕЛЬНЫЕ ОКОВЫ» — СВЯЗИ НЕЖИТИ: ТЁМНЫЕ ЦЕПИ
+   Связь — банда из пяти цепочек (спрайт chains_h/chains_v), задевает
+   только самый край карт. Движется только СВЕТ по металлу: холодный
+   проблеск (glint_pale) у обычных звеньев и яркий фиолетовый отблеск
+   (glint_royal) у особых связей — оба внутри клипа банды, на полную
+   высоту/ширину цепей. Прежние ug-spr/ug-sheen/ug-magic удалены.
+   Состояние звена (faded/dead) гасит всю банду.
    ============================================================ */
-/* тень: мягкая подложка по ширине связки (v1.5.4: связка 16px — тень 12) */
-#synergySvg line.ug-shadow { stroke:#000; stroke-width:12; stroke-linecap:round; opacity:.13; }
-#synergySvg line.ug-shadow.faded { opacity:.1; }
-#synergySvg line.ug-shadow.dead { opacity:.05; }
-/* v1.5.5: состояние звена читается с самой банды цепей (туман на звеньях снят) */
+/* тень: мягкая подложка под тёмный металл (банда 26px — тень 16) */
+#synergySvg line.ug-shadow { stroke:#000; stroke-width:16; stroke-linecap:round; opacity:.22; }
+#synergySvg line.ug-shadow.faded { opacity:.16; }
+#synergySvg line.ug-shadow.dead { opacity:.08; }
+/* состояние звена читается с самой банды цепей (туман на звеньях нет) */
 #synergySvg g.ug-band { transition: opacity .3s; }
 #synergySvg g.ug-band.faded { opacity:.55; }
 #synergySvg g.ug-band.dead { opacity:.22; }
-/* v1.5.4: спрайт трёх цепей пиксель-арт тайлом 32x16 (шаг звеньев 1:1) */
-#synergySvg rect.ug-spr { opacity:.9; }
-#synergySvg rect.ug-spr.big { opacity:1; }
-#synergySvg rect.ug-spr.faded { opacity:.5; }
-#synergySvg rect.ug-spr.dead { opacity:.22; }
-/* v1.5.4 переливание: мягкая тёплая волна света бежит по цепям — общий
-   градиент с SMIL (единая волна на всю сеть, без «рандомного червя»:
-   dash-пульс ug-pulse убран). Мёртвое звено не переливается. */
-#synergySvg rect.ug-sheen { pointer-events:none; }
-#synergySvg rect.ug-sheen.faded { opacity:.45; }
-/* магия поверх цепи: у каждого штриха период дэша = периоду keyframes,
-   петля бесшовная (прежде fog.glint с периодом 36 дёргался на 122) */
-#synergySvg line.ug-magic { stroke-linecap:round; fill:none; }
-#synergySvg line.ug-magic.royal { stroke:#b79bef; stroke-width:3.5; stroke-dasharray: 14 26; opacity:.6; filter: drop-shadow(0 0 5px #7a55c8); animation: ugRun40 3.4s linear infinite; }
-#synergySvg line.ug-magic.lich { stroke:#c2e2ac; stroke-width:3; stroke-dasharray: 10 22; opacity:.6; filter: drop-shadow(0 0 4px #7fae5e); animation: ugRun32 2.6s linear infinite; }
-#synergySvg line.ug-magic.glint { stroke:#d8a860; stroke-width:2.5; stroke-dasharray: 6 18; opacity:.65; animation: ugRun24 1.9s linear infinite; }
-@keyframes ugRun40 { from { stroke-dashoffset: 40; } to { stroke-dashoffset: 0; } }
-@keyframes ugRun32 { from { stroke-dashoffset: 32; } to { stroke-dashoffset: 0; } }
-@keyframes ugRun24 { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
-/* v1.5.5: туман на звеньях снят совсем (был и на обычных цепях, и на Пакте
-   Лича) — цепи стоят чистыми, состояние звена гасит саму банду (.ug-band) */
 
 /* АУРЫ НЕЖИТИ — ТУМАН: спокойная дымка; дышит, когда способность
    источника реально работает (класс aura-live из buildAuraMap) */
