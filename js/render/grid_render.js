@@ -392,18 +392,21 @@ function drawSynergies() {
   const cellAt = (r, c) => gridEl.children[(r - st) * n + (c - st)];
   const cx = (c) => { const b = cellAt(st, c).getBoundingClientRect(); return b.left - sr.left + b.width / 2; };
   const cy = (r) => { const b = cellAt(r, st).getBoundingClientRect(); return b.top - sr.top + b.height / 2; };
-  /* v1.5.6: геометрия цепи — задевает ТОЛЬКО САМЫЙ КРАЙ карты: захват
-     g ≈ 9% края (3..8px) + шов между клетками (3-5px). Центр карты
-     свободен целиком. Координаты — из прямоугольников самих карт. */
+  /* v1.5.7: геометрия цепи — ВО ВСЮ КРОМКУ: связь идёт вдоль ОБЩЕГО края
+     карт по всей его высоте/ширине. Горизонтальные соседи — вертикальный
+     шов (вся высота карты), вертикальные соседи — горизонтальный шов
+     (вся ширина карты). Центры карт свободны: банда лежит только на
+     стыке клеток. Координаты — из прямоугольников самих карт. */
   const ugLinkCoords = !ug ? null : (r, c, nr, nc) => {
     const ca = cellAt(r, c), cb = cellAt(nr, nc);
     const ea = ca.querySelector('.card') || ca, eb = cb.querySelector('.card') || cb;
     const ra = ea.getBoundingClientRect(), rb = eb.getBoundingClientRect();
-    const g = Math.max(3, Math.min(8, Math.round(ra.width * 0.09)));
-    if (r === nr) return { x1: ra.right - sr.left - g, y1: ra.top - sr.top + ra.height / 2,
-                           x2: rb.left - sr.left + g, y2: rb.top - sr.top + rb.height / 2 };
-    return { x1: ra.left - sr.left + ra.width / 2, y1: ra.bottom - sr.top - g,
-             x2: rb.left - sr.left + rb.width / 2, y2: rb.top - sr.top + g };
+    if (r === nr) {
+      const mx = (ra.right + rb.left) / 2 - sr.left;
+      return { x1: mx, y1: ra.top - sr.top, x2: mx, y2: ra.bottom - sr.top };
+    }
+    const my = (ra.bottom + rb.top) / 2 - sr.top;
+    return { x1: ra.left - sr.left, y1: my, x2: ra.right - sr.left, y2: my };
   };
   for (let r = st; r < st + n; r++) for (let c = st; c < st + n; c++) {
     const item = grid[r][c]; if (!item) continue;
@@ -442,26 +445,26 @@ function drawSynergies() {
 }
 
 /* ============================================================
-   v1.5.6 «ПЕПЕЛЬНЫЕ ОКОВЫ» — звено нежити полностью перерисовано.
-   СПРАЙТ: банда из ПЯТИ по-разному натянутых цепочек — холодное
-   кладбищенское железо, тяжёлые кольца в центре, провисшие нити,
-   костяная бусина, могильная патина (генератор scripts/gen_chains_sprite.py).
-   ГЕОМЕТРИЯ: цепь задевает только самый край карт (см. ugLinkCoords).
-   ПЛИТКИ-КАРТИНКИ на глобальной сетке 24px внутри клипа звена
-   (уроки v1.5.2/3: растяжение = каша; transform/pattern = фантомы
-   Chromium — ни pattern'ов, ни transform).
-   ПРОБЛЕСКИ: вдоль цепей на полную высоту/ширину банды бежит узкий
-   проблеск лунной стали (glint_pale). Свечение — ТА ЖЕ геометрия цепей
-   в яркой палитре с мягким колокольным окном, поэтому оно ВСЕГДА лежит
-   ровно на звеньях (не туманное пятно поверх карт, как прежний ug-sheen).
+   v1.5.7 «ПОЛНЫЕ ОКОВЫ» — звено нежити тянется во всю кромку.
+   ГЕОМЕТРИЯ: связь идёт вдоль ОБЩЕГО края карт на всю его высоту
+   (горизонтальные соседи) / ширину (вертикальные соседи) — сплошная
+   цепная нить по шву, от угла карты до угла. Центры карт свободны.
+   СПРАЙТ: банда из ПЯТИ по-разному натянутых цепочек толщиной 36px
+   (укрупнённые кольца — «потолще»), холодное кладбищенское железо,
+   тяжёлые кольца в середине, провисшие нити, костяная бусина, могильная
+   патина (генератор scripts/gen_chains_sprite.py). Плитки на глобальной
+   сетке 24px внутри клипа звена (уроки v1.5.2/3: растяжение = каша;
+   ни pattern'ов, ни transform).
+   ПРОБЛЕСКИ: вдоль цепи на всю её длину бежит узкий проблеск лунной
+   стали (glint_pale). Свечение — ТА ЖЕ геометрия цепей в яркой палитре
+   с мягким колокольным окном, поэтому оно ВСЕГДА лежит ровно на звеньях.
    ОСОБЫЕ СВЯЗИ (royal — Владыка, lich — Пакт Тишины, big — Скованный,
    mult — пары-множители) вместо тихого проблеска получают ЯРКИЙ
    ФИОЛЕТОВЫЙ отблеск (glint_royal) — шире, ярче и быстрее.
-   Прежняя тёплая волна ug-sheen, линии ug-magic и спрайты chain_rust*
-   удалены. Состояние звена из экономики (faded/dead) гасит всю банду
-   (CSS .ug-band); мёртвое звено не светится вовсе.
+   Состояние звена из экономики (faded/dead) гасит всю банду (CSS
+   .ug-band); мёртвое звено не светится вовсе.
    ============================================================ */
-const UG_TILE = 24, UG_BAND = 26;
+const UG_TILE = 24, UG_BAND = 36; /* толщина банды 26 → 36 («потолще») */
 /* v1.5.6.1: ASSET_VER_Q (utils.js) — анти-кэш суффикс на спрайтах звена */
 const UG_IMG = {
   bandH: 'assets/fx/chains_h.png' + ASSET_VER_Q, bandV: 'assets/fx/chains_v.png' + ASSET_VER_Q,
@@ -484,11 +487,18 @@ function drawUgLink(coords, mode, lf, isMult) {
   const NS = 'http://www.w3.org/2000/svg';
   const faded = lf !== undefined && lf > 0 && lf < 1, dead = lf === 0;
   const st = (faded ? ' faded' : dead ? ' dead' : '');
-  const horiz = coords.y1 === coords.y2;
+  /* v1.5.7: банда идёт ВДОЛЬ ШВА: у соседей в одном ряду шов вертикальный
+     (x1===x2 — сегмент сверху вниз), у соседей в столбце — горизонтальный
+     (y1===y2). Горизонтальная банда = меняется X (плитки chains_h в ряд). */
+  const horiz = coords.x1 !== coords.x2;
   const L = Math.hypot(coords.x2 - coords.x1, coords.y2 - coords.y1);
-  /* 1) тень-подложка: читаемость тёмного металла на пёстрых картах */
+  /* 1) тень-подложка вдоль шва: читаемость тёмного металла на пёстрых картах */
   mkLine('ug-shadow' + st, coords);
-  /* 2) банда цепей: клип по звену + плитки на глобальной сетке */
+  /* 2) банда цепей: клип по звену + плитки на глобальной сетке.
+     v1.5.7: плитки идут ВДОЛЬ ШВА от угла карты до угла: горизонтальная
+     банда (шов между картами-соседями по столбцу) — chains_h (24×36)
+     в ряд слева направо; вертикальная (соседи в ряду) — chains_v (36×24)
+     стопкой сверху вниз. */
   let defs = synergySvg.querySelector('defs');
   if (!defs) {
     defs = document.createElementNS(NS, 'defs');
@@ -496,6 +506,8 @@ function drawUgLink(coords, mode, lf, isMult) {
   }
   const n = drawUgLink._n = (drawUgLink._n || 0) + 1;
   const half = UG_BAND / 2;
+  /* горизонтальная банда: длина по X от левого края карты, толщина по Y
+     вокруг средней линии шва; вертикальная — зеркально */
   const bx = horiz ? coords.x1 : coords.x1 - half;
   const by = horiz ? coords.y1 - half : coords.y1;
   const bw = horiz ? L : UG_BAND, bh = horiz ? UG_BAND : L;
@@ -519,20 +531,20 @@ function drawUgLink(coords, mode, lf, isMult) {
   };
   const bandHref = horiz ? UG_IMG.bandH : UG_IMG.bandV;
   if (horiz) {
-    for (let x = Math.floor(coords.x1 / UG_TILE) * UG_TILE; x < coords.x2; x += UG_TILE)
+    for (let x = coords.x1; x < coords.x2; x += UG_TILE)
       g.appendChild(mkIm(bandHref, x, by, UG_TILE, UG_BAND));
   } else {
-    for (let y = Math.floor(coords.y1 / UG_TILE) * UG_TILE; y < coords.y2; y += UG_TILE)
+    for (let y = coords.y1; y < coords.y2; y += UG_TILE)
       g.appendChild(mkIm(bandHref, bx, y, UG_BAND, UG_TILE));
   }
   synergySvg.appendChild(g);
-  /* 3) проблеск: узкое окно света бежит вдоль цепей на полную высоту
-     (ширину) банды; мёртвое звено не светится вовсе */
+  /* 3) проблеск: узкое окно света бежит ВДОЛЬ цепи во всю её длину;
+     мёртвое звено не светится вовсе */
   if (!dead) {
     const special = mode === 'royal' || mode === 'lich' || mode === 'big' || isMult;
     const href = special ? (horiz ? UG_IMG.royalH : UG_IMG.royalV)
                          : (horiz ? UG_IMG.paleH : UG_IMG.paleV);
-    const gl = mkIm(href, 0, 0, UG_TILE, UG_BAND);
+    const gl = mkIm(href, 0, 0, horiz ? UG_TILE : UG_BAND, horiz ? UG_BAND : UG_TILE);
     gl.setAttribute('class', 'ug-glint');
     const dur = special ? 2.6 : 4.2;
     const phase = (Math.abs(Math.round(coords.x1 * 7 + coords.y1 * 13)) % 97) / 97;
