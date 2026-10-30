@@ -35,19 +35,16 @@ function applyGridMetrics() {
 
 /* Карты/здания, чья механика действует на ОКРУЖЕНИЕ: радиус ауры.
    Радиусы зданий — BUILDING_AURA (data/buildings.js), карт — здесь.
-   Аура подсвечивает ВСЕ клетки зоны — включая пустые. */
+   Аура подсвечивает ВСЕ клетки зоны — включая пустые.
+   v1.5.10: туман зоны СПОКОЙНЫЙ и ПОСТОЯННЫЙ (без пульсаций и
+   дыхания) — мигание зоны читалось как случайный туман на чужих
+   картах. Зона — статичный маркер области эффекта здания. */
 function buildAuraMap() {
   const map = {};
   for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
     const it = grid[r][c]; if (!it) continue;
     const R = auraRadiusOf(it.cardId); if (!R) continue;
     const color = FACTION_INFO[CARDS[it.cardId].faction].color;
-    /* v1.5.0 «если активно — дышит»: туман ауры оживает (aura-live), только
-       когда особенность источника реально работает (✦ активна) или таймерная
-       способность только что сработала (fxUntil). Спящий источник — тихая дымка. */
-    /* у ЗДАНИЙ specialActive всегда true (пассивка) — они оживают только
-       в момент срабатывания (fxUntil); «дышат» лишь карты с живой особенность */
-    const live = (!CARDS[it.cardId].isBuilding && !!SPECIALS[it.cardId] && specialActive(CARDS[it.cardId], it, r, c).active) || it.fxUntil > gameTime;
     for (let dr = -R; dr <= R; dr++) for (let dc = -R; dc <= R; dc++) {
       if (Math.max(Math.abs(dr), Math.abs(dc)) > R) continue;
       const nr = r + dr, nc = c + dc;
@@ -55,7 +52,7 @@ function buildAuraMap() {
       if (!playableMask[nr] || !playableMask[nr][nc]) continue; /* закрытые клетки не подсвечиваем */
       const k = nr + ',' + nc;
       const prev = map[k];
-      map[k] = { color: prev ? prev.color : color, big: R >= 2 || (prev && prev.big), live: live || (prev && prev.live) };
+      map[k] = { color: prev ? prev.color : color, big: R >= 2 || (prev && prev.big) };
     }
   }
   return map;
@@ -186,7 +183,7 @@ function renderGrid() {
     /* --- классы клетки (аура/ритуал/режимы) --- */
     let cls = 'cell playable';
     if (r === 4 && c === 4) cls += ' center-cell';
-    if (az) { cls += ' aura-zone'; if (az.big) cls += ' r2'; if (az.live) cls += ' aura-live'; }
+    if (az) { cls += ' aura-zone'; if (az.big) cls += ' r2'; }
     if (incomeCache.lichZone && incomeCache.lichZone.indexOf(key) >= 0) cls += ' aura-lich';
     if (INC_CTX.ritual && INC_CTX.ritual.has(key)) cls += ' ritual-cell';
     else if (INC_CTX.ritualOuter && INC_CTX.ritualOuter.has(key)) cls += ' ritual-outer';
@@ -269,7 +266,6 @@ function renderGrid() {
       if (R.sp) {
         if (R.spOn !== sa.active) { R.spOn = sa.active; R.sp.classList.toggle('on', sa.active); R.sp.setAttribute('title', (sa.active ? 'Особенность активна' : 'Особенность не задействована') + ': ' + (SPECIALS[card.id] || '').replace(/"/g, '')); }
       }
-      R.card.classList.toggle('sp-live', !!(hasSp && sa.active && !card.isBuilding));
       R.card.classList.toggle('in-formation', inForm);
       R.card.classList.toggle('fx-live', fxLive);
       R.card.classList.toggle('altar-active', !!(mech === 'formation' && RITUAL_SOURCES[card.id] && INC_CTX.formActive && INC_CTX.formActive[key]));
@@ -306,10 +302,8 @@ function renderGrid() {
     if (hasSp) {
       badges += '<span class="anchor-badge sp-badge' + (sa.active ? ' on' : '') + '" title="' +
         (sa.active ? 'Особенность активна' : 'Особенность не задействована') + ': ' + (SPECIALS[card.id] || '').replace(/"/g, '') + '">✦</span>';
-      /* v1.5.0 «если активно — дышит»: работающая особенность мерцает,
-         спящая — стоит тихо. Здания исключены: их пассивка «активна» всегда,
-         вспышка-каст они получают в момент срабатывания (fx-live) */
-      if (sa.active && !card.isBuilding) cardEl.classList.add('sp-live');
+      /* v1.5.10: «если активно — дышит» снято: карта больше не мерцает.
+         Активность показывает золотой ✦ (класс on) — тихо и наглядно. */
     }
     /* Таймерные способности: бейджи перезарядки (v1.2.6: + Зомби-рост, Кладбище, Врата) */
     if (card.id === 'bl_mound') badges += '<span class="cd-badge" data-cd="mound"></span>';
@@ -392,25 +386,23 @@ function gridSignature() {
   return s;
 }
 
-/* v1.5.1: вспышки способностей (fxUntil) и живой туман аур обновляются
-   классами РАЗ в 250мс — без стирания DOM. Прежний вариант (флаг F в
+/* v1.5.1 → v1.5.10: вспышки способностей (fxUntil) обновляются классами
+   РАЗ в 250мс — без стирания DOM. Прежний вариант (флаг F в
    сигнатуре) перерисовывал всё поле 2 раза за цикл Кладбища: игрок видел
    мигание, а все анимации перезапускались строем. classList.toggle не
-   перезапускает анимацию, пока класс не изменился — «дышит» только то,
-   что начало/кончило работать. В харнесе gridEl === null — выходим тихо. */
+   перезапускает анимацию, пока класс не изменился. Живой туман аур
+   (aura-live) удалён в v1.5.10 — туман зон теперь постоянный и тихий.
+   В харнесе gridEl === null — выходим тихо. */
 function updateFxLive() {
   if (!gridEl) return;
   const n = playableSize, st = gridStart();
   const cells = gridEl.children;
   if (cells.length !== n * n) return;
-  const auraMap = buildAuraMap();
   for (let dr = 0; dr < n; dr++) for (let dc = 0; dc < n; dc++) {
     const r = st + dr, c = st + dc;
     const cell = cells[dr * n + dc];
     const it = grid[r][c];
     if (cell.firstElementChild) cell.firstElementChild.classList.toggle('fx-live', !!(it && it.fxUntil > gameTime));
-    const az = auraMap[r + ',' + c];
-    cell.classList.toggle('aura-live', !!(az && az.live));
   }
 }
 
@@ -528,6 +520,7 @@ function drawSynergies() {
   _synSig = sig;
 
   synergySvg.innerHTML = '';
+  fxGlintList = [];   /* v1.5.10: траектории проблесков пересобираются с SVG */
   const sr = synergySvg.getBoundingClientRect();
   const cellAt = (r, c) => gridEl.children[(r - st) * n + (c - st)];
   /* v1.5.9: ВСЕ прямоугольники читаются одним проходом (один forced layout) */
@@ -596,96 +589,62 @@ function drawSynergies() {
         (lichW ? ' lich' : royal ? ' royal' : ''), coords);
     }
   }
+  /* v1.5.10: геометрия проблесков — на fx-канву (координаты SVG + смещение) */
+  if (typeof fxSetGlints === 'function') fxSetGlints(fxGlintList, sr.left, sr.top);
 }
 
 /* ============================================================
-   v1.5.8.1 «ГЛУХИЕ ОКОВЫ» — фикс фидбека: «цепи полупрозрачные
-   и закрывают слишком много пространства карты».
-   ФИЗИКА БЕЗ ИЗМЕНЕНИЙ (урок v1.5.7/8): цепь СКРЕПЛЯЕТ карты,
-   каждое звено идёт ПОПЕРЁК шва, от карты к карте.
-   ЧТО СМЕНИЛОСЬ:
-   1) БАНДА ТОЛЬКО НА ШВЕ: толщина 36 -> 14px (по 7px на карту —
-      зона рамки; арт карт свободен). Кромка по-прежнему вся:
-      кольца стоят по всей высоте/ширине общего края.
-   2) ГЛУХАЯ АЛЬФА: спрайт-кольцо без единого полупрозрачного
-      пикселя (alpha=255), альфа-фейд концов удалён — звено жёстко
-      находит на кромки карт. Полупрозрачная тень-подложка
-      (ug-shadow 24px, .22) удалена совсем.
-   3) ЗВЕНО-КОЛЬЦО: плитка 14x14 = одно кольцо поперёк шва (как
-      нарисовал игрок: овалы с дырами в столбик по шву); ободы
-      кольца держат обе карты, дыра показывает шов. Стопка с
-      периодом 14 — бесшовная цепь колец по всей кромке.
-   СПРАЙТ: chains_x/y.png 14x14, генератор scripts/gen_chains_sprite.py;
-   ни pattern'ов, ни transform (уроки v1.5.2/3), растяжения нет —
-   плитка 1:1.
-   ПРОБЛЕСКИ: свет бежит ВДОЛЬ ЦЕПИ — поперёк шва, от карты к карте;
-   плитки света стоят по всей кромке и едут синхронно. Свечение — ТА
-   ЖЕ геометрия колец в яркой палитре с колокольным окном, свет лежит
-   ровно на металле (полупрозрачен только свет, не цепь).
-   ОСОБЫЕ СВЯЗИ (royal — Владыка, lich — Пакт Тишины, big — Скованный,
-   mult — пары-множители) — ЯРКИЙ ФИОЛЕТОВЫЙ отблеск (glint_royal).
-   Состояние звена из экономики (faded/dead) гасит всю банду (CSS
-   .ug-band); мёртвое звено не светится вовсе.
+   v1.5.10 «НЕРОВНЫЕ ОКОВЫ» — по фидбеку: шов выглядел плотной
+   лестницей одинаковых колец (решётка), а не цепями.
+   ФИЗИКА БЕЗ ИЗМЕНЕНИЙ (урок v1.5.7/8): оковы лежат на ОБЩЕМ краю
+   двух соседних карт (расположение прежнее — только шов, по 7px на
+   карту) и СКРЕПЛЯЮТ карты ПОПЕРЁК шва, от карты к карте.
+   ЧТО СМЕНИЛОСЬ — ОБРАЗ:
+   1) НЕСКОЛЬКО ЦЕПЕЙ: шов скрепляют 3 ОТДЕЛЬНЫЕ короткие нити на
+      высотах ~25% / 50% / 75% кромки, между ними чистый стык.
+   2) ПО-РАЗНОМУ НАТЯНУТЫ: у каждой нити своя натяжка — тугая
+      (почти прямая), средняя и слабая (провисает дугой). У
+      вертикального шва нити висят ВНИЗ, у горизонтального слабые
+      бортают ВБОК. Порядок натяжек и сторона прогиба
+      детерминированы координатами шва — поле живое, но стабильное.
+   3) НИТЬ — ОДИН СПРАЙТ (перф-урок v1.5.9): вся нить с звеньями по дуге
+      запечена в одну картинку 30x30 (генератор scripts/gen_chains_sprite.py
+      рисует те же звенья по той же квадратичной кривой, ориентация
+      чередуется плансмя/боком, металл ГЛУХОЙ — alpha=255). На шов всего
+      3 картинки-нити — на поле 9x9 348 <image> вместо ~928 у v1.5.9.
+   ПРОБЛЕСК: один на шов — свет бежит ВДОЛЬ цепи от карты к карте,
+      перетекая с нити на нить: дуга нити → скольжение по шву → дуга
+      следующей. Мягкое пятно (glint_pale.png / фиолетовый glint_royal.png
+      у особых связей: royal — Владыка, lich — Пакт, big — Скованный,
+      mult); полупрозрачен только свет. Мёртвое звено не светится вовсе;
+      faded/dead гасят все нити связи (CSS .ug-band).
+   РЕНДЕР СВЕТА — на fx-канве (fx.js), НЕ SMIL: замер на 9x9 дал 27fps
+      на SMIL (animateMotion/animateTransform/даже animate x+y) против
+      45fps у v1.5.9 с 432 SMIL-плитками; канва с drawImage — 59-60fps.
+      drawUgLink отдаёт лишь ломаную вдоль дуг (fxGlintList), фаза
+      детерминированная (по координатам шва) — свет стабилен.
    ============================================================ */
-const UG_TILE = 14, UG_BAND = 14; /* 14 — период стопки вдоль шва = толщина банды поперёк: плитка 1:1 */
-/* v1.5.6.1: ASSET_VER_Q (utils.js) — анти-кэш суффикс на спрайтах звена */
-const UG_IMG = {
-  /* _x — плитки для ВЕРТИКАЛЬНОГО шва (цепи поперёк идут горизонтально),
-     _y — для ГОРИЗОНТАЛЬНОГО шва (цепи поперёк идут вертикально) */
-  bandX: 'assets/fx/chains_x.png' + ASSET_VER_Q, bandY: 'assets/fx/chains_y.png' + ASSET_VER_Q,
-  paleX: 'assets/fx/glint_pale_x.png' + ASSET_VER_Q, paleY: 'assets/fx/glint_pale_y.png' + ASSET_VER_Q,
-  royalX: 'assets/fx/glint_royal_x.png' + ASSET_VER_Q, royalY: 'assets/fx/glint_royal_y.png' + ASSET_VER_Q
-};
-/* SMIL-анимация атрибута (x/y) с отрицательным begin — детерминированная
-   фаза у каждой связи, без «строя» проблесков после перерисовки поля */
-function ugAnim(attr, from, to, dur, phase) {
-  const a = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
-  a.setAttribute('attributeName', attr);
-  a.setAttribute('from', from.toFixed(1));
-  a.setAttribute('to', to.toFixed(1));
-  a.setAttribute('dur', dur + 's');
-  a.setAttribute('begin', (-(phase * dur)).toFixed(2) + 's');
-  a.setAttribute('repeatCount', 'indefinite');
-  return a;
-}
+const UG_STRANDS = 3;   /* нитей на шов */
+const UG_STR = 30;      /* плитка целой нити (30x30, центр кривой — 15,15) */
+/* v1.5.10: траектории проблесков — заполняется drawUgLink при фактической
+   перерисовке SVG, отрисовывает fx.js (канва): SMIL на густом поле проседал */
+let fxGlintList = [];
+
+/* Натяжки нитей: тугая / средняя / слабая (прогиб дуги, px) —
+   ДОЛЖНЫ совпадать с UG_SLACK в scripts/gen_chains_sprite.py */
+const UG_SLACK = [1.5, 4, 8];
+
 function drawUgLink(coords, mode, lf, isMult) {
   const NS = 'http://www.w3.org/2000/svg';
   const faded = lf !== undefined && lf > 0 && lf < 1, dead = lf === 0;
   const st = (faded ? ' faded' : dead ? ' dead' : '');
-  /* v1.5.8: цепь-скоба ПОПЕРЁК шва: у соседей в ряду шов вертикальный
-     (x1===x2) — цепи chains_x идут горизонтально, от левой карты к
-     правой; у соседей в столбце шов горизонтальный (y1===y2) — цепи
-     chains_y идут вертикально, от верхней карты к нижней. */
-  const horiz = coords.x1 !== coords.x2;
-  const L = Math.hypot(coords.x2 - coords.x1, coords.y2 - coords.y1);
-  /* v1.5.8.1: полупрозрачная тень-подложка (ug-shadow 24px .22)
-     удалена — она накрывала карты мутной полосой; глухой металл
-     читается сам. Банда цепей: клип по звену + плитки-кольца.
-     Горизонтальный шов (соседи в столбце) — chains_y (14x14) в ряд
-     слева направо; вертикальный (соседи в ряду) — chains_x (14x14)
-     стопкой сверху вниз. */
-  let defs = synergySvg.querySelector('defs');
-  if (!defs) {
-    defs = document.createElementNS(NS, 'defs');
-    synergySvg.appendChild(defs);
-  }
-  const n = drawUgLink._n = (drawUgLink._n || 0) + 1;
-  const half = UG_BAND / 2;
-  /* горизонтальная банда: длина по X от левого края карты, толщина по Y
-     вокруг средней линии шва; вертикальная — зеркально */
-  const bx = horiz ? coords.x1 : coords.x1 - half;
-  const by = horiz ? coords.y1 - half : coords.y1;
-  const bw = horiz ? L : UG_BAND, bh = horiz ? UG_BAND : L;
-  const cp = document.createElementNS(NS, 'clipPath');
-  cp.setAttribute('id', 'ugc' + n);
-  const cr = document.createElementNS(NS, 'rect');
-  cr.setAttribute('x', bx.toFixed(1)); cr.setAttribute('y', by.toFixed(1));
-  cr.setAttribute('width', bw.toFixed(1)); cr.setAttribute('height', bh.toFixed(1));
-  cp.appendChild(cr);
-  defs.appendChild(cp);
   const g = document.createElementNS(NS, 'g');
-  g.setAttribute('clip-path', 'url(#ugc' + n + ')');
   g.setAttribute('class', 'ug-band' + st);
+  const seed = Math.abs(Math.round(coords.x1 * 7 + coords.y1 * 13));
+  const special = mode === 'royal' || mode === 'lich' || mode === 'big' || isMult;
+  const dur = special ? 2.6 : 4.2;
+  const horiz = coords.x1 !== coords.x2;   /* шов горизонтальный (соседи в столбце) */
+  const L = horiz ? coords.x2 - coords.x1 : coords.y2 - coords.y1;
   const mkIm = (href, x, y, w, h) => {
     const im = document.createElementNS(NS, 'image');
     im.setAttribute('href', href); im.setAttributeNS('http://www.w3.org/1999/xlink', 'href', href);
@@ -694,41 +653,58 @@ function drawUgLink(coords, mode, lf, isMult) {
     im.setAttribute('style', 'image-rendering:pixelated');
     return im;
   };
-  const bandHref = horiz ? UG_IMG.bandY : UG_IMG.bandX;
-  if (horiz) {
-    for (let x = coords.x1; x < coords.x2; x += UG_TILE)
-      g.appendChild(mkIm(bandHref, x, by, UG_TILE, UG_BAND));
-  } else {
-    for (let y = coords.y1; y < coords.y2; y += UG_TILE)
-      g.appendChild(mkIm(bandHref, bx, y, UG_BAND, UG_TILE));
+  /* 3 нити; порядок натяжек и сторона прогиба свои у каждого шва
+     (детерминированы координатами) — поле живое, но стабильное. */
+  const strands = [];
+  for (let i = 0; i < UG_STRANDS; i++) {
+    const t = (i + 1) / (UG_STRANDS + 1);
+    const k = (seed + i * 5) % 3;            /* индекс натяжки 0..2 */
+    const slack = UG_SLACK[k];
+    if (!horiz) {
+      /* вертикальный шов: нить горизонтальна, провисает ВНИЗ;
+         проблеск после дуги нити скользит по шву к следующей */
+      const y = coords.y1 + L * t;
+      strands.push({ x: coords.x1, y, slack, side: 0, file: 'chain_v_' + k });
+      g.appendChild(mkIm('assets/fx/chain_v_' + k + '.png' + ASSET_VER_Q, coords.x1 - UG_STR / 2, y - UG_STR / 2, UG_STR, UG_STR));
+    } else {
+      /* горизонтальный шов: нить вертикальна; слабая бортает ВБОК */
+      const x = coords.x1 + L * t;
+      const side = ((seed + i) & 1) ? 1 : -1;
+      const file = k === 0 ? 'chain_h_0' : 'chain_h_' + k + (side > 0 ? 'r' : 'l');
+      strands.push({ x, y: coords.y1, slack, side, file });
+      g.appendChild(mkIm('assets/fx/' + file + '.png' + ASSET_VER_Q, x - UG_STR / 2, coords.y1 - UG_STR / 2, UG_STR, UG_STR));
+    }
   }
   synergySvg.appendChild(g);
-  /* 2) проблеск: свет бежит ВДОЛЬ ЦЕПИ — ПОПЕРЁК шва, от карты к карте;
-     плитки света стоят по всей кромке (те же позиции, что у банды) и
-     едут синхронно — волна накрывает всю связку разом; мёртвое звено
-     не светится вовсе. Полупрозрачен только СВЕТ, металл под ним глухой. */
+  /* проблеск: одно пятно света патрулирует весь шов — свет бежит ВДОЛЬ
+     цепи от карты к карте: дуга нити (с прогибом) → скольжение по шву →
+     дуга следующей. Мёртвое звено не светится вовсе; полупрозрачен
+     только СВЕТ, металл под ним глухой.
+     РЕНДЕР СВЕТА — на fx-канве (fx.js), не SMIL: замер на поле 9x9
+     показал, что даже лёгкие SMIL-анимации на 100+ элементов просаживали
+     кадр до ~27fps, а drawImage на уже идущем канве — почти бесплатен.
+     Сюда отдаём только геометрию: ломаная вдоль дуг нитей (по 4 отрезка
+     на дугу — плавно повторяет прогиб) и детерминированная фаза. */
   if (!dead) {
-    const special = mode === 'royal' || mode === 'lich' || mode === 'big' || isMult;
-    const href = special ? (horiz ? UG_IMG.royalY : UG_IMG.royalX)
-                         : (horiz ? UG_IMG.paleY : UG_IMG.paleX);
-    const dur = special ? 2.6 : 4.2;
-    const phase = (Math.abs(Math.round(coords.x1 * 7 + coords.y1 * 13)) % 97) / 97;
-    const gw = horiz ? UG_TILE : UG_BAND, gh = horiz ? UG_BAND : UG_TILE;
-    const mkGlint = (x, y, attr, from, to) => {
-      const q = mkIm(href, x, y, gw, gh);
-      q.setAttribute('class', 'ug-glint');
-      q.appendChild(ugAnim(attr, from, to, dur, phase));
-      g.appendChild(q);
+    const pts = [];
+    const quadPts = (p0, c, p2) => {
+      for (let s2 = 0; s2 <= 4; s2++) {
+        const t = s2 / 4, mt = 1 - t;
+        pts.push([mt * mt * p0[0] + 2 * mt * t * c[0] + t * t * p2[0],
+                  mt * mt * p0[1] + 2 * mt * t * c[1] + t * t * p2[1]]);
+      }
     };
-    if (horiz) {
-      /* плитка света 24x36 въезжает сверху шва и выезжает снизу:
-         y от (by - 36) до (by + 36) — окно проходит всю толщу банды */
-      for (let x = coords.x1; x < coords.x2; x += UG_TILE)
-        mkGlint(x, by - UG_BAND, 'y', by - UG_BAND, by + UG_BAND);
-    } else {
-      for (let y = coords.y1; y < coords.y2; y += UG_TILE)
-        mkGlint(bx - UG_BAND, y, 'x', bx - UG_BAND, bx + UG_BAND);
+    for (let i = 0; i < UG_STRANDS; i++) {
+      const s = strands[i];
+      const dx = horiz ? s.side * s.slack * 2 : 0;   /* прогиб середины дуги */
+      const dy = horiz ? 0 : s.slack * 2;
+      quadPts([s.x - 7, s.y], [s.x + dx, s.y + dy], [s.x + 7, s.y]);   /* дуга нити */
+      if (i < UG_STRANDS - 1) {
+        const n = strands[i + 1];
+        pts.push([n.x - 7, n.y]);                    /* скольжение по шву */
+      }
     }
+    fxGlintList.push({ pts, dur, phase: (seed % 97) / 97, alpha: faded ? .4 : 1, royal: special });
   }
 }
 function updateGridStats() {

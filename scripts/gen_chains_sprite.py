@@ -1,46 +1,43 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ============================================================
-# v1.5.8.1 «ГЛУХИЕ ОКОВЫ» — генератор спрайтов цепей нежити.
+# v1.5.10 «НЕРОВНЫЕ ОКОВЫ» — генератор спрайтов цепей нежити.
 #
-# УРОК v1.5.8 (фидбек игрока): «цепи полупрозрачные и закрывают
-# слишком много пространства карты». ФИКС:
-#   1) БАНДА ТОЛЬКО НА ШВЕ: 36px -> 14px (по 7px на карту — зона
-#      рамки, арт карт свободен). Кромка по-прежнему вся: кольца
-#      стоят по всей высоте/ширине общего края.
-#   2) ГЛУХАЯ АЛЬФА: никаких альфа-фейдов — тело звена alpha=255,
-#      концы звена жёстко обрезаны (звено НАХОДИТ на кромки карт
-#      и держит их). Полупрозрачность остаётся только у проблеска
-#      — это свет поверх глухого металла, не дырка в цепи.
-#   3) ЗВЕНО-КОЛЬЦО: одна плитка = одно кольцо 14x14 поперёк шва
-#      (как нарисовал игрок: овалы с дырами в столбик по шву).
-#      Кольцо левого обода держит левую карту, правого — правую,
-#      дыра в середине показывает шов. Стопка колец = цепь.
+# ФИДБЕК ИГРОКА: прежний шов — плотная лестница одинаковых колец
+# (читалась как решётка, а не как цепи). НОВЫЙ ОБРАЗ: шов скрепляют
+# НЕСКОЛЬКО коротких цепей, ПО-РАЗНОМУ НАТЯНУТЫХ (тугая, средняя,
+# слабая — слабая провисает дугой).
 #
-# assets/fx/chains_x.png      14x14 — ВЕРТИКАЛЬНЫЙ шов (соседи в
-#                                   ряду): кольцо поперёк, стопка
-#                                   по Y с периодом 14 — бесшовно.
-# assets/fx/chains_y.png      14x14 — ГОРИЗОНТАЛЬНЫЙ шов (соседи в
-#                                   столбце): транспозиция.
-# assets/fx/glint_pale_x.png  14x14 — холодный проблеск: та же
-#                                   геометрия в яркой стали с
-#                                   колокольным окном поперёк шва
-#                                   (свет бежит от карты к карте).
-# assets/fx/glint_royal_x.png 14x14 — яркий фиолетовый отблеск
-#                                   особых связей (окно шире).
-# assets/fx/glint_*_y.png           — варианты горизонтального шва.
+# ПЕРФ (урок v1.5.9): каждая нить ЗАПЕКАЕТСЯ В ОДИН СПРАЙТ — на шов
+# 3 картинки-нити + 1 проблеск вместо 15 отдельных звеньев в DOM
+# (на поле 9x9 это ~464 <image> вместо ~1740). Пиксели те же, что
+# рисовал бы JS: звенья по квадратичной кривой (та же математика,
+# что в drawUgLink), ориентация чередуется, металл ГЛУХОЙ (alpha=255).
 #
+# assets/fx/chain_v_0/1/2.png  30x30 — нить на ВЕРТИКАЛЬНОМ шве
+#            (соседи в ряду): идёт горизонтально от карты к карте,
+#            провисает ВНИЗ на 1.5 / 4 / 8 px.
+# assets/fx/chain_h_0.png      30x30 — тугая нить на ГОРИЗОНТАЛЬНОМ
+#            шве (соседи в столбце): идёт вертикально.
+# assets/fx/chain_h_1l/1r.png  средняя (4px), бортает влево/вправо.
+# assets/fx/chain_h_2l/2r.png  слабая (8px), бортает влево/вправо.
+# assets/fx/glint_pale.png     14x14 — мягкий холодный отблеск, бежит
+#            ВДОЛЬ нитей от карты к карте (SMIL animateMotion).
+# assets/fx/glint_royal.png    14x14 — фиолетовый отблеск особых связей.
+#
+# Геометрия нити в спрайте: центр (14,14); опорные точки кривой:
+#   chain_v_k: P0=(8,15) C=(15,15+2*slack) P2=(22,15)  → прогиб = slack
+#   chain_h_*: P0=(15,8) C=(15±2*slack,15) P2=(15,22)  → прогиб = slack
 # Рисуется БЕЗ СУПЕРСЭМПЛИНГА — честный пиксель-арт (урок v1.5.2).
 # ============================================================
+import math
 import os
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FX = os.path.join(ROOT, 'assets', 'fx')
 
-# ---------- палитра: холодная могильная сталь ----------
-# Урок живого прогона: тёмный металл на тёмных картах исчезает —
-# держим контраст тела ~6:1, глубину дают контур и тень.
+# ---------- палитра: холодная могильная сталь (та же, что была) ----------
 PAL = {
     'O': (15, 16, 20, 255),     # контур
     'd': (56, 63, 74, 255),     # тёмное железо
@@ -52,165 +49,168 @@ PAL = {
     'G': (107, 131, 112, 255),  # патина светлая
     '.': (0, 0, 0, 0),
 }
+PALE_GLOW = (222, 234, 244)   # лунная сталь — свет проблеска
+ROYAL_GLOW = (208, 156, 255)  # фиолетовая магия особых связей
 
-# ---------- «горячие» палитры проблесков (та же геометрия) ----------
-PALE = {  # лунная сталь — проблеск по всем цепям
-    'O': (56, 66, 80, 255),  'd': (99, 112, 128, 255), 'm': (140, 154, 170, 255),
-    'l': (183, 197, 211, 255), 'h': (216, 228, 238, 255), 'p': (240, 246, 251, 255),
-    'g': (108, 132, 119, 255), 'G': (148, 172, 155, 255),
-}
-ROYAL = {  # фиолетовая магия тьмы — яркий отблеск особых связей
-    'O': (72, 40, 110, 255), 'd': (118, 72, 182, 255), 'm': (166, 114, 235, 255),
-    'l': (206, 160, 255, 255), 'h': (231, 205, 255, 255), 'p': (249, 238, 255, 255),
-    'g': (122, 85, 200, 255), 'G': (163, 127, 232, 255),
-}
-
-# плитка кольца: 14 поперёк шва (толщина банды), 14 вдоль шва (период стопки)
-BW, BH = 14, 14
-
-# ---------- звено-кольцо: ОВАЛ 14x12 в плитке 14x14 ----------
-# Свет сверху-слева: блик по верхне-левому ободу, тень снизу-справа.
-# Тело НЕПРЕРЫВНО вокруг дыры (урок: чистый контур рассыпается в штрихи).
-# Ободы x0..3 / x10..13 держат левую/правую карты, дыра x4..9 показывает
-# шов (это ДЫРКА кольца, не прозрачность металла). Эллипс считается
-# программно — углы скругляются сами, звено читается ОВАЛОМ (как в эскизе).
+TILE = 11           # плитка звена
+FRAMES = 12         # поворотов звена с шагом 30°
+RX, RY = 4.7, 3.4   # внешняя полуось овала (вдоль нити) — крупное звено
+HX, HY = 2.2, 1.35  # полуось дыры
+S = 30              # плитка целой нити (центр кривой — 15,15)
+LINKS = 3           # звеньев на нити: крупное, боком, крупное
 
 
-def build_ring_tile():
-    """Плитка 14x14 с одним овальным кольцом поперёк шва. ГЛУХАЯ альфа."""
-    im = Image.new('RGBA', (BW, BH), (0, 0, 0, 0))
+def link_class(v, e):
+    """Класс пикселя звена по поперечной координате (v: -1..1) и вытянутости."""
+    if e > 1.0:
+        return '.'
+    if e > .80:
+        return 'O'                 # внешний контур
+    t = v                          # свет сверху (в мире): v<0 — верх
+    if t < -.45:
+        return 'h'
+    if t < -.10:
+        return 'l'
+    if t < .30:
+        return 'm'
+    if t < .66:
+        return 'd'
+    return 'O'
+
+
+def draw_link(im, cx, cy, ang, sc=1.0):
+    """Рисует звено-кольцо с центром (cx,cy), поворот ang (радианы, 0 = вдоль X).
+    sc — масштаб (боковые звенья рисуются мельче: видны с торца)."""
     px = im.load()
-    cx, cy = 6.5, 6.5          # центр кольца
-    rx, ry = 6.7, 5.7          # внешняя полуось: овал во всю толщу банды
-    hx, hy = 2.9, 1.9          # внутренняя полуось (дыра)
-    for y in range(BH):
-        for x in range(BW):
-            dx, dy = (x + .5 - cx) / rx, (y + .5 - cy) / ry
-            if dx * dx + dy * dy > 1.0:
-                continue                     # вне кольца — прозрачный фон
-            e = dx * dx + dy * dy
-            hdx, hdy = (x + .5 - cx) / hx, (y + .5 - cy) / hy
-            if hdx * hdx + hdy * hdy <= 1.0:
-                continue                     # дыра — шов виден насквозь
-            # окраска по наклону поверхности: свет сверху-слева
-            t = dy * .8 - dx * .5
-            if e > .82:      ch = 'O'        # внешний край — контур
-            elif t < -.42:   ch = 'h'        # блик
-            elif t < -.12:   ch = 'l'        # светлое железо
-            elif t < .28:    ch = 'm'        # железо
-            elif t < .62:    ch = 'd'        # тёмное железо
-            else:            ch = 'O'        # теневой край
-            px[x, y] = PAL[ch]
-    # патина (кладбищенский налёт) и спекуляр — по паре пикселей
-    for xx, yy, ch in [(2, 3, 'G'), (3, 4, 'g'), (10, 9, 'G'), (9, 10, 'g'), (4, 10, 'g')]:
-        if px[xx, yy][3]:
-            px[xx, yy] = PAL[ch]
-    px[7, 2] = PAL['p']                      # спекуляр на верхнем ободе
-    px[3, 2] = PAL['p']
+    ca, sa = math.cos(ang), math.sin(ang)
+    rx, ry, hx, hy = RX * sc, RY * sc, HX * sc, HY * sc
+    for y in range(int(cy - 7), int(cy + 7) + 1):
+        for x in range(int(cx - 7), int(cx + 7) + 1):
+            if not (0 <= x < S and 0 <= y < S):
+                continue
+            dx, dy = x + .5 - cx, y + .5 - cy
+            u = dx * ca + dy * sa      # вдоль нити
+            v = -dx * sa + dy * ca     # поперёк
+            e = (u / rx) ** 2 + (v / ry) ** 2
+            ho = (u / hx) ** 2 + (v / hy) ** 2
+            if e > 1.0 or ho <= 1.0:
+                continue
+            ch = link_class(v / ry, e)
+            if ch != '.':
+                px[x, y] = PAL[ch]
+    # спекуляр и патина — по паре пикселей на верхнем ободе
+    sx, sy = int(cx - (rx - 1.1) * ca), int(cy - (rx - 1.1) * sa - (ry - 1.3))
+    if 0 <= sx < S and 0 <= sy < S and px[sx, sy][3]:
+        px[sx, sy] = PAL['p']
+    gx, gy = int(cx + (rx - 1.2) * sa), int(cy - (ry - 1.1) * ca)
+    if 0 <= gx < S and 0 <= gy < S and px[gx, gy][3]:
+        px[gx, gy] = PAL['G']
+
+
+def quad_point(p0, c, p2, t):
+    mt = 1 - t
+    x = mt * mt * p0[0] + 2 * mt * t * c[0] + t * t * p2[0]
+    y = mt * mt * p0[1] + 2 * mt * t * c[1] + t * t * p2[1]
+    dx = 2 * mt * (c[0] - p0[0]) + 2 * t * (p2[0] - c[0])
+    dy = 2 * mt * (c[1] - p0[1]) + 2 * t * (p2[1] - c[1])
+    return x, y, math.atan2(dy, dx)
+
+
+def bake_strand(fname, p0, c, p2):
+    """Целая нить одним спрайтом 28x28: LINKS звеньев по дуге,
+    ориентация чередуется (плашмя/боком), поворот — по касательной."""
+    im = Image.new('RGBA', (S, S), (0, 0, 0, 0))
+    for k in range(LINKS):
+        t = .18 + .32 * k
+        x, y, ang = quad_point(p0, c, p2, t)
+        fr = int(round(ang / (2 * math.pi) * FRAMES)) % FRAMES
+        fa = fr * 2 * math.pi / FRAMES
+        sc = 1.0
+        if k % 2:
+            fa += math.pi / 2          # звено боком — виден с торца, мельче
+            sc = .62
+        draw_link(im, x, y, fa, sc)
+    im.save(os.path.join(FX, fname))
+
+
+def build_glow(color):
+    """14x14 мягкое пятно света: полупрозрачен ТОЛЬКО свет (это проблеск,
+    не металл). Сдержанная яркость (пик ~150): свет читается, но не
+    превращается в снежные комья поверх звеньев."""
+    Sg = 14
+    im = Image.new('RGBA', (Sg, Sg), (0, 0, 0, 0))
+    px = im.load()
+    c = (Sg - 1) / 2.0
+    for y in range(Sg):
+        for x in range(Sg):
+            d = math.hypot(x + .5 - c, y + .5 - c) / (Sg / 2.0)
+            if d >= 1.0:
+                continue
+            a = (1.0 - d) ** 2.1
+            core = max(0.0, 1.0 - math.hypot(x + .5 - c, y + .5 - c) / 1.8)
+            alpha = int(round(128 * a + 28 * core))
+            if alpha <= 0:
+                continue
+            px[x, y] = (color[0], color[1], color[2], min(255, alpha))
     return im
 
 
-def repalette(band, pal):
-    """Та же геометрия кольца в другой палитре (для проблесков)."""
-    out = Image.new('RGBA', band.size, (0, 0, 0, 0))
-    po, pi = out.load(), band.load()
-    lut = {(c[0], c[1], c[2]): pal[ch] for ch, c in PAL.items() if ch != '.'}
-    for y in range(band.size[1]):
-        for x in range(band.size[0]):
-            r, g, b, a = pi[x, y]
-            if a == 0:
-                continue
-            po[x, y] = lut[(r, g, b)]
-    return out
-
-
-def bell_x(img, steps):
-    """Колокольное окно яркости ПОПЕРЁК шва (по X): свет бежит от карты
-    к карте. Окно гаснет к ободам — свет живёт в середине звена."""
-    w, h = img.size
-    out = Image.new('RGBA', (w, h), (0, 0, 0, 0))
-    po, pi = out.load(), img.load()
-    cx = (w - 1) / 2
-    for y in range(h):
-        for x in range(w):
-            r, g, b, a = pi[x, y]
-            if a == 0:
-                continue
-            d = int(round(abs(x - cx)))
-            al = steps[d] if d < len(steps) else 0
-            if al <= 0:
-                continue
-            po[x, y] = (r, g, b, int(a * al))
-    return out
-
-
-def mock_scene_v(band, glint, zoom, phase):
-    """Макет ВЕРТИКАЛЬНОГО шва: две карты в ряду, стопка колец между ними.
-    phase — позиция окна проблеска поперёк шва (px). NEAREST-зум."""
-    card_h, gap = 74, 5
-    W, H = 96, card_h
-    scene = Image.new('RGBA', (W, H), (12, 14, 12, 255))
+def mock_scene(zoom=5):
+    """Макет ВЕРТИКАЛЬНОГО шва: две карты, три нити с разной натяжкой."""
+    card_w, card_h, gap = 43, 74, 6
+    W = card_w * 2 + gap
+    scene = Image.new('RGBA', (W, card_h), (12, 14, 12, 255))
     sc = scene.load()
-    # две «карты» слева и справа от шва (шов по центру x=48)
     for side in (0, 1):
-        x0 = side * (43 + gap)
-        for cx in range(43):
+        x0 = side * (card_w + gap)
+        for cx in range(card_w):
             for cy in range(card_h):
-                edge = cx in (0, 42) or cy in (0, card_h - 1)
+                edge = cx in (0, card_w - 1) or cy in (0, card_h - 1)
                 sc[x0 + cx, cy] = (96, 82, 122, 255) if edge else (23, 23, 26, 255)
-    # банда: стопка плиток-колец вдоль всего шва
-    bx = 43 + gap // 2 + 1 - band.width // 2
-    y = 0
-    while y < card_h:
-        scene.alpha_composite(band, (bx, y))
-        y += band.height
-    if glint:
-        scene.alpha_composite(glint, (bx - glint.width + phase, 8))
-    box = (bx - 14, 0, bx + band.width + 14, card_h)
-    return scene.crop(box).resize(((box[2] - box[0]) * zoom, (box[3] - box[1]) * zoom),
-                                  Image.NEAREST)
+    glow_p = build_glow(PALE_GLOW)
+    mx = card_w + gap // 2
+    for si, slack in enumerate((1.5, 4, 8)):
+        y = int(card_h * (si + 1) / 4.0)
+        bake_strand('_tmp.png', (8, 15), (15, 15 + slack * 2), (22, 15))
+        strand = Image.open(os.path.join(FX, '_tmp.png'))
+        scene.alpha_composite(strand, (mx - 15, y - 15))
+        gx, gy = .25 * 8 + .5 * 15 + .25 * 22, .25 * 15 + .5 * (15 + slack * 2) + .25 * 15
+        scene.alpha_composite(glow_p, (mx - 15 + int(gx) - 7, y - 15 + int(gy) - 7))
+    os.remove(os.path.join(FX, '_tmp.png'))
+    return scene.resize((W * zoom, card_h * zoom), Image.NEAREST)
 
 
 def main():
     os.makedirs(FX, exist_ok=True)
-    x_band = build_ring_tile()
-    y_band = x_band.transpose(Image.TRANSPOSE)   # оси поменяны, свет сверху сохранён
-
-    pale_x = bell_x(repalette(x_band, PALE), [1.0, .93, .84, .72, .58, .42, .26, .12])
-    royal_x = bell_x(repalette(x_band, ROYAL), [1.0, .96, .9, .84, .76, .66, .56, .44])
-    pale_y = pale_x.transpose(Image.TRANSPOSE)
-    royal_y = royal_x.transpose(Image.TRANSPOSE)
-
-    x_band.save(os.path.join(FX, 'chains_x.png'))
-    y_band.save(os.path.join(FX, 'chains_y.png'))
-    pale_x.save(os.path.join(FX, 'glint_pale_x.png'))
-    pale_y.save(os.path.join(FX, 'glint_pale_y.png'))
-    royal_x.save(os.path.join(FX, 'glint_royal_x.png'))
-    royal_y.save(os.path.join(FX, 'glint_royal_y.png'))
+    # вертикальный шов: нить горизонтальна, провисает ВНИЗ (1.5 / 4 / 8 px)
+    for k, slack in enumerate((1.5, 4, 8)):
+        bake_strand('chain_v_%d.png' % k, (8, 15), (15, 15 + slack * 2), (22, 15))
+    # горизонтальный шов: нить вертикальна; тугая — прямая, слабые бортают вбок
+    bake_strand('chain_h_0.png', (15, 8), (15, 15), (15, 22))
+    for k, slack in ((1, 4), (2, 8)):
+        for side, sx in (('l', -1), ('r', 1)):
+            bake_strand('chain_h_%d%s.png' % (k, side),
+                        (15, 8), (15 + sx * slack * 2, 15), (15, 22))
+    build_glow(PALE_GLOW).save(os.path.join(FX, 'glint_pale.png'))
+    build_glow(ROYAL_GLOW).save(os.path.join(FX, 'glint_royal.png'))
+    # отдельные звенья и старые плитки-банды больше не нужны
+    for old in ('chains_x.png', 'chains_y.png', 'chain_link.png',
+                'glint_pale_x.png', 'glint_pale_y.png',
+                'glint_royal_x.png', 'glint_royal_y.png'):
+        p = os.path.join(FX, old)
+        if os.path.exists(p):
+            os.remove(p)
+            print('removed old', old)
+    for f in range(12):
+        p = os.path.join(FX, 'chain_link_%d.png' % f)
+        if os.path.exists(p):
+            os.remove(p)
     print('sprites written to', FX)
 
     # ---------- превью для контроля (в репо не идёт) ----------
-    Z = 10
-    comp_p = Image.alpha_composite(x_band, pale_x)
-    comp_r = Image.alpha_composite(x_band, royal_x)
-    tiles = [x_band, comp_p, comp_r]
-    sheet = Image.new('RGBA', (BW * Z + 40, (BH * Z + 20) * len(tiles) + 20), (14, 16, 14, 255))
-    for i, t in enumerate(tiles):
-        big = t.resize((BW * Z, BH * Z), Image.NEAREST)
-        sheet.paste(big, (20, 20 + i * (BH * Z + 20)), big)
-    mocks = [mock_scene_v(x_band, None, 4, 0),
-             mock_scene_v(x_band, pale_x, 4, 10),
-             mock_scene_v(x_band, royal_x, 4, 8)]
-    mw = max(m.width for m in mocks)
-    y = sheet.height + 10
-    sheet2 = Image.new('RGBA', (max(sheet.width, mw + 40), y + sum(m.height + 10 for m in mocks)),
-                       (14, 16, 14, 255))
-    sheet2.paste(sheet, (0, 0))
-    for i, m in enumerate(mocks):
-        sheet2.paste(m, (20, y))
-        y += m.height + 10
+    comp = mock_scene()
     out = os.path.join(os.path.dirname(ROOT), 'chains_preview.png')
-    sheet2.save(out)
+    comp.save(out)
     print('preview:', out)
 
 

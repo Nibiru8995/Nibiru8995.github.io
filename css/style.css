@@ -255,18 +255,19 @@ body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-i
 /* v1.4.0: ЗЕЛЕНО-ЗОЛОТОЙ поток Пакта Тишины Лича */
 .syn-flow.lich { stroke: #c8e87a; stroke-width: 3; filter: drop-shadow(0 0 7px #a0d040) drop-shadow(0 0 3px #ffd34d); opacity: 1; animation-duration: .9s; }
 /* ===== АУРЫ — ПОДСВЕТКА ОБЛАСТЕЙ (фидбек 1) =====
-   Кольца вокруг карт удалены: аура теперь проявляется как пульсирующее
-   свечение КАЖДОЙ клетки, на которую распространяется механика. */
+   Кольца вокруг карт удалены: аура теперь проявляется как свечение
+   КАЖДОЙ клетки, на которую распространяется механика.
+   v1.5.10 «ТИХИЕ ЗОНЫ»: пульсация аур снята — зона светит ровно и
+   постоянно (мигающие зоны читались как случайный туман на чужих
+   картах). Границы и сила свечения прежние. */
 .cell.aura-zone { border-color: color-mix(in srgb, var(--auraC, #d3bd7a) 55%, #26262a); }
 .cell.aura-zone::after { content: ''; position: absolute; inset: 1px; border-radius: 4px; pointer-events: none;
-  box-shadow: inset 0 0 14px var(--auraC, #d3bd7a), inset 0 0 3px var(--auraC, #d3bd7a); opacity: .38; animation: auraPulse 2.8s ease-in-out infinite; }
-.cell.aura-zone.r2::after { inset: 0; box-shadow: inset 0 0 22px var(--auraC, #d3bd7a), inset 0 0 4px var(--auraC, #d3bd7a); opacity: .5; animation-duration: 2.2s; }
-@keyframes auraPulse { 0%, 100% { opacity: .28; } 50% { opacity: .55; } }
+  box-shadow: inset 0 0 14px var(--auraC, #d3bd7a), inset 0 0 3px var(--auraC, #d3bd7a); opacity: .38; }
+.cell.aura-zone.r2::after { inset: 0; box-shadow: inset 0 0 22px var(--auraC, #d3bd7a), inset 0 0 4px var(--auraC, #d3bd7a); opacity: .5; }
 /* Подсветка зоны Ауры Власти (Лич) — поверх аур */
 .cell.aura-warded { box-shadow: inset 0 0 12px #d3bd7a4d, inset 0 0 3px #d3bd7a77; }
-/* v1.4.0: ЗЕЛЕНО-ЗОЛОТАЯ зона Пакта Тишины Лича */
-.cell.aura-lich { border-color: #b8d06a !important; box-shadow: inset 0 0 12px #a0d04055, inset 0 0 3px #ffd34d88; animation: lichPulse 1.6s ease-in-out infinite; }
-@keyframes lichPulse { 0%, 100% { box-shadow: inset 0 0 10px #a0d04044; } 50% { box-shadow: inset 0 0 16px #a0d04077, inset 0 0 4px #ffd34daa; } }
+/* v1.4.0: ЗЕЛЕНО-ЗОЛОТАЯ зона Пакта Тишины Лича (v1.5.10: без пульсации) */
+.cell.aura-lich { border-color: #b8d06a !important; box-shadow: inset 0 0 12px #a0d04055, inset 0 0 3px #ffd34d88; }
 /* ===== РИТУАЛ КУЛЬТИСТОВ (фидбек 3) ===== */
 .cell.ritual-cell { box-shadow: inset 0 0 12px #b3a15f33, inset 0 0 2px #b3a15f55; border-color: #6a5220; }
 .cell.ritual-part { box-shadow: inset 0 0 16px #b3a15f66, inset 0 0 4px #d3bd7a; border-color: #b3a15f; animation: ritualPulse 2s ease-in-out infinite; }
@@ -741,12 +742,10 @@ body { font-family: 'Alegreya', 'Georgia', 'Times New Roman', serif; }
    ФИДБЕК-РАУНД 3: ауры, угли, реликвии-спрайты, автобатлер
    ============================================================ */
 /* ФИДБЕК 1: ЯРКАЯ зона Ауры Власти (Лич) — видно на любых клетках,
-   включая пустые: золотая пульсация + ромб-щит */
+   включая пустые: золотая подсветка + ромб-щит (v1.5.10: без пульсации) */
 .cell.aura-warded { border-color: #d3bd7a; }
 .cell.aura-warded::before { content: ''; position: absolute; inset: 2px; border-radius: 4px; pointer-events: none;
-  background: radial-gradient(circle, #d3bd7a22 0%, transparent 70%), repeating-linear-gradient(45deg, #d3bd7a11 0 6px, transparent 6px 12px);
-  animation: lichPulse 1.6s ease-in-out infinite; }
-@keyframes lichPulse { 0%, 100% { box-shadow: inset 0 0 10px #d3bd7a66; } 50% { box-shadow: inset 0 0 20px #d3bd7abb; } }
+  background: radial-gradient(circle, #d3bd7a22 0%, transparent 70%), repeating-linear-gradient(45deg, #d3bd7a11 0 6px, transparent 6px 12px); }
 
 /* ДЕМОНЫ: угли Хаоса на карте */
 .card .ember-badge { position: absolute; bottom: 12px; right: 1px; font-size: 7px; letter-spacing: -1px;
@@ -1039,29 +1038,26 @@ body[data-faction="demon"] .cell.playable:hover { background:#161110; }
 #synergySvg g.ug-band.faded { opacity:.55; }
 #synergySvg g.ug-band.dead { opacity:.22; }
 
-/* АУРЫ НЕЖИТИ — ТУМАН: спокойная дымка; дышит, когда способность
-   источника реально работает (класс aura-live из buildAuraMap) */
+/* АУРЫ НЕЖИТИ — ТУМАН: спокойная СТАТИЧНАЯ дымка (v1.5.10: дыхание
+   fogBreath снято — включаясь и гасая при срабатываниях зданий, туман
+   читался как случайный; теперь зона просто обозначена). */
 body[data-faction="undead"] .cell.aura-zone::after { box-shadow:none; background: radial-gradient(ellipse at 50% 58%, var(--auraC,#9a9a9a) 0%, transparent 70%); opacity:.17; animation:none; filter: blur(2px); }
 body[data-faction="undead"] .cell.aura-zone.r2::after { opacity:.24; }
-body[data-faction="undead"] .cell.aura-zone.aura-live::after { animation: fogBreath 4.8s ease-in-out infinite; }
-@keyframes fogBreath { 0%,100% { opacity:.13; } 50% { opacity:.32; } }
-/* зона Пакта Лича — живое призрачное сияние (магия работает постоянно) */
-body[data-faction="undead"] .cell.aura-lich { border-color:#7fa08c !important; box-shadow: inset 0 0 12px #7fae9066, inset 0 0 3px #a8d8b888; animation: lichBreath 3.4s ease-in-out infinite; }
-@keyframes lichBreath { 0%,100% { box-shadow: inset 0 0 9px #7fae9044; } 50% { box-shadow: inset 0 0 15px #7fae9077, inset 0 0 4px #a8d8b8aa; } }
+/* зона Пакта Лича — призрачное сияние (без пульсации, v1.5.10) */
+body[data-faction="undead"] .cell.aura-lich { border-color:#7fa08c !important; box-shadow: inset 0 0 12px #7fae9066, inset 0 0 3px #a8d8b888; }
 
 /* ============================================================
-   v1.5.0 — ПРИНЦИП «ЕСЛИ АКТИВНО — ДЫШИТ»
-   sp-live: особенность (✦ золотая) сейчас работает — карта мерцает.
-   fx-live: таймерная способность сработала — короткая вспышка-каст.
-   Всё остальное стоит тихо, как положено мёртвым.
+   v1.5.10 «ТИХИЕ КАРТЫ» — по фидбеку «мигание карт убери».
+   Мерцание карт снято: cardBreath (sp-live — дышать яркостью у
+   каждой карты с активной особенностью) удалён совсем, карта со
+   спокойной особенность больше НЕ мерцает; активность показывает
+   золотой ✦ (класс .on). fx-live — короткая ОДНОКРАТНАЯ вспышка в
+   момент срабатывания таймерной способности (призыв Кладбища/Врат,
+   ЖАТВА) — не цикл, мигания нет. Всё остальное стоит тихо.
    ============================================================ */
-.card.sp-live { animation: cardBreath 3.8s ease-in-out infinite; }
-@keyframes cardBreath { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.25); } }
-.card.fx-live { animation: cardCast 2.6s ease-in-out infinite; }
+.card.fx-live { animation: cardCast .9s ease-out 1; }
 @keyframes cardCast {
   0% { filter: brightness(1); }
-  10% { filter: brightness(1.55); }
-  32% { filter: brightness(1.12); }
-  58% { filter: brightness(1.3); }
+  18% { filter: brightness(1.5); }
   100% { filter: brightness(1); }
 }

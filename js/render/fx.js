@@ -80,6 +80,46 @@ function fxBeams(x, y, colors) {
 }
 /* Угольки в главном меню — УДАЛЕНЫ (пожелание клиента: убрать летящие снизу частицы) */
 
+/* ============================================================
+   v1.5.10 «НЕРОВНЫЕ ОКОВЫ»: ПРОБЛЕСКИ ЦЕПЕЙ — бегущий по нитям свет.
+   Геометрию (ломаную вдоль нитей шва) считает drawUgLink и отдаёт
+   сюда через fxSetGlints при каждой ФАКТИЧЕСКОЙ перерисовке SVG.
+   Позиция света — детерминированная фаза по длине ломаной.
+   Почему канва, а не SMIL: замер на поле 9x9 показал, что сотни
+   SMIL-анимаций (даже лёгкие animate x/y) просаживали кадр до
+   ~27fps, а drawImage на уже идущем fx-канве стоит почти ничего —
+   стабильные 60fps в тех же условиях. Визуал тот же: мягкое пятно
+   света (glint_pale / фиолетовый glint_royal у особых связей).
+   ============================================================ */
+let fxGlints = [], fxGlintOx = 0, fxGlintOy = 0;
+const fxGlintImgs = {};
+function fxSetGlints(list, ox, oy) {
+  fxGlintOx = ox || 0; fxGlintOy = oy || 0;
+  fxGlints = (list || []).map(g => {
+    /* кумулятивные длины — один раз, не каждый кадр */
+    const cum = [0];
+    for (let i = 1; i < g.pts.length; i++)
+      cum.push(cum[i - 1] + Math.hypot(g.pts[i][0] - g.pts[i - 1][0], g.pts[i][1] - g.pts[i - 1][1]));
+    return { pts: g.pts, dur: g.dur, phase: g.phase, alpha: g.alpha, royal: g.royal, cum, total: cum[cum.length - 1] || 1 };
+  });
+  ['pale', 'royal'].forEach(key => {
+    if (fxGlintImgs[key]) return;
+    const im = new Image();
+    im.src = 'assets/fx/glint_' + key + '.png' + ASSET_VER_Q;
+    fxGlintImgs[key] = im;
+  });
+}
+function fxGlintPoint(g, d) {
+  for (let i = 1; i < g.pts.length; i++) {
+    if (d <= g.cum[i]) {
+      const k = (d - g.cum[i - 1]) / ((g.cum[i] - g.cum[i - 1]) || 1);
+      return [g.pts[i - 1][0] + (g.pts[i][0] - g.pts[i - 1][0]) * k,
+              g.pts[i - 1][1] + (g.pts[i][1] - g.pts[i - 1][1]) * k];
+    }
+  }
+  return g.pts[g.pts.length - 1];
+}
+
 /* Центр DOM-элемента → всплеск */
 function fxFxAt(el, colors, n) {
   if (!fxOK() || !el || !el.getBoundingClientRect) return;
@@ -124,6 +164,18 @@ function fxLoop(now) {
       fxCtx.strokeText(t.text, t.x, t.y);
       fxCtx.fillStyle = t.color;
       fxCtx.fillText(t.text, t.x, t.y);
+    }
+    /* v1.5.10: проблески цепей — свет бежит вдоль нитей от карты к карте */
+    if (fxOn && fxGlints.length) {
+      const t = (now || 0) / 1000;
+      for (let i = 0; i < fxGlints.length; i++) {
+        const g = fxGlints[i];
+        const im = fxGlintImgs[g.royal ? 'royal' : 'pale'];
+        if (!im || !im.complete || !im.naturalWidth) continue;
+        const p = fxGlintPoint(g, (((t / g.dur) + g.phase) % 1) * g.total);
+        fxCtx.globalAlpha = g.alpha;
+        fxCtx.drawImage(im, fxGlintOx + p[0] - 7, fxGlintOy + p[1] - 7, 14, 14);
+      }
     }
     fxCtx.globalAlpha = 1;
   }
