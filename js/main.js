@@ -386,7 +386,10 @@ function wireEvents() {
     else go();
   };
   $('menuTut').onclick = () => restartWith('tutorial');
-  $('menuEpoch').onclick = () => { hideMenu(); openEpochMenu(); };
+  /* v1.5.13: Меню Эпохи открывается ПОВЕРХ главного меню (z 550 > 500).
+     Раньше hideMenu() «выбрасывал» игрока из меню: закрытие окна Эпохи
+     оставляло пустой экран игры вместо главного меню. */
+  $('menuEpoch').onclick = () => openEpochMenu();
 
   /* Клавиши и глобальные события */
   window.addEventListener('keydown', e => {

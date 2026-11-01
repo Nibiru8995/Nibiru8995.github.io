@@ -103,10 +103,17 @@ function slotsSpin() {
           }
         });
         const resEl = $('slotResult');
+        /* v1.5.13 (QA итерация 1): слоты могут выплатить МЕНЬШЕ ставки
+           (мелкие линии ×0.38) — раньше при этом писалось «Выигрыш: N 💎»,
+           и игрок видел «победу», хотя кристаллов стало меньше. Показываем
+           ЧЕСТНЫЙ итог: класс и знак по реальной разнице. */
+        const slotNet = winAmount - casinoBet, slotXf = winData.totalWin * SLOT_WIN_FACTOR;
         let text = '';
-        if (winData.totalWin >= 50) { text = '🎉 ДЖЕКПОТ! Выигрыш: ' + fmt(winAmount) + ' 💎 (x' + (winData.totalWin * SLOT_WIN_FACTOR).toFixed(1) + ')'; resEl.className = 'jackpot'; }
-        else if (winData.totalWin >= 10) { text = '✨ Крупный выигрыш: ' + fmt(winAmount) + ' 💎 (x' + (winData.totalWin * SLOT_WIN_FACTOR).toFixed(1) + ')'; resEl.className = 'win'; }
-        else { text = 'Выигрыш: ' + fmt(winAmount) + ' 💎 (x' + (winData.totalWin * SLOT_WIN_FACTOR).toFixed(1) + ')'; resEl.className = 'win'; }
+        if (winData.totalWin >= 50) { text = '🎉 ДЖЕКПОТ! +' + fmt(slotNet) + ' 💎 (x' + slotXf.toFixed(1) + ')'; resEl.className = 'jackpot'; }
+        else if (winData.totalWin >= 10 && slotNet > 0) { text = '✨ Крупный выигрыш: +' + fmt(slotNet) + ' 💎 (x' + slotXf.toFixed(1) + ')'; resEl.className = 'win'; }
+        else if (slotNet > 0) { text = 'Выигрыш: +' + fmt(slotNet) + ' 💎 (x' + slotXf.toFixed(1) + ')'; resEl.className = 'win'; }
+        else if (slotNet === 0) { text = 'Выигрыш вернул ставку: ' + fmt(winAmount) + ' 💎 (x' + slotXf.toFixed(2) + ')'; resEl.className = 'win'; }
+        else { text = 'Выигрыш по линии (' + fmt(winAmount) + ' 💎, x' + slotXf.toFixed(2) + ') не покрыл ставку — итог −' + fmt(-slotNet) + ' 💎'; resEl.className = 'lose'; }
         resEl.textContent = text;
       } else {
         rec('slots', -casinoBet);
