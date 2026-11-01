@@ -89,7 +89,9 @@ function fxBeams(x, y, colors) {
    SMIL-анимаций (даже лёгкие animate x/y) просаживали кадр до
    ~27fps, а drawImage на уже идущем fx-канве стоит почти ничего —
    стабильные 60fps в тех же условиях. Визуал тот же: мягкое пятно
-   света (glint_pale / фиолетовый glint_royal у особых связей).
+   света (glint_pale / фиолетовый glint_royal у особых связей,
+   v1.5.11: яркая рунная glint_magic на связях под Пактом Лича /
+   Знамением Владыки — там сами цепи магические, *_magic.png).
    ============================================================ */
 let fxGlints = [], fxGlintOx = 0, fxGlintOy = 0;
 const fxGlintImgs = {};
@@ -100,9 +102,9 @@ function fxSetGlints(list, ox, oy) {
     const cum = [0];
     for (let i = 1; i < g.pts.length; i++)
       cum.push(cum[i - 1] + Math.hypot(g.pts[i][0] - g.pts[i - 1][0], g.pts[i][1] - g.pts[i - 1][1]));
-    return { pts: g.pts, dur: g.dur, phase: g.phase, alpha: g.alpha, royal: g.royal, cum, total: cum[cum.length - 1] || 1 };
+    return { pts: g.pts, dur: g.dur, phase: g.phase, alpha: g.alpha, royal: g.royal, magic: g.magic, cum, total: cum[cum.length - 1] || 1 };
   });
-  ['pale', 'royal'].forEach(key => {
+  ['pale', 'royal', 'magic'].forEach(key => {
     if (fxGlintImgs[key]) return;
     const im = new Image();
     im.src = 'assets/fx/glint_' + key + '.png' + ASSET_VER_Q;
@@ -170,7 +172,7 @@ function fxLoop(now) {
       const t = (now || 0) / 1000;
       for (let i = 0; i < fxGlints.length; i++) {
         const g = fxGlints[i];
-        const im = fxGlintImgs[g.royal ? 'royal' : 'pale'];
+        const im = fxGlintImgs[g.magic ? 'magic' : g.royal ? 'royal' : 'pale'];
         if (!im || !im.complete || !im.naturalWidth) continue;
         const p = fxGlintPoint(g, (((t / g.dur) + g.phase) % 1) * g.total);
         fxCtx.globalAlpha = g.alpha;

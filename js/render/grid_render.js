@@ -616,8 +616,9 @@ function drawSynergies() {
       перетекая с нити на нить: дуга нити → скольжение по шву → дуга
       следующей. Мягкое пятно (glint_pale.png / фиолетовый glint_royal.png
       у особых связей: royal — Владыка, lich — Пакт, big — Скованный,
-      mult); полупрозрачен только свет. Мёртвое звено не светится вовсе;
-      faded/dead гасят все нити связи (CSS .ug-band).
+      mult; v1.5.11: у связей под Пактом Лича/Знамением Владыки — яркая
+      рунная glint_magic.png); полупрозрачен только свет. Мёртвое звено
+      не светится вовсе; faded/dead гасят все нити связи (CSS .ug-band).
    РЕНДЕР СВЕТА — на fx-канве (fx.js), НЕ SMIL: замер на 9x9 дал 27fps
       на SMIL (animateMotion/animateTransform/даже animate x+y) против
       45fps у v1.5.9 с 432 SMIL-плитками; канва с drawImage — 59-60fps.
@@ -642,6 +643,14 @@ function drawUgLink(coords, mode, lf, isMult) {
   g.setAttribute('class', 'ug-band' + st);
   const seed = Math.abs(Math.round(coords.x1 * 7 + coords.y1 * 13));
   const special = mode === 'royal' || mode === 'lich' || mode === 'big' || isMult;
+  /* v1.5.11 «МАГИЧЕСКИЕ ОКОВЫ»: связи, УЛУЧШЕННЫЕ ЛИЧОМ (Пакт Тишины,
+     mode 'lich') или ВЛАДЫКОЙ ТЛЕНА (Знамение Владыки, mode 'royal'),
+     скреплены МАГИЧЕСКИМИ цепями с фиолетовым свечением — спрайты
+     *_magic.png: та же геометрия нитей (расположение и физика прежние),
+     зачарованный тёмно-фиолетовый металл + запечённый ореол (полупрозрачен
+     только свет, металл глухой). Остальные связи — могильная сталь:
+     big (Скованный) и mult лишь отблёскивают фиолетовым, как раньше. */
+  const magic = mode === 'royal' || mode === 'lich';
   const dur = special ? 2.6 : 4.2;
   const horiz = coords.x1 !== coords.x2;   /* шов горизонтальный (соседи в столбце) */
   const L = horiz ? coords.x2 - coords.x1 : coords.y2 - coords.y1;
@@ -664,13 +673,13 @@ function drawUgLink(coords, mode, lf, isMult) {
       /* вертикальный шов: нить горизонтальна, провисает ВНИЗ;
          проблеск после дуги нити скользит по шву к следующей */
       const y = coords.y1 + L * t;
-      strands.push({ x: coords.x1, y, slack, side: 0, file: 'chain_v_' + k });
-      g.appendChild(mkIm('assets/fx/chain_v_' + k + '.png' + ASSET_VER_Q, coords.x1 - UG_STR / 2, y - UG_STR / 2, UG_STR, UG_STR));
+      strands.push({ x: coords.x1, y, slack, side: 0, file: 'chain_v_' + k + (magic ? '_magic' : '') });
+      g.appendChild(mkIm('assets/fx/chain_v_' + k + (magic ? '_magic' : '') + '.png' + ASSET_VER_Q, coords.x1 - UG_STR / 2, y - UG_STR / 2, UG_STR, UG_STR));
     } else {
       /* горизонтальный шов: нить вертикальна; слабая бортает ВБОК */
       const x = coords.x1 + L * t;
       const side = ((seed + i) & 1) ? 1 : -1;
-      const file = k === 0 ? 'chain_h_0' : 'chain_h_' + k + (side > 0 ? 'r' : 'l');
+      const file = (k === 0 ? 'chain_h_0' : 'chain_h_' + k + (side > 0 ? 'r' : 'l')) + (magic ? '_magic' : '');
       strands.push({ x, y: coords.y1, slack, side, file });
       g.appendChild(mkIm('assets/fx/' + file + '.png' + ASSET_VER_Q, x - UG_STR / 2, coords.y1 - UG_STR / 2, UG_STR, UG_STR));
     }
@@ -704,7 +713,7 @@ function drawUgLink(coords, mode, lf, isMult) {
         pts.push([n.x - 7, n.y]);                    /* скольжение по шву */
       }
     }
-    fxGlintList.push({ pts, dur, phase: (seed % 97) / 97, alpha: faded ? .4 : 1, royal: special });
+    fxGlintList.push({ pts, dur, phase: (seed % 97) / 97, alpha: faded ? .4 : 1, royal: special, magic });
   }
 }
 function updateGridStats() {
