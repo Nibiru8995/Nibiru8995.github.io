@@ -494,7 +494,7 @@ function drawSynergies() {
       const pair = findPair(card, nCard);
       if (!pair) {
         if (ug && card.faction === 'undead' && nCard.faction === 'undead')
-          specs.push({ horiz: r === nr, mode: 'plain', lf: undefined, isMult: false });
+          specs.push({ horiz: r === nr, mode: 'adj', lf: undefined, isMult: false });
         continue;
       }
       const kind = pair.kind === 'mult' ? 'mult' : pair.kind === 'chain' ? 'chain' : pair.kind === 'royal' ? 'royal' : 'good';
@@ -564,8 +564,14 @@ function drawSynergies() {
       const nCard = CARDS[it2.cardId];
       const pair = findPair(card, nCard);
       if (!pair) {
-        /* Цепь нежити: соседство без пары всё равно даёт бонус */
-        if (ug && card.faction === 'undead' && nCard.faction === 'undead') drawUgLink(ugLinkCoords(r, c, nr, nc), 'plain', undefined, false);
+        /* v1.5.12 «ЯСНЫЕ ОКОВЫ»: соседство без пары — это НЕ синергия, а
+           бонус соседства (+8% за соседа-нежить, factionMult) и связность
+           Армии (+1.5% за нежить в непрерывной цепи). Раньше оно рисовалось
+           ПОЛНОЙ бандой и с проблеском — на поле было не отличить настоящую
+           связь-синергию от простого соседства. Теперь соседство помечено
+           ОДНОЙ тусклой нитью по середине шва, БЕЗ проблеска: полная банда
+           (и фиолетовое свечение Лича/Владыки) — только у синергии. */
+        if (ug && card.faction === 'undead' && nCard.faction === 'undead') drawUgLink(ugLinkCoords(r, c, nr, nc), 'adj', undefined, false);
         continue;
       }
       const kind = pair.kind === 'mult' ? 'mult' : pair.kind === 'chain' ? 'chain' : pair.kind === 'royal' ? 'royal' : 'good';
@@ -640,7 +646,9 @@ function drawUgLink(coords, mode, lf, isMult) {
   const faded = lf !== undefined && lf > 0 && lf < 1, dead = lf === 0;
   const st = (faded ? ' faded' : dead ? ' dead' : '');
   const g = document.createElementNS(NS, 'g');
-  g.setAttribute('class', 'ug-band' + st);
+  /* v1.5.12: 'adj' — соседство без пары: одна тусклая нить, класс .adj */
+  const adjOnly = mode === 'adj';
+  g.setAttribute('class', 'ug-band' + st + (adjOnly ? ' adj' : ''));
   const seed = Math.abs(Math.round(coords.x1 * 7 + coords.y1 * 13));
   const special = mode === 'royal' || mode === 'lich' || mode === 'big' || isMult;
   /* v1.5.11 «МАГИЧЕСКИЕ ОКОВЫ»: связи, УЛУЧШЕННЫЕ ЛИЧОМ (Пакт Тишины,
@@ -665,9 +673,12 @@ function drawUgLink(coords, mode, lf, isMult) {
   /* 3 нити; порядок натяжек и сторона прогиба свои у каждого шва
      (детерминированы координатами) — поле живое, но стабильное. */
   const strands = [];
-  for (let i = 0; i < UG_STRANDS; i++) {
-    const t = (i + 1) / (UG_STRANDS + 1);
-    const k = (seed + i * 5) % 3;            /* индекс натяжки 0..2 */
+  /* v1.5.12: у соседства без пары — ОДНА тугая нить ПО СЕРЕДИНЕ шва
+     (та же геометрия/спрайты, просто меньше и тише: полная банда
+     остаётся знаком настоящей связи-синергии). */
+  for (let i = 0; i < (adjOnly ? 1 : UG_STRANDS); i++) {
+    const t = adjOnly ? 0.5 : (i + 1) / (UG_STRANDS + 1);
+    const k = adjOnly ? 0 : (seed + i * 5) % 3;   /* индекс натяжки 0..2 */
     const slack = UG_SLACK[k];
     if (!horiz) {
       /* вертикальный шов: нить горизонтальна, провисает ВНИЗ;
@@ -694,7 +705,10 @@ function drawUgLink(coords, mode, lf, isMult) {
      кадр до ~27fps, а drawImage на уже идущем канве — почти бесплатен.
      Сюда отдаём только геометрию: ломаная вдоль дуг нитей (по 4 отрезка
      на дугу — плавно повторяет прогиб) и детерминированная фаза. */
-  if (!dead) {
+  /* v1.5.12: соседство без пары НЕ светится — проблеск бегёт только
+     по настоящим связям (синергия-пара / прикованное здание), там он
+     и был задуман как знак живого потока звена. */
+  if (!dead && !adjOnly) {
     const pts = [];
     const quadPts = (p0, c, p2) => {
       for (let s2 = 0; s2 <= 4; s2++) {

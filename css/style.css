@@ -1037,6 +1037,10 @@ body[data-faction="demon"] .cell.playable:hover { background:#161110; }
 #synergySvg g.ug-band { transition: opacity .3s; }
 #synergySvg g.ug-band.faded { opacity:.55; }
 #synergySvg g.ug-band.dead { opacity:.22; }
+/* v1.5.12 «Ясные Оковы»: соседство без пары — НЕ синергия: одна тусклая
+   нить по середине шва (полная банда и проблеск — только у связи-синергии,
+   фиолетовое свечение — у связей под Пактом Лича / Знамением Владыки) */
+#synergySvg g.ug-band.adj { opacity:.42; }
 
 /* АУРЫ НЕЖИТИ — ТУМАН: спокойная СТАТИЧНАЯ дымка (v1.5.10: дыхание
    fogBreath снято — включаясь и гасая при срабатываниях зданий, туман
