@@ -195,8 +195,25 @@ function factionMult(r, c, card, item) {
     /* «Владыка Тлена» (★5): +10% за каждую нежить в радиусе 2 */
     if (card.id === 'u10') m *= 1 + 0.1 * Math.max(0, radius2Count - 1);
     else if (nearAnchor) m *= 1.25;
-    /* Псалмопевец: +10% за каждое своё активное звено */
-    if (card.id === 'u12') m *= 1 + 0.10 * getNeighbors(r, c).filter(n => findPair(card, CARDS[n.item.cardId])).length;
+    /* v1.5.14 (QA итерация 2): «Плотные захоронения» Могильщика (u3) —
+       спец описан на карте и показывал в тултипе «✦ АКТИВНА», но множителя
+       в расчёте НЕ БЫЛО вовсе — отображение врало о доходе.
+       +12% за каждого соседа, стоящего в стопке ×2 и больше */
+    if (card.id === 'u3') m *= 1 + 0.12 * getNeighbors(r, c).filter(n => (n.item.stacks || 1) >= 2).length;
+    /* v1.5.14 (QA итерация 2): «Жажда» Упыря (u2) — та же история: множителя
+       не существовало. +15% за каждую раненую карту в радиусе 2. У нежити
+       раны редки (урон — механика зверей), так что обычно ×1 — но код
+       теперь соответствует тексту, и ✦-статус тултипа честен. */
+    if (card.id === 'u2') m *= 1 + 0.15 * radius2(r, c).filter(n => n.item.hp < n.item.maxHp - 0.01).length;
+    /* Псалмопевец: +10% за каждое своё АКТИВНОЕ звено синергии.
+       v1.5.14 (QA итерация 2): раньше считались ВСЕ пары по findPair, даже
+       МЁРТВЫЕ (фактор 0 — «Череп Владыки»: 3-е+ звено пары). Теперь живые. */
+    if (card.id === 'u12') m *= 1 + 0.10 * getNeighbors(r, c).filter(n => {
+      const p = findPair(card, CARDS[n.item.cardId]);
+      if (!p) return false;
+      const lf = INC_CTX.curLinkFactors ? INC_CTX.curLinkFactors[linkKey(r, c, n.r, n.c)] : undefined;
+      return lf === undefined ? true : lf > 0;
+    }).length;
     /* v1.2.6: «Медленный рост» Зомби (u1) — накопленный бафф */
     if (card.id === 'u1' && item.growBuff) m *= 1 + item.growBuff;
     if (card.id === 'u9') m *= 1 + 0.15 * radius2(r, c).filter(n => CARDS[n.item.cardId].faction === 'undead').length; /* Коса */
@@ -473,16 +490,21 @@ function computeIncome() {
   /* v1.3.1: надбавка за уникальные пары УБРАНА — уникальность считается для ачивок */
   const sealMult = 1 + 0.25 * sealLv.rich;
 
-  /* Контекст для factionMult: уникальные пары */
+  /* Контекст для factionMult: уникальные пары + ЖИВЫЕ факторы звеньев
+     (v1.5.14: Псалмопевец читает факторы ЭТОГО прохода, а не прошлый кэш) */
   INC_CTX.uniquePairs = uniquePairs;
+  INC_CTX.curLinkFactors = linkFactors;
 
   /* АРМИЯ нежити: бонус за размер непрерывной компоненты (BFS по 4-соседству).
-     «Штандарт Легиона» (kind legion) поднимает кап с ×2 до ×2.6 */
+     «Штандарт Легиона» (kind legion) поднимает кап с ×2 до ×2.6.
+     v1.5.14: armyCap вынесен на уровень функции — его читает
+     incomeCache (строка «Армия: N (×m)» раньше хардкодила ×2 даже
+     под Штандартом — отображение врало о реальном капе). */
   INC_CTX.armyMult = {};
   let armyBest = 0;
+  let armyCap = 2;
   INC_CTX.armyBestSet = new Set();
   if (mech === 'chain') {
-    let armyCap = 2;
     if (epoch >= RELIC_SLOT_EPOCH) for (const k in relicSlots) {
       const r = relicById(relicSlots[k]);
       if (r && r.kind === 'legion') armyCap = Math.max(armyCap, 2.6);
@@ -545,7 +567,7 @@ function computeIncome() {
   total *= sealMult;
   /* Временный буст всего дохода: ЖАТВА (Гора костей), вехи, Ускорение */
   total *= activeAltBuff().mult;
-  incomeCache = { total, uniquePairs, perCell, pairUsage: usage, armyBest, armyMultOf: INC_CTX.armyMult,
+  incomeCache = { total, uniquePairs, perCell, pairUsage: usage, armyBest, armyCap, armyMultOf: INC_CTX.armyMult,
     linkFactors, linkRoyal, linkLich, lichZone: Array.from(lichZoneCells) };
   /* v1.5.9 (perf): движок ритуала обновляется ВМЕСТЕ с контекстом (INC_CTX) —
      раньше он пересчитывался на КАЖДОМ кадре (60 раз/с), теперь — при каждом

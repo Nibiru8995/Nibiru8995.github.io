@@ -736,9 +736,11 @@ function updateGridStats() {
   /* Активный буст «ЖАТВА» (Гора костей) */
   const b = activeAltBuff();
   if (b.mult > 1) extra += ' · <b style="color:#ffd34d">' + b.label + '</b> (' + Math.max(0, Math.ceil(b.until - gameTime)) + 'с)';
-  /* Армия нежити (крупнейшая непрерывная цепь) */
+  /* Армия нежити (крупнейшая непрерывная цепь).
+     v1.5.14: кап берётся из incomeCache.armyCap (со «Штандартом Легиона»
+     он ×2.6, а не захардкоженный ×2 — раньше отображение врало). */
   if (FACTION_INFO[faction].mechanic === 'chain' && incomeCache.armyBest > 1) {
-    const am = Math.min(2, 1 + 0.015 * (incomeCache.armyBest - 1));
+    const am = Math.min(incomeCache.armyCap || 2, 1 + 0.015 * (incomeCache.armyBest - 1));
     extra += ' · Армия: <b>' + incomeCache.armyBest + '</b> (×' + am.toFixed(2) + ')';
   }
   const sig = 'gs|' + countLinks() + '|' + currentDiversity() + '|' + inc.toFixed(2) + '|' + extra;
