@@ -1,11 +1,11 @@
 'use strict';
-/* ============================================================
-   ЛОГИКА: ДОСТИЖЕНИЯ (logic/achievements_logic.js)
-   Проверка условий по данным из data/achievements.js.
-   Выдача — торжественная анимация (пункт 7 ТЗ): золотой баннер
-   с лучами, конфетти и собственным звуком, несколько ачивок
-   подряд показываются по очереди.
-   ============================================================ */
+/*
+ЛОГИКА: ДОСТИЖЕНИЯ (logic/achievements_logic.js)
+Проверка условий по данным из data/achievements.js.
+Выдача — торжественная анимация : золотой баннер
+с лучами, конфетти и собственным звуком, несколько ачивок
+подряд показываются по очереди.
+ ============================================================*/
 
 function checkAchievements() {
   let unlocked = [];
@@ -24,7 +24,7 @@ function checkAchievements() {
 }
 function achvCount() { return ACHIEVEMENTS.filter(a => achDone[a.id]).length; }
 
-/* ---------------- Анимация получения (пункт 7 ТЗ) ---------------- */
+/* ---------------- Анимация получения ---------------- */
 let achvQueue = [], achvShowing = false;
 function pumpAchvQueue() {
   if (achvShowing || !achvQueue.length) return;
@@ -40,7 +40,7 @@ function pumpAchvQueue() {
   const b = d.getBoundingClientRect();
   fxBeams(b.left + b.width / 2, b.top + b.height / 2, ['#ffffff', '#e8c060', '#c9a227']);
   fxConfetti(60);
-  sfx('milestone'); /* v1.0: отдельный «achv» убран — общая мягкая награда */
+  sfx('milestone'); /* отдельного звука ачивки нет — общая мягкая награда */
   setTimeout(() => {
     d.classList.add('out');
     setTimeout(() => { d.remove(); achvShowing = false; pumpAchvQueue(); }, 450);

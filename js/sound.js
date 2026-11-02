@@ -1,19 +1,18 @@
 'use strict';
-/* ============================================================
-   ЗВУК (sound.js) — версия 1.0 «Шёпот Тьмы».
-   ФИДБЕК: «уменьшить количество звуков и убрать резкие».
-   Принципы новой библиотеки:
-   - МЕНЬШЕ ЗВУКОВ: 10 мягких событий вместо 15 резких;
-     Знамения и ачивки больше НЕ озвучиваются (только визуал).
-   - НИ ОДНОГО РЕЗКОГО ТЕМБРА: только sine/triangle (никаких
-     sawtooth/square), мягкая атака 20-60 мс, низкие громкости,
-     шум — только глухой и тихий (lowpass ≤ 900 Гц).
-   - ТРОТТЛИНГ: один и тот же звук не чаще раза в 120 мс,
-     любые звуки — не чаще раза в 50 мс (никакой «пулемётной» очереди).
-   - Музыка: тёплый синусный дрон вместо расстроенных пил.
-   Включается после первого жеста пользователя (политика браузера).
-   Настройки: sfxOn / musicOn (мета-сохранение).
-   ============================================================ */
+/*
+ЗВУК (sound.js).
+Принципы библиотеки:
+- МЕНЬШЕ ЗВУКОВ: 10 мягких событий;
+Знамения и ачивки НЕ озвучиваются (только визуал).
+- НИ ОДНОГО РЕЗКОГО ТЕМБРА: только sine/triangle (никаких
+sawtooth/square), мягкая атака 20-60 мс, низкие громкости,
+шум — только глухой и тихий (lowpass ≤ 900 Гц).
+- ТРОТТЛИНГ: один и тот же звук не чаще раза в 120 мс,
+любые звуки — не чаще раза в 50 мс (никакой «пулемётной» очереди).
+- Музыка: тёплый синусный дрон вместо расстроенных пил.
+Включается после первого жеста пользователя (политика браузера).
+Настройки: sfxOn / musicOn (мета-сохранение).
+ ============================================================*/
 
 let soundOn = true, musicOn = true, audioCtx = null, musicNodes = null, musicTimer = null;
 let _lastSfx = {}, _lastAny = 0;
@@ -29,13 +28,13 @@ function ac() {
 /* Мягкий тон: огибающая с ПЛАВНОЙ атакой (без щелчка) */
 function sTone(c, o) {
   const t0 = c.currentTime + (o.t || 0), d = o.d || 0.2;
-  const atk = o.a || 0.03;                       /* мягкая атака */
+  const atk = o.a || 0.03; /* мягкая атака */
   const osc = c.createOscillator(), g = c.createGain();
   osc.type = o.type || 'sine';
   osc.frequency.setValueAtTime(o.f, t0);
   if (o.f2) osc.frequency.exponentialRampToValueAtTime(Math.max(1, o.f2), t0 + d);
   g.gain.setValueAtTime(0.0001, t0);
-  g.gain.linearRampToValueAtTime(o.v || 0.08, t0 + atk);   /* мягкий подъём */
+  g.gain.linearRampToValueAtTime(o.v || 0.08, t0 + atk); /* мягкий подъём */
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
   osc.connect(g); g.connect(c.destination);
   osc.start(t0); osc.stop(t0 + d + 0.05);
@@ -47,7 +46,7 @@ function sNoise(c, o) {
   const buf = c.createBuffer(1, len, c.sampleRate);
   const data = buf.getChannelData(0);
   for (let i = 0; i < len; i++) {
-    const fade = Math.sin((i / len) * Math.PI);  /* мягкий нарастающе-спадающий конверт */
+    const fade = Math.sin((i / len) * Math.PI); /* мягкий нарастающе-спадающий конверт */
     data[i] = (Math.random() * 2 - 1) * fade;
   }
   const s = c.createBufferSource(); s.buffer = buf;
@@ -62,7 +61,7 @@ function sfx(name, arg) {
   if (!soundOn) return;
   const c = ac(); if (!c) return;
   const now = performance.now();
-  if (now - _lastAny < 50) return;               /* глобальный троттлинг */
+  if (now - _lastAny < 50) return; /* глобальный троттлинг */
   if (now - (_lastSfx[name] || 0) < 120) return; /* не спамим один звук */
   _lastSfx[name] = now; _lastAny = now;
   switch (name) {

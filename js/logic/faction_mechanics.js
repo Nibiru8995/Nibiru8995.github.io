@@ -1,21 +1,21 @@
 'use strict';
-/* ============================================================
-   ЛОГИКА: ФРАКЦИОННЫЕ МЕХАНИКИ (logic/faction_mechanics.js)
-   Тиковые события, зависящие от фракции:
-   - Нежить: цепи/армия (economy.js) + «Медленный рост» Зомби (u1)
-   - Культисты v1.2.6: РИТУАЛЬНАЯ ЭКОНОМИКА — участники в цепи от
-     Алтаря заряжают шкалу (шкала НЕ тает), на 100% ритуал платит Тёмную энергию;
-     роли: скорость (⚡) и усиление выплаты (💰); формации ускоряют
-   - Звери v1.2.5: тик 2.5с, укус 20%, драки хищников, здания
-   - Демоны: УГЛИ — толпа → взрыв; здания Яма/Ледник
-   - ЗДАНИЯ: призыв Кладбища/Врат, ЖАТВА Горы костей (tickBuildings)
-   ============================================================ */
+/*
+ЛОГИКА: ФРАКЦИОННЫЕ МЕХАНИКИ (logic/faction_mechanics.js)
+Тиковые события, зависящие от фракции:
+- Нежить: цепи/армия (economy.js) + «Медленный рост» Зомби (u1)
+- Культисты : РИТУАЛЬНАЯ ЭКОНОМИКА — участники в цепи от
+Алтаря заряжают шкалу (шкала НЕ тает), на 100% ритуал платит Тёмную энергию;
+роли: скорость (⚡) и усиление выплаты (💰); формации ускоряют
+- Звери : тик 2.5с, укус 20%, драки хищников, здания
+- Демоны: УГЛИ — толпа → взрыв; здания Яма/Ледник
+- ЗДАНИЯ: призыв Кладбища/Врат, ЖАТВА Горы костей (tickBuildings)
+ ============================================================*/
 
 let beastTimer = 0, demonTimer = 0, balrTimer = 0;
 
 function tickFactionMechanics(dt) {
   const mech = FACTION_INFO[faction].mechanic;
-  /* v1.4.0: тихий тик кар-запретов (Карона Тлена и др.) — изгоняет запрещённые карты */
+  /* тихий тик кар-запретов (Карона Тлена и др.) — изгоняет запрещённые карты */
   if (typeof tickRelicBans === 'function') tickRelicBans(dt);
   /* Здания тикают у ВСЕХ фракций (у каждой — свои 3 постройки) */
   tickBuildings(dt);
@@ -23,21 +23,21 @@ function tickFactionMechanics(dt) {
     tickUndeadGrowth(dt); /* «Медленный рост» Зомби (u1) */
   } else if (mech === 'cycle') {
     beastTimer += dt;
-    if (beastTimer >= 2.5) { beastTimer = 0; beastCycleTick(); } /* v1.2.5: тик 2.5с — лес живёт быстро */
+    if (beastTimer >= 2.5) { beastTimer = 0; beastCycleTick(); } /* тик 2.5с — лес живёт быстро */
   } else if (mech === 'chaos') {
     demonTimer += dt;
     if (demonTimer >= 8) { demonTimer = 0; demonEmberTick(); }
     balrTimer += dt;
     if (balrTimer >= 20) { balrTimer = 0; balrogTick(); }
   } else if (mech === 'formation') {
-    /* v1.2.6: РИТУАЛЬНАЯ ЭКОНОМИКА — заряд + выплата */
+    /* РИТУАЛЬНАЯ ЭКОНОМИКА — заряд + выплата */
     ritualChargeTick(dt);
   }
 }
 
 /* ---------------- НЕЖИТЬ: «Медленный рост» Зомби (u1) ----------------
-   Раньше описана, но не работала. Теперь: каждые 20с +6% дохода
-   НАВСЕГДА (до +60%). Прогресс виден на бейдже карты. */
+каждые 20с +6% дохода
+ НАВСЕГДА (до +60%). Прогресс виден на бейдже карты.*/
 const GROW_STEP = 20, GROW_GAIN = 0.06, GROW_CAP = 0.6;
 function tickUndeadGrowth(dt) {
   let changed = false;
@@ -58,53 +58,53 @@ function tickUndeadGrowth(dt) {
   if (changed) { computeIncome(); updateHUD(); }
 }
 
-/* ============ КУЛЬТИСТЫ: РИТУАЛЬНАЯ ЭКОНОМИКА v1.2.7 ============
-   У культистов НЕТ дохода — есть РИТУАЛ:
-   1) Каждый культист в цепи от Алтаря/Хтони — УЧАСТНИК.
-   2) Роль «скорость»: даёт +N к скорости заряда (⚡); роль «усилитель»
-      почти не заряжает, но усиливает ВЫПЛАТУ (💰).
-   3) v1.2.7: СТАКИ усиливают вклад клетки — заряд ×(1+0.35/стак),
-      выплата +10%/стак (до +50%). Застаканные карты = сильный ритуал.
-   4) Формации вокруг источника (без пустых клеток): Крест ×1.7 /
-      Кольцо ×2.0 / Ромб ×2.6; у нескольких Алтарей множители складываются.
-   5) v1.2.7: ВНЕШНИЙ КРУГ — культисты рядом с ритуалом (но вне цепи)
-      работают «служителями»: +5% выплаты и +заряд каждый (стаки ×1.5).
-   6) Обелиск — участникам в его зоне заряд ×1.25; Колодец — выплата +30%.
-   7) Шкала НИКОГДА не тает — зафейлить до конца нельзя.
-   8) v1.2.7 БАЛАНС: базовые вклады 0.25-0.33%/с (было 1.0-1.3), суммарная
-      скорость растёт через КОРЕНЬ (каждый новый участник даёт меньше) и
-      ограничена потолком 15%/с — ритуал больше не «пулемёт».
-   9) Выплата = порог Эпохи × 0.80% × (0.7 + 0.03×участников) × бонусы
-      (v1.3.0: инкам ритуалов чуть приподнят — 0.72% → 0.80%).
-  10) v1.3.0 ХРАНИТЕЛИ ЖАРА: часть культистов (Послушник/Фанатик/Шептун/
-      Верховный Жрец/Служка) сохраняет часть заряда после выплаты —
-      следующий ритуал начинается уже заряженным (кап 33%).
-  11) v1.3.0 ЗАКОНЫ РЕЛИКВИЙ (rkeep/rcap/rpaycap/rchain/router/rform/
-      rfirst) — только правила, ни одного множителя. */
+/* ============ КУЛЬТИСТЫ: РИТУАЛЬНАЯ ЭКОНОМИКА ============
+У культистов НЕТ дохода — есть РИТУАЛ:
+1) Каждый культист в цепи от Алтаря/Хтони — УЧАСТНИК.
+2) Роль «скорость»: даёт +N к скорости заряда (⚡); роль «усилитель»
+почти не заряжает, но усиливает ВЫПЛАТУ (💰).
+3) : СТАКИ усиливают вклад клетки — заряд ×(1+0.35/стак),
+выплата +10%/стак (до +50%). Застаканные карты = сильный ритуал.
+4) Формации вокруг источника (без пустых клеток): Крест ×1.7 /
+Кольцо ×2.0 / Ромб ×2.6; у нескольких Алтарей множители складываются.
+5) : ВНЕШНИЙ КРУГ — культисты рядом с ритуалом (но вне цепи)
+работают «служителями»: +5% выплаты и +заряд каждый (стаки ×1.5).
+6) Обелиск — участникам в его зоне заряд ×1.25; Колодец — выплата +30%.
+7) Шкала НИКОГДА не тает — зафейлить до конца нельзя.
+8) БАЛАНС: базовые вклады 0.25-0.33%/с, суммарная
+скорость растёт через КОРЕНЬ (каждый новый участник даёт меньше) и
+ограничена потолком 15%/с — ритуал больше не «пулемёт».
+9) Выплата = порог Эпохи × 0.80% × (0.7 + 0.03×участников) × бонусы
+(: инкам ритуалов чуть приподнят — 0.72% → 0.80%).
+10) ХРАНИТЕЛИ ЖАРА: часть культистов (Послушник/Фанатик/Шептун/
+Верховный Жрец/Служка) сохраняет часть заряда после выплаты
+следующий ритуал начинается уже заряженным (кап 33%).
+11) ЗАКОНЫ РЕЛИКВИЙ (rkeep/rcap/rpaycap/rchain/router/rform/
+ rfirst) — только правила, ни одного множителя.*/
 const RITUAL_AMPS = { c5: 0.2, c8: 0.3, c9: 0.45, c13: 0.25, c10: 0.6, c11: 0.45 };
 const RITUAL_CELL_SPEED = { c0: 0.25, c1: 0.25, c2: 0.30, c3: 0.25, c6: 0.27, c7: 0.33, c12: 0.25 };
-const RITUAL_AMP_CHARGE = 0.12;   /* усилители заряжают чуть-чуть */
-/* v1.2.10 (автор — Ян Ковач): капы внешнего круга подняты — большие
-   постройки служителей не должны становиться бесполезными */
+const RITUAL_AMP_CHARGE = 0.12; /* усилители заряжают чуть-чуть */
+/* (автор — Ян Ковач): капы внешнего круга подняты — большие
+ постройки служителей не должны становиться бесполезными*/
 const RITUAL_OUTER_SPEED = 0.03, RITUAL_OUTER_SPEED_CAP = 0.20;
 const RITUAL_OUTER_PAY = 0.05, RITUAL_OUTER_PAY_CAP = 0.45;
 let RITUAL_ENGINE = { speed: 0, pay: 1, payout: 0, participants: 0, outer: 0, outerPay: 0, retain: 0, cellSpeed: {}, banner: '', capped: false };
 
-/* v1.3.0 ТЗ: ХРАНИТЕЛИ ЖАРА — какие-то карты культистов «сохраняют» часть
-   заряда после прока ритуала, вплоть до капа в 33%: ритуал начинается
-   уже немного заряженным. Проценты скрыты в движке — на картах правило. */
-const RITUAL_RETAIN = { c0: 5, c2: 8, c6: 6, c9: 10, c12: 7 }; // % заряда за участника
-const RITUAL_RETAIN_CAP = 33;                                  // % — потолок сохраняемого жара
+/* ХРАНИТЕЛИ ЖАРА — какие-то карты культистов «сохраняют» часть
+заряда после прока ритуала, вплоть до капа в 33%: ритуал начинается
+ уже немного заряженным. Проценты скрыты в движке — на картах правило.*/
+const RITUAL_RETAIN = { c0: 5, c2: 8, c6: 6, c9: 10, c12: 7 };  // % заряда за участника
+const RITUAL_RETAIN_CAP = 33;  // % — потолок сохраняемого жара
 
 function computeRitualEngine() {
   const E = { speed: 0, pay: 1, payout: 0, participants: 0, outer: 0, outerPay: 0, retain: 0, cellSpeed: {}, banner: '', ready: false, capped: false };
   if (FACTION_INFO[faction].mechanic !== 'formation') return E;
   const B = INC_CTX.bld || { obelisk: {}, wells: 0 };
-  /* v1.3.0: ЗАКОНЫ реликвий — потолки/насыщение/жар (ни одного множителя) */
+  /* ЗАКОНЫ реликвий — потолки/насыщение/жар (ни одного множителя) */
   const rel = ritualRuleMods();
   let payBonus = 0, bannerParts = [];
   /* Формационный множитель: 1 + Σ(множитель−1) по всем активным формациям.
-     v1.4.0 КАРА «Вериг Пустоты» (rcNoForm): формации не ускоряют заряд. */
+ КАРА «Вериг Пустоты» (rcNoForm): формации не ускоряют заряд.*/
   let formMult = 1, forms = 0;
   for (const k in INC_CTX.formActive) { formMult += INC_CTX.formActive[k].formMult - 1; forms++; }
   if (rel.formFree) { if (forms) bannerParts.push('формации без предела'); }
@@ -125,7 +125,7 @@ function computeRitualEngine() {
     let raw = 0;
     if (RITUAL_AMPS[card.id]) {
       raw = RITUAL_AMP_CHARGE * stSpeed;
-      /* v1.4.0 КАРА «Зрачка Бездны» (rcAmpHalf): усилители выплаты дают вдвое меньше */
+      /* КАРА «Зрачка Бездны» (rcAmpHalf): усилители выплаты дают вдвое меньше */
       payBonus += (RITUAL_AMPS[card.id] + 0.10 * Math.min(5, st - 1)) * (rel.rcAmpHalf ? 0.5 : 1);
     } else {
       raw = (RITUAL_CELL_SPEED[card.id] || 0.25) * stSpeed;
@@ -133,18 +133,18 @@ function computeRitualEngine() {
         const ns = getNeighbors(r, c).filter(n => INC_CTX.ritual.has(n.r + ',' + n.c) && !CARDS[n.item.cardId].isBuilding).length;
         raw += 0.04 * ns;
       }
-      payBonus += 0.10 * Math.min(5, st - 1);      /* стаки участника = +10% выплаты каждый (до +50%) */
+      payBonus += 0.10 * Math.min(5, st - 1); /* стаки участника = +10% выплаты каждый (до +50%) */
     }
-    /* v1.3.0 ХРАНИТЕЛИ ЖАРА: участник сохранит часть заряда после выплаты.
-       v1.4.0 КАРА «Многоликой Маски» (rcNoRetain): хранители не хранят ничего. */
+    /* ХРАНИТЕЛИ ЖАРА: участник сохранит часть заряда после выплаты.
+ КАРА «Многоликой Маски» (rcNoRetain): хранители не хранят ничего.*/
     if (RITUAL_RETAIN[card.id] && !rel.rcNoRetain) E.retain += RITUAL_RETAIN[card.id] * (1 + 0.5 * (st - 1));
     /* Обелиск: заряд участника в его зоне ×1.25 (кап ×1.5); прикованный Обелиск — ×1.375 */
     const ob = B.obelisk[k] || 0;
     if (ob) raw *= Math.min(1.5, 1 + (B.obeliskM && B.obeliskM[k] ? 0.375 : 0.25) * ob);
     rawCell[k] = raw; rawSum += raw;
   });
-  /* ВНЕШНИЙ КРУГ (v1.2.7): служители вне цепи, но рядом с ней.
-     v1.4.0 КАРА «Ока Ритуала» (outerDead): внешний круг глух и слеп. */
+  /* ВНЕШНИЙ КРУГ : служители вне цепи, но рядом с ней.
+ КАРА «Ока Ритуала» (outerDead): внешний круг глух и слеп.*/
   let outerRaw = 0;
   if (!rel.outerDead) INC_CTX.ritualOuter.forEach(k => {
     const [r, c] = k.split(',').map(Number);
@@ -177,11 +177,11 @@ function computeRitualEngine() {
   let bannerMult = 1;
   if (banners) { bannerMult = 1 + Math.min(0.3, 0.10 * banners); bannerParts.push('знамёна +' + Math.round(Math.min(30, 10 * banners)) + '%'); }
   /* ИТОГОВАЯ СКОРОСТЬ: корень из суммы вкладов — мягкое насыщение
-     (каждый новый участник даёт меньше прежнего), потолок 15%/с.
-     v1.3.0 ЗАКОНЫ: «Вериги Пустоты» снимают насыщение (вклад линейный),
-     «Око Ритуала» отодвигает потолок. */
+(каждый новый участник даёт меньше прежнего), потолок 15%/с.
+ЗАКОНЫ: «Вериги Пустоты» снимают насыщение (вклад линейный),
+ «Око Ритуала» отодвигает потолок.*/
   const heat = rel.noSatur ? (rawSum + outerRaw) : Math.sqrt(rawSum + outerRaw);
-  /* v1.4.0 КАРА «Свечи Мученика» (rcSlow): ритуал заряжается на 20% медленнее */
+  /* КАРА «Свечи Мученика» (rcSlow): ритуал заряжается на 20% медленнее */
   E.speed = Math.min(rel.capSpeed, 1.2 * heat * formMult * bannerMult * (rel.rcSlow ? 0.8 : 1));
   E.capped = rawSum + outerRaw > 0 && E.speed >= rel.capSpeed;
   if (E.capped) bannerParts.push('потолок ⚡');
@@ -197,12 +197,12 @@ function computeRitualEngine() {
     payBonus += Math.min(wCap, wPay * wells);
     bannerParts.push('колодцы +' + Math.round(Math.min(wCap * 100, wPay * 100 * wells)) + '%');
   }
-  /* v1.3.0: потолок выплаты — закон «Зрачка Бездны» (×4 → ×7) */
+  /* потолок выплаты — закон «Зрачка Бездны» (×4 → ×7) */
   E.pay = Math.min(rel.capPay, 1 + Math.min(2.5, payBonus));
   /* Выплата: привязана к порогу Эпохи — растёт вместе с игрой.
-     v1.3.0: коэффициент 0.80% (было 0.72%) — инкам ритуалов чуть приподнят. */
+коэффициент 0.80% — инкам ритуалов чуть приподнят.*/
   E.payout = Math.round(epochThreshold(epoch) * 0.0080 * (0.7 + 0.03 * Math.min(24, E.participants)) * E.pay);
-  /* v1.3.0 ЖАР: сохраняемый заряд = хранители + закон «Свечи Мученика», кап 33% */
+  /* ЖАР: сохраняемый заряд = хранители + закон «Свечи Мученика», кап 33% */
   E.retain = Math.min(RITUAL_RETAIN_CAP, Math.round(E.retain) + (rel.keep || 0));
   if (E.retain > 0) bannerParts.push('жар: +' + E.retain + '% к следующему');
   E.banner = bannerParts.join(' · ');
@@ -210,9 +210,9 @@ function computeRitualEngine() {
   return E;
 }
 
-/* v1.5.9 (perf): движок ритуала пересчитывается 10 раз/с вместо каждого
-   кадра (он сканирует цепь, стаки, здания). Скорость заряда между
-   пересчётами неизменна — шкала и цифры на экране те же самые. */
+/* движок ритуала пересчитывается 10 раз/с вместо каждого
+кадра (он сканирует цепь, стаки, здания). Скорость заряда между
+ пересчётами неизменна — шкала и цифры на экране те же самые.*/
 let _ritualEngineAt = -1;
 function ritualChargeTick(dt) {
   if (_ritualEngineAt < 0 || gameTime - _ritualEngineAt >= 0.1) {
@@ -226,24 +226,24 @@ function ritualChargeTick(dt) {
   if (before < 100 && ritualResonance >= 100) ritualPayout();
 }
 
-/* РИТУАЛ ЗАВЕРШЁН: гарантированная выплата Тёмной энергии. Шкала НЕ тает —
-   полный фейл невозможен, худший случай — медленный цикл.
-   v1.3.0 ТЗ: шкала после выплаты НЕ ОБНУЛЯЕТСЯ — хранители жара
-   (и закон «Свечи Мученика») оставляют до 33% заряда следующему ритуалу.
-   v1.3.0: закон «Кровавой Чаши» продлевает двойную выплату на первые ритуалы. */
+/* РИТУАЛ ЗАВЕРШЁН: гарантированная выплата Тёмной энергии. Шкала НЕ тает
+полный фейл невозможен, худший случай — медленный цикл.
+шкала после выплаты НЕ ОБНУЛЯЕТСЯ — хранители жара
+(и закон «Свечи Мученика») оставляют до 33% заряда следующему ритуалу.
+закон «Кровавой Чаши» продлевает двойную выплату на первые ритуалы.*/
 function ritualPayout() {
   const E = RITUAL_ENGINE.speed > 0 ? RITUAL_ENGINE : computeRitualEngine();
   const relPay = ritualRuleMods();
   let pay = E.payout;
   const first = runRituals < (relPay.firstN || 1);
   if (first) pay = Math.round(pay * 2);
-  /* v1.4.0 КАРА «Кровавой Чаши» (rcPost3): ритуалы после третьего платят вдвое меньше */
+  /* КАРА «Кровавой Чаши» (rcPost3): ритуалы после третьего платят вдвое меньше */
   let bloodDry = false;
   if (relPay.rcPost3 && runRituals + 1 > 3) { pay = Math.round(pay * 0.5); bloodDry = true; }
   crystals += pay;
-  runRituals++;               /* v1.2.10: счётчик для Сводки Эпохи */
+  runRituals++; /* счётчик для Сводки Эпохи */
   const keep = Math.min(RITUAL_RETAIN_CAP, Math.round(E.retain || 0));
-  ritualResonance = keep;     /* вместо обнуления — сохранённый жар */
+  ritualResonance = keep; /* вместо обнуления — сохранённый жар */
   stats.surges = (stats.surges || 0) + 1;
   /* Шоу: золотая волна по клеткам ритуала + текст над источником */
   let srcKey = null;
@@ -289,12 +289,12 @@ function balrogTick() {
   if (changed) { computeIncome(); renderGrid(); updateHUD(); }
 }
 
-/* ================= ЗВЕРИ: ПИЩЕВАЯ ЦЕПЬ v1.2.5 =================
-   Тик 2.5с. Укус 20% maxHp добычи (стая ×1.5). Убийство: +120%
-   хищнику навсегда (Хищник ★5 +160%, Буйвол ×1.5 добыча).
-   ГОЛОД: без добычи хищник слабеет −5%/тик — и ДЕРЁТСЯ с соседями-
-   хищниками за территорию (−6% HP), поэтому ЛЕЧЕНИЕ флорой ценно.
-   Кабан жиреет от укусов (Щетина), Мантикора травит Ядом. */
+/* ================= ЗВЕРИ: ПИЩЕВАЯ ЦЕПЬ =================
+Тик 2.5с. Укус 20% maxHp добычи (стая ×1.5). Убийство: +120%
+хищнику навсегда (Хищник ★5 +160%, Буйвол ×1.5 добыча).
+ГОЛОД: без добычи хищник слабеет −5%/тик — и ДЕРЁТСЯ с соседями-
+хищниками за территорию (−6% HP), поэтому ЛЕЧЕНИЕ флорой ценно.
+ Кабан жиреет от укусов (Щетина), Мантикора травит Ядом.*/
 function isPredator(card) { return card.diet === 'pred'; }
 function isPrey(card) { return card.diet === 'herb' || card.diet === 'scav'; }
 /* Радиус охоты карты: Лютоволк (b4) — 3, остальные 2 */
@@ -302,12 +302,12 @@ function huntRadius(card) { return card.id === 'b4' ? 3 : 2; }
 
 function beastCycleTick() {
   let changed = false;
-  const deaths = [];   // клетки погибших — для падальщиков
-  /* v1.3.0 ЗАКОНЫ звериных реликвий (только правила, без множителей):
-     fang — добыча кормит всю стаю; range — выпас через клетку;
-     bough — флора усмиряет голод; apex — не голодают;
-     kcap — трофеи без предела; hungerFlip — голодный кусает больнее;
-     savage — укусы больнее */
+  const deaths = [];  // клетки погибших — для падальщиков
+  /* ЗАКОНЫ звериных реликвий (только правила, без множителей):
+fang — добыча кормит всю стаю; range — выпас через клетку;
+bough — флора усмиряет голод; apex — не голодают;
+kcap — трофеи без предела; hungerFlip — голодный кусает больнее;
+ savage — укусы больнее*/
   const fangCols = {}, rangeCols = {}, boughCols = {}, kcapCols = {}, hungerFlipCols = {}, apexCols = {}, savageCols = {};
   if (epoch >= RELIC_SLOT_EPOCH) for (const k in relicSlots) {
     const r = relicById(relicSlots[k]);
@@ -324,9 +324,9 @@ function beastCycleTick() {
   const B = INC_CTX.bld || { pen: {}, pole: {}, spring: {} };
 
   /* 1. ФЛОРА: лечит хищников (+5% HP/тик), кормится их лечением.
-     Кровавая Лоза (b14) наоборот жжёт хищников (−3%) и лечит травоядных.
-     СОЛОНЧИК (bl_spring): флора в его зоне лечит/кормит ×2 и действует
-     на радиус +1 (через клетку). */
+Кровавая Лоза (b14) наоборот жжёт хищников (−3%) и лечит травоядных.
+СОЛОНЧИК (bl_spring): флора в его зоне лечит/кормит ×2 и действует
+ на радиус +1 (через клетку).*/
   for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
     const it = grid[r][c]; if (!it) continue;
     const fc = CARDS[it.cardId];
@@ -363,11 +363,11 @@ function beastCycleTick() {
   }
 
   /* 2. ВЫПАС: травоядные едят соседнюю флору (+5%/тик, Гриб-Фонарь +7.5%,
-     Колосс подкармливает стадо). ВОЛЬЕР: выпас ×1.5. */
+ Колосс подкармливает стадо). ВОЛЬЕР: выпас ×1.5.*/
   for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
     const it = grid[r][c]; if (!it) continue;
     if (CARDS[it.cardId].diet !== 'herb') continue;
-    /* v1.4.0 КАРА «Короны Зверя» (kcapFamine): травоядные столба НЕ ПАСУТСЯ вовсе */
+    /* КАРА «Короны Зверя» (kcapFamine): травоядные столба НЕ ПАСУТСЯ вовсе */
     if (kcapCols[c]) continue;
     let floraN = getNeighbors(r, c).filter(n => CARDS[n.item.cardId].diet === 'flora');
     /* Солончик: флора кормит через клетку дальше */
@@ -376,7 +376,7 @@ function beastCycleTick() {
         if (CARDS[n.item.cardId].diet === 'flora' && (INC_CTX.bld.spring[n.r + ',' + n.c] || 0) > 0) { floraN.push(n); break; }
       }
     }
-    /* v1.3.0 «Мшистый Тотем» (range): травоядные столба находят флору через клетку */
+    /* (range): травоядные столба находят флору через клетку */
     if (!floraN.length && rangeCols[c]) {
       for (const n of radius2(r, c)) {
         if (CARDS[n.item.cardId].diet === 'flora') { floraN.push(n); break; }
@@ -387,7 +387,7 @@ function beastCycleTick() {
     const colossusNear = getNeighbors(r, c).some(n => n.item.cardId === 'b17');
     const inPen = (B.pen[r + ',' + c] || 0) > 0;
     let gain = (hasLantern ? 0.075 : 0.05) + (colossusNear ? 0.05 : 0);
-    /* v1.4.0 «Мшистый Тотем» (rangeFat): травоядные столба пасутся ВДВОЕ СЫТЕЕ */
+    /* (rangeFat): травоядные столба пасутся ВДВОЕ СЫТЕЕ */
     if (rangeCols[c]) gain *= 2;
     if (inPen) gain *= (B.penChained ? 1.75 : 1.5); /* ⛓ прикованный Вольер */
     it.graze = Math.min(1.5, (it.graze || 0) + gain);
@@ -398,8 +398,8 @@ function beastCycleTick() {
   }
 
   /* 3. ОХОТА: хищник кусает добычу рядом или через клетку (радиус 2,
-     Лютоволк — 3). ВОЛЬЕР защищает травоядных. ТРОФЕЙНЫЙ СТОЛБ
-     умножает баффы охоты ×1.5. */
+Лютоволк — 3). ВОЛЬЕР защищает травоядных. ТРОФЕЙНЫЙ СТОЛБ
+ умножает баффы охоты ×1.5.*/
   const bites = [];
   for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
     const it = grid[r][c]; if (!it) continue;
@@ -413,7 +413,7 @@ function beastCycleTick() {
       if (seen[nk]) continue; seen[nk] = 1;
       const pc = CARDS[n.item.cardId];
       if (pc.faction === 'beast' && isPrey(pc)) {
-        if ((B.pen[nk] || 0) > 0) continue;          /* Вольер защищает */
+        if ((B.pen[nk] || 0) > 0) continue; /* Вольер защищает */
         if (getNeighbors(n.r, n.c).some(m => m.item.cardId === 'b8')) continue; /* Василиск окаменил */
         prey = n; break;
       }
@@ -424,15 +424,15 @@ function beastCycleTick() {
   bites.forEach(b => {
     const preyCard = CARDS[b.prey.item.cardId];
     const thickHide = preyCard.id === 'b13' || preyCard.id === 'b17';
-    /* v1.3.0 «Кость Голода» (hungerFlip): голодный хищник столба КУСАЕТ БОЛЬНЕЕ */
+    /* (hungerFlip): голодный хищник столба КУСАЕТ БОЛЬНЕЕ */
     const hungryFang = hungerFlipCols[b.predator.c] && b.predator.it.hunger !== undefined && b.predator.it.hunger < 1;
-    /* v1.4.0 КАРА «Клыка Альфы» (fangTax): альфа кусает вполсилы */
+    /* КАРА «Клыка Альфы» (fangTax): альфа кусает вполсилы */
     const biteDmg = 0.20 * (thickHide ? 0.5 : 1) * (savageCols[b.predator.c] ? 1.5 : 1) * (hungryFang ? 1.5 : 1) * (fangCols[b.predator.c] ? 0.5 : 1);
     /* Стая: Волк и Лютоволк бьют ×1.5, если рядом другой волк */
     const pack = (b.predator.card.id === 'b1' || b.predator.card.id === 'b4') &&
       getNeighbors(b.predator.r, b.predator.c).some(n => n.item.cardId === 'b1' || n.item.cardId === 'b4');
     b.prey.item.hp -= b.prey.item.maxHp * biteDmg * (pack ? 1.5 : 1);
-    /* v1.4.0 КАРА «Рога Бешенства» (savagePain): каждый укус РАНИТ самого хищника */
+    /* КАРА «Рога Бешенства» (savagePain): каждый укус РАНИТ самого хищника */
     if (savageCols[b.predator.c]) {
       b.predator.it.hp = Math.max(1, b.predator.it.hp - b.predator.it.maxHp * 0.05);
       fxAtCell(b.predator.r, b.predator.c, ['#ff5030', '#ffd34d'], 5);
@@ -458,17 +458,17 @@ function beastCycleTick() {
       deaths.push([b.prey.r, b.prey.c]);
       grid[b.prey.r][b.prey.c] = null;
       stats.predKills = (stats.predKills || 0) + 1;
-      /* v1.3.0 «Корона Зверя» (kcap): трофеи столба кормят БЕЗ ПРЕДЕЛА */
+      /* (kcap): трофеи столба кормят БЕЗ ПРЕДЕЛА */
       const pole = (INC_CTX.bld && (INC_CTX.bld.pole[b.predator.r + ',' + b.predator.c] || 0) > 0) ? (INC_CTX.bld.poleChained ? 1.75 : 1.5) : 1; /* Столб (⛓ прикованный ×1.75) */
-      const base = b.predator.card.id === 'b11' ? 1.6 : 1.2;      /* v1.2.5: +120% / Хищник +160% */
+      const base = b.predator.card.id === 'b11' ? 1.6 : 1.2; /* +120% / Хищник +160% */
       const cap = kcapCols[b.predator.c] ? 99 : (b.predator.card.id === 'b11' ? 4 : 3);
-      /* v1.4.0 КАРА «Ветви Древеня» (boughLazy): сытые ветвью ленятся — баффы убийств вдвое меньше */
+      /* КАРА «Ветви Древеня» (boughLazy): сытые ветвью ленятся — баффы убийств вдвое меньше */
       const gain = base * (preyCard.id === 'b13' ? 1.5 : 1) * pole * (boughCols[b.predator.c] ? 0.5 : 1);
       b.predator.it.predBuff = Math.min(cap, (b.predator.it.predBuff || 0) + gain);
       b.predator.it.hunger = 1;
       fxFloatFromCell(b.predator.r, b.predator.c, '+' + Math.round(gain * 100) + '% СЫТ', '#ffd34d');
       toast(b.predator.card.name + ' сожрал ' + eaten + ': +' + Math.round(gain * 100) + '% дохода хищнику', 'pred', 20);
-      /* v1.3.0 «Клык Альфы» (fang): сожранное в столбе кормит ВСЮ СТАЮ поля */
+      /* (fang): сожранное в столбе кормит ВСЮ СТАЮ поля */
       if (fangCols[b.predator.c]) {
         for (let fr = 0; fr < GRID_SIZE; fr++) for (let fc = 0; fc < GRID_SIZE; fc++) {
           const fIt = grid[fr][fc];
@@ -494,7 +494,7 @@ function beastCycleTick() {
   });
 
   /* 3.5. ДРАКИ ХИЩНИКОВ ЗА ТЕРРИТОРИЮ: без добычи в радиусе охоты хищник
-     кусает СОСЕДА-ХИЩНИКА (−6% HP). Теперь лечение флорой решает. */
+ кусает СОСЕДА-ХИЩНИКА (−6% HP). Теперь лечение флорой решает.*/
   for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
     const it = grid[r][c]; if (!it) continue;
     const card = CARDS[it.cardId];
@@ -529,15 +529,15 @@ function beastCycleTick() {
   }
 
   /* 5. ГОЛОД: хищник без добычи слабеет −5%/тик (пол ×0.5).
-     Теневой Кот (b6) не голодает никогда.
-     v1.3.0 «Ветвь Древеня» (bough): флора столба с законом усмиряет голод
-     соседних хищников. «Кость Голода» (hungerFlip) голод НЕ снимает —
-     но голодный хищник кусает больнее (см. блок укусов), а не слабеет. */
+Теневой Кот (b6) не голодает никогда.
+(bough): флора столба с законом усмиряет голод
+соседних хищников. «Кость Голода» (hungerFlip) голод НЕ снимает
+ но голодный хищник кусает больнее (см. блок укусов), а не слабеет.*/
   for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
     const it = grid[r][c]; if (!it) continue;
     const card = CARDS[it.cardId];
     if (!isPredator(card) || card.id === 'b9' || card.id === 'b6') continue;
-    if (apexCols[c]) { it.hunger = 1; continue; }        /* Ошейник: сыт всегда */
+    if (apexCols[c]) { it.hunger = 1; continue; } /* Ошейник: сыт всегда */
     /* «Ветвь Древеня»: рядом стоит флора, у которой есть этот закон */
     if (getNeighbors(r, c).some(n => CARDS[n.item.cardId].diet === 'flora' && boughCols[n.c])) { it.hunger = 1; continue; }
     const R = huntRadius(card);
@@ -549,7 +549,7 @@ function beastCycleTick() {
   }
 
   /* 6. ПАДАЛЬЩИКИ: +25% за смерть в радиусе 2 (Стервятник — 3).
-     ТРОФЕЙНЫЙ СТОЛБ: падальщики чуют дальше (+1) и жиреют ×1.5. */
+ ТРОФЕЙНЫЙ СТОЛБ: падальщики чуют дальше (+1) и жиреют ×1.5.*/
   deaths.forEach(([dr, dc]) => {
     for (let r = dr - 4; r <= dr + 4; r++) for (let c = dc - 4; c <= dc + 4; c++) {
       if (r < 0 || r >= GRID_SIZE || c < 0 || c >= GRID_SIZE) continue;
@@ -565,24 +565,24 @@ function beastCycleTick() {
     }
   });
 
-  /* v1.5.9 (perf): renderCollection не нужен — тик зверей меняет поле,
-     но не инвентарь (укусы/смерти не трогают коллекцию) */
+  /* renderCollection не нужен — тик зверей меняет поле,
+ но не инвентарь (укусы/смерти не трогают коллекцию)*/
   if (changed) { computeIncome(); renderGrid(); updateHUD(); }
 }
 
-/* ================= ДЕМОНЫ: УГЛИ v1.2.5 =================
-   В толпе (2+ демона рядом; Дьяволёнок — хватает и одного) демон копит
-   угли (макс 5, +10% за уголёк). ЯМА удваивает накопление и делает
-   взрывы баффами. При 5 углях — ВЗРЫВ: стабилизаторы (Жрец/Князь/
-   Пентакль/Кулак Пекла/Яма) дают бафф (Кулак ×1.35, Иссушитель рядом —
-   усиленный ×1.35), иначе 65% бафф / 25% превращение / 10% перегрев ×2 —
-   но ЛЕДНИК рядом запрещает перегрев (тихий бафф ×1.15).
-   v1.3.0 ЗАКОНЫ (только правила): march — угли без толпы;
-   face — нет перегрева; rift — просыпается раскалённым;
-   coin — взрыв поджигает соседа; crownD — чужие взрывы кормят. */
+/* ================= ДЕМОНЫ: УГЛИ =================
+В толпе (2+ демона рядом; Дьяволёнок — хватает и одного) демон копит
+угли (макс 5, +10% за уголёк). ЯМА удваивает накопление и делает
+взрывы баффами. При 5 углях — ВЗРЫВ: стабилизаторы (Жрец/Князь/
+Пентакль/Кулак Пекла/Яма) дают бафф (Кулак ×1.35, Иссушитель рядом
+усиленный ×1.35), иначе 65% бафф / 25% превращение / 10% перегрев ×2
+но ЛЕДНИК рядом запрещает перегрев (тихий бафф ×1.15).
+ЗАКОНЫ (только правила): march — угли без толпы;
+face — нет перегрева; rift — просыпается раскалённым;
+ coin — взрыв поджигает соседа; crownD — чужие взрывы кормят.*/
 function demonEmberTick() {
   let changed = false;
-  let mutated = false; /* v1.5.9 (perf): коллекция перестраивается только при превращении */
+  let mutated = false; /* коллекция перестраивается только при превращении */
   const chaosCols = {}, marchCols = {}, faceCols = {}, riftCols = {}, coinCols = {}, crownDCols = {};
   if (epoch >= RELIC_SLOT_EPOCH) for (const k in relicSlots) {
     const r = relicById(relicSlots[k]);
@@ -602,16 +602,16 @@ function demonEmberTick() {
     const card = CARDS[it.cardId];
     if (card.faction !== 'demon' || card.isBuilding) continue; /* здания не раскаляются */
     let crowd = getNeighbors8(r, c).filter(n => CARDS[n.item.cardId].faction === 'demon').length;
-    /* v1.3.0 «Кандалы Легиона» (march): угли копятся даже в одиночестве */
+    /* (march): угли копятся даже в одиночестве */
     const needCrowd = marchCols[c] ? 0 : (card.id === 'd1' ? 1 : 2); /* Дьяволёнок злится рано */
     if (crowd < needCrowd) continue;
-    const inPit = (B.pit[r + ',' + c] || 0) > 0;         /* Жертвенная Яма */
+    const inPit = (B.pit[r + ',' + c] || 0) > 0; /* Жертвенная Яма */
     const eng = colEngine(c);
-    const tutored = (eng && eng.forge) ? 1 : 0;          /* Сердце Вулкана */
-    /* v1.4.0 «Венец Владыки Роя» (crownDImpatient): рой нетерпелив — взрыв на 4 углях */
+    const tutored = (eng && eng.forge) ? 1 : 0; /* Сердце Вулкана */
+    /* (crownDImpatient): рой нетерпелив — взрыв на 4 углях */
     const emberCap = (eng && eng.crownDImpatient) ? 4 : 5;
     let gain = (inPit ? (B.pitChained ? 3 : 2) : 1) + tutored; /* ⛓ прикованная Яма */
-    /* v1.4.0 КАРА «Пентакля Алчности» (chaosSlow): угли копятся ВДВОЕ МЕДЛЕННЕЕ */
+    /* КАРА «Пентакля Алчности» (chaosSlow): угли копятся ВДВОЕ МЕДЛЕННЕЕ */
     if (eng && eng.chaosSlow) {
       it.emberAcc = (it.emberAcc || 0) + gain / 2;
       const whole = Math.floor(it.emberAcc);
@@ -631,7 +631,7 @@ function demonEmberTick() {
       (eng && eng.chaosLock);
     if (radius2(r, c).some(n => n.item.cardId === 'd14')) { stabilized = true; buffVal = 1.35; } /* Око Бури */
     const glacier = getNeighbors8(r, c).some(n => n.item.cardId === 'bl_glacier') ||
-      (B.glacier[r + ',' + c] || 0) > 0;                            /* Ледник рядом/в зоне */
+      (B.glacier[r + ',' + c] || 0) > 0; /* Ледник рядом/в зоне */
     const chilled = getNeighbors(r, c).some(n => n.item.cardId === 'd15'); /* Иссушитель: бафф сильнее */
     if (chilled) buffVal = Math.max(buffVal, 1.35);
     const disciplined = getNeighbors(r, c).some(n => n.item.cardId === 'd8');
@@ -640,13 +640,13 @@ function demonEmberTick() {
       fxAtCell(r, c, ['#ffd34d', '#ff8030', '#fff'], 16, 'big');
       fxFloatFromCell(r, c, 'ХАОС ×' + it.mutBuff.toFixed(2), '#ff9030');
       toast('🔥 ' + card.name + ' взорвался под контролем: БАФФ ×' + it.mutBuff.toFixed(2), 'demon', 25);
-      /* v1.4.0 КАРА «Обола Ада» (coinDebt): контролируемый взрыв тоже стоит ХАОСа */
+      /* КАРА «Обола Ада» (coinDebt): контролируемый взрыв тоже стоит ХАОСа */
       if (coinCols[c]) {
         it.mutBuff = 1;
         fxFloatFromCell(r, c, 'ДОЛГ ЗАБРАЛ ХАОС', '#c09040');
       }
     } else {
-      /* v1.4.0 КАРА «Сердца Вулкана» (forgeRisky): шанс перегрева ВТРОЕ выше */
+      /* КАРА «Сердца Вулкана» (forgeRisky): шанс перегрева ВТРОЕ выше */
       const risky = eng && eng.forgeRisky;
       const pBuff = risky ? 0.45 : 0.65, pTrans = risky ? 0.70 : 0.90;
       const roll = Math.random();
@@ -655,7 +655,7 @@ function demonEmberTick() {
         fxAtCell(r, c, ['#ffd34d', '#ff8030', '#fff'], 16, 'big');
         fxFloatFromCell(r, c, 'ХАОС ×' + it.mutBuff.toFixed(2), '#ff9030');
         toast('🔥 ' + card.name + ' взорвался Хаосом: БАФФ ×' + it.mutBuff.toFixed(2), 'demon', 25);
-        /* v1.4.0 КАРА «Обола Ада» (coinDebt): долг возвращается — накопленный ХАОС теряется */
+        /* КАРА «Обола Ада» (coinDebt): долг возвращается — накопленный ХАОС теряется */
         if (coinCols[c]) {
           it.mutBuff = 1;
           fxFloatFromCell(r, c, 'ДОЛГ ЗАБРАЛ ХАОС', '#c09040');
@@ -668,12 +668,12 @@ function demonEmberTick() {
         const oldName = card.name;
         it.cardId = newId; it.mutBuff = 1; it.embers = 0;
         discovered.add(newId);
-        mutated = true; /* v1.5.9: открыта новая карта — коллекцию обновим */
+        mutated = true; /* открыта новая карта — коллекцию обновим */
         fxAtCell(r, c, ['#c030c0', '#ff40ff', '#fff'], 18, 'big');
         fxFloatFromCell(r, c, 'ПРЕВРАЩЕНИЕ', '#ff60ff');
         toast('🔥 ' + oldName + ' превратился в ' + CARDS[newId].name + '!', 'demon', 25);
       } else if (eng && eng.faceNoMut) {
-        /* v1.4.0 КАРА «Личины Легиона» (faceNoMut): превращения в столбе невозможны */
+        /* КАРА «Личины Легиона» (faceNoMut): превращения в столбе невозможны */
         it.mutBuff = Math.min(4, (it.mutBuff || 1) * 1.05);
         fxFloatFromCell(r, c, 'ЛИЧИНА СКРЫЛА ЛИЦО ×' + it.mutBuff.toFixed(2), '#c0e0ff');
         toast('😈 Под личиной нет лиц: превращение отменено — тихий бафф ×' + it.mutBuff.toFixed(2), 'demon', 25);
@@ -683,7 +683,7 @@ function demonEmberTick() {
         fxFloatFromCell(r, c, 'ТИХИЙ БАФФ ×' + it.mutBuff.toFixed(2), '#c0e0ff');
         toast('❄️ Ледник остудил взрыв ' + card.name + ': ×' + it.mutBuff.toFixed(2), 'demon', 25);
       } else if (faceCols[c]) {
-        /* v1.3.0 «Личина Легиона» (face): взрывы столба НЕ ПЕРЕГРЕВАЮТСЯ */
+        /* (face): взрывы столба НЕ ПЕРЕГРЕВАЮТСЯ */
         it.mutBuff = Math.min(4, (it.mutBuff || 1) * 1.15);
         fxFloatFromCell(r, c, 'ЛИЧИНА ДЕРЖИТ ЖАР ×' + it.mutBuff.toFixed(2), '#c0e0ff');
         toast('😈 Личина удержала жар: ' + card.name + ' — тихий бафф ×' + it.mutBuff.toFixed(2), 'demon', 25);
@@ -704,15 +704,15 @@ function demonEmberTick() {
       if (nb.cardId === 'd13' && dist <= 2) nb.tyrBuff = Math.min(3, (nb.tyrBuff || 1) * 1.2);
       if (nb.cardId === 'd2' && dist <= 3) nb.harmBuff = Math.min(1.0, (nb.harmBuff || 0) + 0.05);
     }
-    /* v1.3.0 «Разлом Ада» (rift): демон просыпается УЖЕ РАСКАЛЁННЫМ.
-       v1.4.0 КАРА (riftDrain): каждый взрыв — НАВСЕГДА −5% дохода (до −50%) */
+    /* (rift): демон просыпается УЖЕ РАСКАЛЁННЫМ.
+ КАРА (riftDrain): каждый взрыв — НАВСЕГДА −5% дохода (до −50%)*/
     if (riftCols[c]) {
       it.embers = Math.min(5, 2);
       it.riftTax = Math.min(0.5, (it.riftTax || 0) + 0.05);
       fxAtCell(r, c, ['#ff9030', '#ffd34d'], 5);
       fxFloatFromCell(r, c, 'РАЗЛОМ ПЬЁТ ЖАР −5%', '#a080ff');
     }
-    /* v1.3.0 «Обол Ада» (coin): взрыв столба ПОДЖИГАЕТ СОСЕДА */
+    /* (coin): взрыв столба ПОДЖИГАЕТ СОСЕДА */
     if (coinCols[c]) {
       const nb2 = getNeighbors8(r, c).filter(n => CARDS[n.item.cardId].faction === 'demon' && !CARDS[n.item.cardId].isBuilding);
       if (nb2.length) {
@@ -723,7 +723,7 @@ function demonEmberTick() {
         changed = true;
       }
     }
-    /* v1.3.0 «Венец Владыки Роя» (crownD): КАЖДЫЙ ВЗРЫВ НА ПОЛЕ кормит демонов столба */
+    /* (crownD): КАЖДЫЙ ВЗРЫВ НА ПОЛЕ кормит демонов столба */
     const crownList = Object.keys(crownDCols).map(Number);
     for (const cc of crownList) {
       for (let rr2 = 0; rr2 < GRID_SIZE; rr2++) {
@@ -737,8 +737,8 @@ function demonEmberTick() {
       }
     }
   }
-  /* v1.5.9 (perf): renderCollection здесь не нужен — тик углей не меняет
-     инвентарь (полный ребилд коллекции с картинками каждые 8с давал
-     заметный фриз). Перестраиваем только при превращении (discovered). */
+  /* renderCollection здесь не нужен — тик углей не меняет
+инвентарь (полный ребилд коллекции с картинками каждые 8с давал
+ заметный фриз). Перестраиваем только при превращении (discovered).*/
   if (changed) { computeIncome(); renderGrid(); if (mutated) renderCollection(); updateHUD(); }
 }

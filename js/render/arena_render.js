@@ -1,17 +1,17 @@
 'use strict';
-/* ============================================================
-   РЕНДЕР: АРЕНА «КОЛЫБЕЛЬ ВОЙНЫ» (render/arena_render.js)
-   Canvas-автобатлер, версия «для показов» (фидбек раунда 4):
-   - retina-чёткий канвас (devicePixelRatio);
-   - живой фон: дарк-фэнтези ассет + дрейфующий туман, пепел,
-     виньетка, мерцание жаровен;
-   - отряды: спрайты с рамками редкости, боссы крупнее и с
-     багровой аурой, взмахи ближнего боя (слэш-арки);
-   - стрелки ПАЛЯТ болтами с трассами, попадания сыплют искры;
-   - гибель: растворение + восходящая «душа», тряска экрана;
-   - баннеры ПОБЕДА/ПОРАЖЕНИЕ, предпросмотр армий до боя.
-   Логика боя — logic/arena.js.
-   ============================================================ */
+/*
+РЕНДЕР: АРЕНА «КОЛЫБЕЛЬ ВОЙНЫ» (render/arena_render.js)
+Canvas-автобатлер, версия «для показов» :
+- retina-чёткий канвас (devicePixelRatio);
+- живой фон: дарк-фэнтези ассет + дрейфующий туман, пепел,
+виньетка, мерцание жаровен;
+- отряды: спрайты с рамками редкости, боссы крупнее и с
+багровой аурой, взмахи ближнего боя (слэш-арки);
+- стрелки ПАЛЯТ болтами с трассами, попадания сыплют искры;
+- гибель: растворение + восходящая «душа», тряска экрана;
+- баннеры ПОБЕДА/ПОРАЖЕНИЕ, предпросмотр армий до боя.
+Логика боя — logic/arena.js.
+ ============================================================*/
 
 const battleCanvas = () => $('battleCanvas');
 let battleBg = null, battleBgTried = false;
@@ -36,24 +36,22 @@ function loadBattleBg() {
   if (battleBg || battleBgTried) return;
   battleBgTried = true;
   const img = new Image();
-  img.onload = () => { battleBg = img; _bgCache = null; }; /* v1.5.9: сброс кэша статики */
+  img.onload = () => { battleBg = img; _bgCache = null; }; /* сброс кэша статики */
   img.src = 'assets/arena/battlefield.jpg';
 }
 
 /* «Часы» атмосферы — тикают всегда, даже вне боя (туман/пепел в превью) */
 function ambTime() { return performance.now() / 1000; }
 
-/* ============================================================
-   v1.5.9 (perf): КАНАС АРЕНЫ БЕЗ ПОСТОЯННОГО ПЕРЕСЧЕТА.
-   drawBattleBg раньше КАЖДЫЙ кадр (и в мини-доке 60 раз/с, и в
-   оверлее) создавал 3-4 градиента (фон-фолбэк, 2 пятна тумана,
-   виньетка) — дорогие операции. Теперь:
-   - статика (картинка фона + тени «дорог войны») рисуется ОДИН раз
-     в офскрин-канвас и дальше кладётся одним drawImage;
-   - туман — предзапечённый спрайт того же градиента, двигается так же;
-   - виньетка — кэшированный объект градиента (координаты фиксированы).
-   Пиксели кадра — те же самые; меняется только способ их получения.
-   ============================================================ */
+/*
+perf: КАНАС АРЕНЫ БЕЗ ПОСТОЯННОГО ПЕРЕСЧЕТА (дорогие градиенты
+фон-фолбэк, туман, виньетка — не пересчитываются каждый кадр):
+- статика (картинка фона + тени «дорог войны») рисуется ОДИН раз
+в офскрин-канвас и дальше кладётся одним drawImage;
+- туман — предзапечённый спрайт того же градиента, двигается так же;
+- виньетка — кэшированный объект градиента (координаты фиксированы).
+Пиксели кадра — те же самые; меняется только способ их получения.
+ ============================================================*/
 let _bgCache = null, _fogSprites = {}, _vgCache = new WeakMap();
 
 function staticBgCanvas() {
@@ -64,7 +62,7 @@ function staticBgCanvas() {
   if (!x) return null;
   if (battleBg) x.drawImage(battleBg, 0, 0, ARENA.FIELD_W, ARENA.FIELD_H);
   else {
-    /* v1.3.1: без ассета — холодный серо-синий склеп вместо тёплого градиента */
+    /* без ассета — холодный серо-синий склеп вместо тёплого градиента */
     const g = x.createLinearGradient(0, 0, 0, ARENA.FIELD_H);
     g.addColorStop(0, '#0e1013'); g.addColorStop(0.6, '#14171b'); g.addColorStop(1, '#0a0c0e');
     x.fillStyle = g; x.fillRect(0, 0, ARENA.FIELD_W, ARENA.FIELD_H);
@@ -112,8 +110,8 @@ function drawBattleBg(ctx) {
   else { ctx.fillStyle = '#0e1013'; ctx.fillRect(0, 0, ARENA.FIELD_W, ARENA.FIELD_H); }
   const t = ambTime();
   /* Дрейфующий туман: два мягких пятна, гуляют в противофазе
-     v1.3.1: холодный серый туман кладбища вместо тёплого
-     v1.5.9: спрайт того же градиента — пиксель-в-пиксель */
+холодный серый туман кладбища вместо тёплого
+спрайт того же градиента — пиксель-в-пиксель*/
   for (let i = 0; i < 2; i++) {
     const fx = ARENA.FIELD_W * (0.3 + 0.4 * i) + Math.sin(t * 0.11 + i * 2.7) * 90;
     const fy = 60 + i * 90 + Math.cos(t * 0.09 + i * 1.9) * 26;
@@ -263,8 +261,8 @@ function imgCache(src) {
 }
 
 /* Статичные армии для предпросмотра (до боя): те же позиции, что в spawnBattle.
-   v1.5.9 (perf): превью строится заново только когда сменились волна/отряд —
-   раньше аллокации и сортировка были каждый кадр простоя. */
+превью строится заново только когда сменились волна/отряд
+ раньше аллокации и сортировка были каждый кадр простоя.*/
 let _pvCache = null, _pvKey = null;
 function previewArmies() {
   const wave = arenaState.enemy;
@@ -452,7 +450,7 @@ function updateArenaUI() {
     if (i === arenaState.room) d.classList.add('current');
     ind.appendChild(d);
   }
-  /* Комната + фракция волны (цветом фракции) + метка элиты (v1.2) */
+  /* Комната + фракция волны (цветом фракции) + метка элиты */
   const wf = waveFaction(arenaState.floor, arenaState.room);
   $('arenaRoomText').innerHTML = 'Комната ' + arenaState.room + ' / ' + ARENA.roomsPerFloor +
     (isEliteRoom(arenaState.room) ? ' · <b style="color:#ffe080">ЭЛИТА</b>' : '') +
@@ -477,12 +475,12 @@ function updateArenaUI() {
   $('altarBuff').textContent = '✦ Мощь Алтаря: ×' + altarPower().toFixed(2) + ' к урону отрядов (звенья, хор и печати)';
   $('arenaStatus').textContent = arenaState.status;
   $('arenaStatus').className = 'arena-status ' + (arenaState.status.includes('Победа') || arenaState.status.includes('БОСС') ? 'win' : arenaState.status.includes('Поражение') ? 'lose' : '');
-  /* v1.2.7: компактный док виден всегда — дублируем туда краткий статус */
+  /* компактный док виден всегда — дублируем туда краткий статус */
   const dockStatus = $('arenaDockStatus');
   if (dockStatus) dockStatus.textContent = arenaState.status || 'Отряд ждёт приказа';
   const btn = $('arenaFightBtn'), retBtn = $('arenaRetreatBtn');
   /* ФИКС «прыжка» арены: кнопка всегда занимает место, показывается через visibility.
-     Резец Тьмы: без эмодзи и капса. */
+ Резец Тьмы: без эмодзи и капса.*/
   if (arenaState.fighting) { btn.disabled = true; btn.textContent = 'Бой идёт…'; retBtn.classList.add('visible'); }
   else {
     btn.disabled = false; retBtn.classList.remove('visible');
@@ -495,9 +493,9 @@ function updateArenaUI() {
 }
 
 /* ------- Резец Тьмы: живой визуал боя в «Колыбели Войны” -------
-   Полосы здоровья отряда (золотая) и волны (кровавая) + мини-арты
-   бойцов из rendered fighters. Обновляется от updateHUD (heavy) и
-   сразу после каждого хода автобоя. */
+Полосы здоровья отряда (золотая) и волны (кровавая) + мини-арты
+бойцов из rendered fighters. Обновляется от updateHUD (heavy) и
+ сразу после каждого хода автобоя.*/
 function renderArenaDockVisual() {
   const minePct = $('adMinePct'), foePct = $('adFoePct');
   const mineFill = $('adMineFill'), foeFill = $('adFoeFill');
@@ -535,8 +533,8 @@ function renderArenaDockVisual() {
   foeName.textContent = fname;
 
   /* Отряд-иконки: мини-арты текущих бойцов, павшие — тускнеют.
-     v1.5.9 (perf): innerHTML перестраивается только при смене состава/
-     состояния бойцов (раньше — 5 раз/с с пересозданием img-спрайтов). */
+innerHTML перестраивается только при смене состава/
+ состояния бойцов.*/
   const heroes = battle.active ? battle.units.filter(u => u.side === 'hero') : null;
   let html = '', sqSig = '';
   if (heroes) {
@@ -563,12 +561,12 @@ function renderArenaDockVisual() {
   }
 }
 
-/* ============================================================
-   v1.3.1 ТЗ: ЖИВОЙ ВИЗУАЛ АВТОБАТЛЕРА — мини-канвас в правой
-   панели ПОД панелью «Колыбель Войны». Та же сцена, что на
-   Поле боя (фон, отряды, волна, эффекты), обрезанная по центру.
-   Клик — открыть оверлей (навешен в main.js).
-   ============================================================ */
+/*
+ЖИВОЙ ВИЗУАЛ АВТОБАТЛЕРА — мини-канвас в правой
+панели ПОД панелью «Колыбель Войны». Та же сцена, что на
+Поле боя (фон, отряды, волна, эффекты), обрезанная по центру.
+Клик — открыть оверлей (навешен в main.js).
+ ============================================================*/
 function renderMini() {
   const el = $('adCanvas'), wrap = $('arenaMini');
   if (!el || !wrap || wrap.style.display === 'none' || !wrap.offsetParent) return;
@@ -578,7 +576,7 @@ function renderMini() {
   const W = el.width, H = el.height;
   const s = W / ARENA.FIELD_W;
   const sceneH = ARENA.FIELD_H * s;
-  const offY = -(sceneH - H) / 2;             /* центр поля по вертикали */
+  const offY = -(sceneH - H) / 2; /* центр поля по вертикали */
   ctx.setTransform(s, 0, 0, s, 0, offY);
   drawBattleBg(ctx);
   let units;

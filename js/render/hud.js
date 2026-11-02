@@ -1,20 +1,20 @@
 'use strict';
-/* ============================================================
-   РЕНДЕР: HUD (render/hud.js)
-   Верхняя панель, кнопки круток (под Алтарём), большая кнопка
-   Эпохи (над Алтарём), скрытие заблокированных фич (пункт 9 ТЗ),
-   баннер режимов, тултип карт.
-   ============================================================ */
+/*
+РЕНДЕР: HUD (render/hud.js)
+Верхняя панель, кнопки круток (под Алтарём), большая кнопка
+Эпохи (над Алтарём), скрытие заблокированных фич,
+баннер режимов, тултип карт.
+ ============================================================*/
 
 /* Скрытие недоступных фич: до разблокировки их ВООБЩЕ НЕ ВИДНО.
-   v1.5.9 (perf): пишем в style/class только при изменении — вызывается 5 раз/с. */
+пишем в style/class только при изменении — вызывается 5 раз/с.*/
 function applyFeatureLocks() {
   const arenaOn = epochHasArena(epoch);
   const casinoOn = epochHasCasino(epoch);
-  /* v1.2.7: арена — компактный док под гридом + оверлей «поле боя» */
+  /* арена — компактный док под гридом + оверлей «поле боя» */
   const arenaDock = $('arenaDock'), arenaOverlay = $('arenaOverlay'), fightersPanel = $('fightersPanel');
   if (arenaDock && _hud.flDock !== arenaOn) { _hud.flDock = arenaOn; arenaDock.style.display = arenaOn ? '' : 'none'; }
-  /* v1.3.1: живой мини-визуал боя живёт вместе с панелью дока */
+  /* живой мини-визуал боя живёт вместе с панелью дока */
   const arenaMini = $('arenaMini');
   if (arenaMini && _hud.flMini !== arenaOn) { _hud.flMini = arenaOn; arenaMini.style.display = arenaOn ? '' : 'none'; }
   if (arenaOverlay && _hud.flOvl !== arenaOn) { _hud.flOvl = arenaOn; arenaOverlay.classList.toggle('hidden-feature', !arenaOn); }
@@ -22,22 +22,22 @@ function applyFeatureLocks() {
   ['bulkDup', 'bulk1', 'bulkAll'].forEach(id => { const b = $(id); if (b && _hud['fl' + id] !== arenaOn) { _hud['fl' + id] = arenaOn; b.style.display = arenaOn ? '' : 'none'; } });
   const cb = $('casinoBtn');
   if (cb && _hud.flCas !== casinoOn) { _hud.flCas = casinoOn; cb.style.display = casinoOn ? '' : 'none'; }
-  /* v1.2.9: контракты скрыты в обучении/чит-режиме — прогресс там не идёт */
+  /* контракты скрыты в обучении/чит-режиме — прогресс там не идёт */
   const ctb = $('contractsBtn');
   const ctbShow = !noSave;
   if (ctb && _hud.flContr !== ctbShow) { _hud.flContr = ctbShow; ctb.style.display = ctbShow ? '' : 'none'; }
 }
 
-/* v1.2.9.1 (perf): тяжёлые подрендеры (applyFeatureLocks, строка статистики
-   поля, слоты реликвий, шкала ритуала, бейдж контрактов) — раз в 200мс,
-   остальное (числа кристаллов/ставки/кнопки Эпохи) — каждый кадр.
-   Прямые вызовы updateHUD() (без timestamp) как раньше — всё сразу.
-   v1.5.9 (perf): диффинг DOM — updateHUD зовётся 60 раз/с, а почти все
-   его значения меняются редко. Пишем в DOM только изменённые значения
-   (кэш последних строк) — убирает лишние style recalс и перерисовки.
-   Текст на экране и логика — без изменений. */
+/* тяжёлые подрендеры (applyFeatureLocks, строка статистики
+поля, слоты реликвий, шкала ритуала, бейдж контрактов) — раз в 200мс,
+остальное (числа кристаллов/ставки/кнопки Эпохи) — каждый кадр.
+Прямые вызовы updateHUD (без timestamp) — всё сразу.
+диффинг DOM — updateHUD зовётся 60 раз/с, а почти все
+его значения меняются редко. Пишем в DOM только изменённые значения
+(кэш последних строк) — убирает лишние style recalс и перерисовки.
+ Текст на экране и логика — без изменений.*/
 let hudHeavyLast = 0;
-const _hud = {};   // кэш последних записанных значений (diffing)
+const _hud = {};  // кэш последних записанных значений (diffing)
 function hudSet(key, el, prop, val) {
   if (_hud[key] === val) return;
   _hud[key] = val;
@@ -54,19 +54,19 @@ function updateHUD(now) {
   }
   hudSet('cr', $('crystals'), 'text', fmt(crystals));
   hudSet('se', $('sealsTop'), 'text', fmt(seals));
-  /* v1.6.0: Души — мета-валюта Призыва, копятся в забеге (контракты, Арена) */
+  /* Души — мета-валюта Призыва, копятся в забеге (контракты, Арена) */
   const soulsEl = $('soulsTop');
   if (soulsEl) hudSet('souls', soulsEl, 'text', fmt(souls));
   hudSet('rate', $('rate'), 'text', '+' + calculateIncome().toFixed(2) + '/сек');
 
-  /* v1.6.0 «Гримуар»: кнопки круток и pity сняты с экрана забега.
-     Призыв живёт в Гримуаре за Души; гаранты показываются там же. */
+  /* «Гримуар»: кнопок круток и pity на экране забега НЕТ.
+ Призыв живёт в Гримуаре за Души; гаранты показываются там же.*/
 
-  /* Большая кнопка ЭПОХИ над Алтарём: всегда кликабельна —
-     порог достигнут → Вознесение, нет → открыть Меню Эпохи.
-     ФИДБЕК (раунд 4): у Эпох есть имена-темы, кнопка показывает
-     прогресс порога ЗАЛИВКОЙ фона (--pct) и честный текст
-     «НАЧАТЬ ЭПОХУ N» вместо прежнего «начать новую». */
+  /* Большая кнопка ЭПОХИ над Алтарём: всегда кликабельна
+порог достигнут → Вознесение, нет → открыть Меню Эпохи.
+у Эпох есть имена-темы, кнопка показывает
+прогресс порога ЗАЛИВКОЙ фона (--pct) и честный текст
+ «НАЧАТЬ ЭПОХУ N» вместо прежнего «начать новую».*/
   const p = epochProgress();
   const upBtn = $('epochUpBtn');
   const label = $('epochBtnLabel');
@@ -87,10 +87,10 @@ function updateHUD(now) {
   /* живой индикатор армии/бафов в строке над Алтарём */
   if (heavy) {
     if (typeof updateGridStats === 'function') updateGridStats();
-    /* Слоты реликвий над Алтарём + большая шкала ритуала (v1.2.6) */
+    /* Слоты реликвий над Алтарём + большая шкала ритуала */
     if (typeof renderRelicSlots === 'function') renderRelicSlots();
     if (typeof renderRitualBar === 'function') renderRitualBar();
-    if (typeof renderContractsBtn === 'function') renderContractsBtn(); /* v1.2.9: бейдж Тёмного Пакта */
+    if (typeof renderContractsBtn === 'function') renderContractsBtn(); /* бейдж Тёмного Пакта */
     /* Резец Тьмы: живой визуал боя в «Колыбели Войны» */
     if (typeof renderArenaDockVisual === 'function') renderArenaDockVisual();
   }
@@ -120,7 +120,7 @@ function showCardTooltip(e, card, income, r, c) {
         const pair = findPair(card, CARDS[n.item.cardId]);
         if (!pair) return null;
         /* Эффективный фактор звена считает computeIncome (linkFactors) — единая правда.
-           0 = мёртвое звено (культ вне ритуала), <1 = повтор */
+ 0 = мёртвое звено (культ вне ритуала), <1 = повтор*/
         const lf = incomeCache.linkFactors ? incomeCache.linkFactors[linkKey(r, c, n.r, n.c)] : undefined;
         const factor = lf === undefined ? 1 : lf;
         if (factor === 0) return '<span class="tt-bad">' + pair.text + ' (с ' + CARDS[n.item.cardId].name + ') — МЕРТВО: вне ритуала</span>';
@@ -150,14 +150,14 @@ function showCardTooltip(e, card, income, r, c) {
     }
     mechLine += '<div class="tt-synergy"><div class="tt-synergy-title">✦ Особенность</div><span style="color:#e8c060">' + sp + '</span>' + spStatus + '</div>';
   }
-  /* ФИДБЕК 3+6: культисты — статус ритуала + НАГЛЯДНЫЕ схемы формаций */
+  /* культисты — статус ритуала + НАГЛЯДНЫЕ схемы формаций */
   mechLine += cultistTooltipHTML(card, r, c);
-  /* ФИДБЕК 4: звери — РАЦИОН вместо синергий */
+  /* звери — РАЦИОН вместо синергий */
   if (card.diet && DIET_INFO[card.diet]) {
     mechLine += '<div class="tt-synergy"><div class="tt-synergy-title" style="color:' + DIET_INFO[card.diet].color + '">Рацион: ' + DIET_INFO[card.diet].name + '</div>' +
       DIET_INFO[card.diet].desc + '</div>';
   }
-  /* ФИДБЕК 5: демоны — текущие угли Хаоса */
+  /* демоны — текущие угли Хаоса */
   if (card.faction === 'demon' && r !== undefined && FACTION_INFO[faction].mechanic === 'chaos') {
     const it = grid[r][c];
     if (it) {
@@ -169,7 +169,7 @@ function showCardTooltip(e, card, income, r, c) {
       mechLine += '<div class="tt-synergy"><div class="tt-synergy-title">Угли Хаоса</div>' + st + '</div>';
     }
   }
-  /* v1.4.0: ЗАКОН И КАРА столба (реликвия в этом столбце) */
+  /* ЗАКОН И КАРА столба (реликвия в этом столбце) */
   if (r !== undefined && c !== undefined && epoch >= RELIC_SLOT_EPOCH) {
     const rel = relicAtCol(c);
     if (rel) mechLine += '<div class="tt-synergy"><div class="tt-synergy-title">⚒ Закон столба: ' + rel.name + '</div>' +
@@ -188,9 +188,9 @@ function showCardTooltip(e, card, income, r, c) {
   moveTooltip(e);
 }
 
-/* ------- Ритуал культистов в тултипе (v1.2.7: формации без пустых клеток) -------
-   Схема — мини-грид: 🔶 алтарь (золотой), фиолетовый — культист,
-   тёмный — пустая клетка. Активная формация подсвечена. */
+/* ------- Ритуал культистов в тултипе (: формации без пустых клеток) -------
+Схема — мини-грид: 🔶 алтарь (золотой), фиолетовый — культист,
+ тёмный — пустая клетка. Активная формация подсвечена.*/
 function formationDiagram(kind, activeKind) {
   const cellsDef = {
     cross:  { size: 3, cult: [[0, 1], [1, 0], [2, 1], [1, 2]], empty: [] },

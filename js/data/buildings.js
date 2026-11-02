@@ -1,12 +1,12 @@
 'use strict';
-/* ============================================================
-   ДАННЫЕ + ДВИЖОК: ЗДАНИЯ (data/buildings.js) — v1.2.5
-   Здание — особый тип карты (rarity 'B'): постройка с аурой
-   и/или периодическим эффектом. Ставится как карта, эффекты
-   НЕ растут от стаков (только доход клетки).
-   Эффекты зданий читаются экономикой (INC_CTX.bld) и тиками
-   (tickBuildings в logic/faction_mechanics.js).
-   ============================================================ */
+/*
+ДАННЫЕ + ДВИЖОК: ЗДАНИЯ (data/buildings.js)
+Здание — особый тип карты (rarity 'B'): постройка с аурой
+и/или периодическим эффектом. Ставится как карта, эффекты
+НЕ растут от стаков (только доход клетки).
+Эффекты зданий читаются экономикой (INC_CTX.bld) и тиками
+(tickBuildings в logic/faction_mechanics.js).
+ ============================================================*/
 
 /* Радиус ауры здания (клетки). 0 = эффект глобальный. */
 const BUILDING_AURA = {
@@ -25,25 +25,25 @@ const BLD_SUMMON_POOL = {
   bl_gates: ['d0', 'd1', 'd2', 'd3']
 };
 
-/* Радиусы туманных зон — ТОЛЬКО у зданий (v1.5.5): у здания зона —
-   настоящая механика с радиусом (Кладбище призывает, Склеп защищает
-   звенья, Обелиск ускоряет, Вольер щитит), подсветка показывает клетки
-   под эффектом. У карт-юнитов аур НЕТ вообще — ни у Лича, ни у демонов,
-   зверей и Хтони (фидбек: в v1.5.4 вычеркнули только u10/u11 — недосмотр).
-   Подсказки юнитов живут в тултипах ✦, а не в тумане на клетках. */
+/* Радиусы туманных зон — ТОЛЬКО у зданий : у здания зона
+настоящая механика с радиусом (Кладбище призывает, Склеп защищает
+звенья, Обелиск ускоряет, Вольер щитит), подсветка показывает клетки
+под эффектом. У карт-юнитов аур НЕТ вообще — ни у Лича, ни у демонов,
+зверей и Хтони.
+ Подсказки юнитов живут в тултипах ✦, а не в тумане на клетках.*/
 function auraRadiusOf(cardId) {
   return BUILDING_AURA[cardId] !== undefined ? BUILDING_AURA[cardId] : 0;
 }
 
 /* ---------------- ДВИЖОК АУР ЗДАНИЙ ----------------
-   Пересобирается в computeIncome. INC_CTX.bld[ключ] = сколько аур
-   данного вида накрывает клетку. Аура НЕ растёт от стаков здания.
-   v1.4.0 ⛓ ПРИКОВАННЫЕ ЗДАНИЯ: здание с орто-соседом «Скованный Цепью»
-   (u11) — chainedAt; его аура ×1.5 (graveM/gatesM/glacierM/obeliskM),
-   глобальные флаги pen/pole/spring/pit/wells/mound, зона прикованного
-   Склепа защищает 4 звена пары вместо 2. 
-   v1.4.2: абилка прикованного здания больше НЕ дублируется —
-   КУЛДАУН между срабатываниями вдвое короче (см. tickBuildings). */
+Пересобирается в computeIncome. INC_CTX.bld[ключ] = сколько аур
+данного вида накрывает клетку. Аура НЕ растёт от стаков здания.
+⛓ ПРИКОВАННЫЕ ЗДАНИЯ: здание с орто-соседом «Скованный Цепью»
+(u11) — chainedAt; его аура ×1.5 (graveM/gatesM/glacierM/obeliskM),
+глобальные флаги pen/pole/spring/pit/wells/mound, зона прикованного
+Склепа защищает 4 звена пары вместо 2.
+абилка прикованного здания больше НЕ дублируется
+ КУЛДАУН между срабатываниями вдвое короче (см. tickBuildings).*/
 function buildBuildingAuras() {
   const bld = { grave: {}, graveM: {}, obelisk: {}, obeliskM: {}, gates: {}, gatesM: {}, glacier: {}, glacierM: {},
     pen: {}, pole: {}, spring: {}, pit: {}, wells: 0, mound: 0,
@@ -54,7 +54,7 @@ function buildBuildingAuras() {
     const it = grid[r][c]; if (!it) continue;
     if (!CARDS[it.cardId] || !CARDS[it.cardId].isBuilding) continue;
     const R = BUILDING_AURA[it.cardId]; if (R === undefined) continue;
-    const chained = chainedHere(r, c);   /* ⛓ Приковано Скованным Цепью */
+    const chained = chainedHere(r, c); /* ⛓ Приковано Скованным Цепью */
     if (chained) bld.chainedAt.add(r + ',' + c);
     const add = key => { for (let dr = -R; dr <= R; dr++) for (let dc = -R; dc <= R; dc++) {
       const nr = r + dr, nc = c + dc;
@@ -82,7 +82,7 @@ function buildBuildingAuras() {
 }
 
 /* Зона Склепа (звенья нежити в радиусе 2 от каждого Склепа не слабеют) +
-   зона ПРИКОВАННОГО Склепа (защищает до 4 звеньев пары — мощность ×2) */
+ зона ПРИКОВАННОГО Склепа (защищает до 4 звеньев пары — мощность ×2)*/
 function buildCryptZone() {
   const zone = new Set();
   const chained = new Set();
@@ -102,13 +102,13 @@ function buildCryptZone() {
 }
 
 /* Тик периодических зданий: призыв и Жатва.
-   v1.4.2 ⛓ ПРИКОВАННЫЕ ЗДАНИЯ (Скованный Цепью рядом): абилка больше НЕ
-   дублируется — КУЛДАУН между срабатываниями ВДВОЕ КОРОЧЕ:
-   Кладбище 12с → 6с, Врата Ада 25с → 12.5с, ЖАТВА Горы 30с → 15с. */
+⛓ ПРИКОВАННЫЕ ЗДАНИЯ (Скованный Цепью рядом): абилка больше НЕ
+дублируется — КУЛДАУН между срабатываниями ВДВОЕ КОРОЧЕ:
+ Кладбище 12с → 6с, Врата Ада 25с → 12.5с, ЖАТВА Горы 30с → 15с.*/
 let bldGraveTimer = 0, bldGatesTimer = 0, bldMoundTimer = 0;
-/* v1.5.0 «если активно — дышит»: в момент срабатывания способности здание
-   получает fxUntil — renderGrid даст карте класс fx-live (вспышка-каст),
-   а buildAuraMap оживит туман её ауры. Пока здание молчит — всё стоит тихо. */
+/* в момент срабатывания способности здание
+получает fxUntil — renderGrid даст карте класс fx-live (вспышка-каст),
+ а buildAuraMap оживит туман её ауры. Пока здание молчит — всё стоит тихо.*/
 function fxMarkBuildings(id, secs) {
   const until = gameTime + secs;
   for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
@@ -137,8 +137,8 @@ function tickBuildings(dt) {
       bldGraveTimer = 0;
       const id = pick(BLD_SUMMON_POOL.bl_grave);
       inventory[id] = (inventory[id] || 0) + 1; discovered.add(id);
-      stats.summons = (stats.summons || 0) + 1; /* v1.2.9: для контрактов */
-      fxMarkBuildings('bl_grave', 3); /* v1.5.0: кладбищенский туман оживает на 3с */
+      stats.summons = (stats.summons || 0) + 1; /* для контрактов */
+      fxMarkBuildings('bl_grave', 3); /* кладбищенский туман оживает на 3с */
       toast('🪦 Кладбище подняло: <b>' + CARDS[id].name + '</b> (в коллекции)' + (graveChained ? ' ⛓' : ''), 'summon', 45);
       changed = true;
     }
@@ -151,8 +151,8 @@ function tickBuildings(dt) {
       bldGatesTimer = 0;
       const id = pick(BLD_SUMMON_POOL.bl_gates);
       inventory[id] = (inventory[id] || 0) + 1; discovered.add(id);
-      stats.summons = (stats.summons || 0) + 1; /* v1.2.9: для контрактов */
-      fxMarkBuildings('bl_gates', 3); /* v1.5.0: вспышка портала на 3с */
+      stats.summons = (stats.summons || 0) + 1; /* для контрактов */
+      fxMarkBuildings('bl_gates', 3); /* вспышка портала на 3с */
       toast('🚪 Врата Ада выпустили: <b>' + CARDS[id].name + '</b> (в коллекции)' + (gatesChained ? ' ⛓' : ''), 'summon', 45);
       changed = true;
     }
@@ -166,7 +166,7 @@ function tickBuildings(dt) {
       bldMoundTimer = 0;
       const mult = Math.min(3, 2 + 0.25 * (mounds - 1));
       altBuff.mult = mult; altBuff.until = gameTime + 5;
-      fxMarkBuildings('bl_mound', 5); /* v1.5.0: Гора дышит, пока идёт ЖАТВА (5с) */
+      fxMarkBuildings('bl_mound', 5); /* Гора дышит, пока идёт ЖАТВА (5с) */
       altBuff.label = '🗿 ЖАТВА ×' + mult.toFixed(2).replace(/\.?0+$/, '') + (moundChained ? ' ⛓' : '');
       toast('🗿 Гора костей отдаёт накопленное: доход ×' + mult.toFixed(2).replace(/\.?0+$/, '') + ' на 5 секунд!' + (moundChained ? ' ⛓' : ''), 'mound', 40);
       updateHUD();

@@ -1,13 +1,13 @@
 'use strict';
-/* ============================================================
-   ЛОГИКА: АРЕНА «КОЛЫБЕЛЬ ВОЙНЫ» — АВТОБАТЛЕР (logic/arena.js)
-   ФИДБЕК 10 (раунд 3): вместо кликера — живой бой. Отряды игрока
-   (из карт-бойцов) маршируют вправо, волны врагов — влево; юниты
-   сами выбирают цели, бьют с откатами, терпят потери. Всё анимировано
-   (canvas, render/arena_render.js). Павшие бойцы, как и раньше,
-   ВСЕГДА возвращаются после боя — карты не теряются.
-   Состояние боя (battle) — мгновенное, в сохранение не пишется.
-   ============================================================ */
+/*
+ЛОГИКА: АРЕНА «КОЛЫБЕЛЬ ВОЙНЫ» — АВТОБАТЛЕР (logic/arena.js)
+вместо кликера — живой бой. Отряды игрока
+(из карт-бойцов) маршируют вправо, волны врагов — влево; юниты
+сами выбирают цели, бьют с откатами, терпят потери. Всё анимировано
+(canvas, render/arena_render.js). Павшие бойцы,
+ВСЕГДА возвращаются после боя — карты не теряются.
+Состояние боя (battle) — мгновенное, в сохранение не пишется.
+ ============================================================*/
 
 let battle = { units: [], floats: [], projs: [], sparks: [], active: false, t: 0, last: 0, shake: 0, over: false, banner: null };
 
@@ -33,7 +33,7 @@ function calcTotalHp() {
   return hp;
 }
 
-/* ---------------- ВОЛНА ВРАГОВ (v1.2: элита + боссы по фракциям) ---------------- */
+/* ---------------- ВОЛНА ВРАГОВ (: элита + боссы по фракциям) ---------------- */
 function generateWave(floor, room) {
   const isBoss = room === ARENA.roomsPerFloor;
   const isElite = isEliteRoom(room);
@@ -97,8 +97,8 @@ function bulkFight(mode) {
 }
 
 /* ---------------- ПОСТРОЕНИЕ ОТРЯДОВ ИГРОКА ----------------
-   Каждая карта → отряды по ≤3 копии (HP/урон умножаются), макс 8 отрядов.
-   Остаток сверх лимита «сливается» в последний отряд (знаменосец). */
+Каждая карта → отряды по ≤3 копии (HP/урон умножаются), макс 8 отрядов.
+ Остаток сверх лимита «сливается» в последний отряд (знаменосец).*/
 function buildHeroSquads() {
   const ids = Object.keys(fighters).sort((a, b) => CARDS[b].rarity - CARDS[a].rarity);
   const squads = [];
@@ -131,7 +131,7 @@ function spawnBattle() {
     battle.units.push({
       side: 'hero', cardId: s.cardId, k: s.k, rarity: r, boss: false,
       name: c.name, img: CARD_ART_DIR + s.cardId + '.png',
-      /* ФИДБЕК «не затянуто»: армии стартуют БЛИЗКО (марш ~3-5с, а не ~15с) */
+      /* армии стартуют БЛИЗКО (марш ~3-5с, а не ~15с) */
       x: 140 + Math.floor(i / 3) * 46 + rand(8), y: laneY(i) + rand(14) - 7,
       hp: fighterHp(r) * s.k, maxHp: fighterHp(r) * s.k,
       dmg: fighterDmg(r) * s.k, range: r >= 5 ? 100 : r === 4 ? 70 : 34,
@@ -159,10 +159,10 @@ function spawnBattle() {
 }
 
 /* --------------- УРОН, СНАРЯДЫ, ЭФФЕКТЫ УДАРА ---------------
-   ФИДБЕК (раунд 4, «доработай визуал»): стрелки (★4/★5 и боссы)
-   ПАЛЯТ снарядами (болты летят по дуге-трассе), ближний бей —
-   с взмахом (слэш-арка). Попадания сыпят искры, смерти трясут
-   экран и поднимают «душу». Урон считается в одном месте. */
+стрелки (★4/★5 и боссы)
+ПАЛЯТ снарядами (болты летят по дуге-трассе), ближний бей
+с взмахом (слэш-арка). Попадания сыпят искры, смерти трясут
+ экран и поднимают «душу». Урон считается в одном месте.*/
 function applyHit(attacker, tgt, dmgOut) {
   tgt.hp -= dmgOut;
   tgt.flash = 1;
@@ -292,23 +292,23 @@ function endBattle(win) {
   battle.shake = Math.max(battle.shake, win ? 6 : 4);
   const enemy = arenaState.enemy;
   if (win) {
-    /* v1.2: СЕРИЯ ПОБЕД — каждая победа подряд усиливает награду (кап ×1.5),
-       поражение и отступление серию обрывают */
+    /* СЕРИЯ ПОБЕД — каждая победа подряд усиливает награду (кап ×1.5),
+ поражение и отступление серию обрывают*/
     arenaStreak++;
     stats.streakMax = Math.max(stats.streakMax || 0, arenaStreak);
     const streakMult = 1 + Math.min(0.5, 0.05 * (arenaStreak - 1));
     let reward = Math.round(arenaReward(arenaState.floor, arenaState.room) * streakMult);
     if (enemy && enemy.isElite) stats.eliteKills = (stats.eliteKills || 0) + 1;
-    crystals += reward; incomeExempt += reward; /* v1.2.6: награды Арены НЕ двигают порог Эпохи */
+    crystals += reward; incomeExempt += reward; /* награды Арены НЕ двигают порог Эпохи */
     sfx(enemy && enemy.isBoss ? 'boss' : 'win');
     fxFxAt($('arenaPanel'), enemy && enemy.isBoss ? ['#c9a227', '#fff', '#ff6b6b'] : ['#80e060', '#fff'], enemy && enemy.isBoss ? 40 : 18);
     if (enemy && enemy.isBoss) {
       stats.bossKills = (stats.bossKills || 0) + 1;
-      /* v1.2: ТРОФЕЙ БОССА — ВЫБОР из трёх наград (вместо фиксированной ★3) */
+      /* ТРОФЕЙ БОССА — ВЫБОР из трёх наград (вместо фиксированной ★3) */
       showBossTrophy(reward);
     }
     arenaState.cleared[arenaState.room - 1] = true;
-    stats.roomsWon = (stats.roomsWon || 0) + 1; /* v1.2.9: счётчик для контрактов */
+    stats.roomsWon = (stats.roomsWon || 0) + 1; /* счётчик для контрактов */
     arenaState.status = (enemy && enemy.isBoss ? '🏆 БОСС ПОВЕРЖЕН! +' + fmt(reward) + ' ТЭ' :
       (enemy && enemy.isElite ? 'Элита разбита! +' : 'Победа! +') + fmt(reward) + ' ТЭ') +
       (arenaStreak > 1 ? ' · Серия ×' + streakMult.toFixed(2) : '');
@@ -324,8 +324,8 @@ function endBattle(win) {
     updateArenaUI(); renderFighters();
   }
   /* Чуть позже поле очищается — дать баннеру и гибели доиграть.
-     ЗАЩИТА: если в это время уже начался НОВЫЙ бой (авторежим) —
-     поле не трогаем. */
+ЗАЩИТА: если в это время уже начался НОВЫЙ бой (авторежим)
+ поле не трогаем.*/
   setTimeout(() => {
     if (!battle.over) return; /* пошёл новый бой — очистка отменяется */
     battle.units = []; battle.floats = []; battle.projs = []; battle.sparks = [];
@@ -334,8 +334,8 @@ function endBattle(win) {
   }, 2000);
 }
 
-/* v1.2: ВЫБОР ТРОФЕЯ БОССА — три пути силы:
-   добыча (Тёмная энергия ×2 сверху) / реликвия / призыв (15 бесплатных круток) */
+/* ВЫБОР ТРОФЕЯ БОССА — три пути силы:
+ добыча (Тёмная энергия ×2 сверху) / реликвия / призыв (15 бесплатных круток)*/
 function showBossTrophy(reward) {
   const bonus = reward * 2;
   const avail = RELICS.filter(r => !hasRelic(r.id) && r.faction === faction);
@@ -353,7 +353,7 @@ function showBossTrophy(reward) {
       const t = el.dataset.t;
       close_('trophyModal');
       if (t === 'gold') {
-        crystals += bonus; incomeExempt += bonus; /* v1.2.6: трофеи босса — не в порог Эпохи */
+        crystals += bonus; incomeExempt += bonus; /* трофеи босса — не в порог Эпохи */
         toast('💰 Добыча босса: +' + fmt(bonus) + ' ' + DE_IMG + '!');
       } else if (t === 'relic') {
         if (avail.length) { grantRelic(pick(avail).id, false); fxConfetti(50); }
@@ -391,7 +391,7 @@ function advanceArenaRoom() {
     arenaState.room = 1;
     arenaState.cleared = Array(ARENA.roomsPerFloor).fill(false);
     arenaState.status = 'Этаж ' + arenaState.floor + '. Новые волны!';
-    /* v1.6.0: ДУШИ — за каждые 5 этажей Арены (+1 Душа за этаж 5, 10, 15…) */
+    /* ДУШИ — за каждые 5 этажей Арены (+1 Душа за этаж 5, 10, 15…) */
     if (arenaState.floor % 5 === 0) {
       souls += 1; saveMeta();
       const dk = $('arenaDock');
@@ -443,7 +443,7 @@ function arenaRetreat() {
   battle.active = false; battle.over = false; battle.banner = null;
   battle.units = []; battle.floats = []; battle.projs = []; battle.sparks = [];
   arenaState.fighting = false;
-  arenaStreak = 0; /* v1.2: отступление обрывает серию */
+  arenaStreak = 0; /* отступление обрывает серию */
   reviveFighters();
   arenaState.status = 'Вы отступили. Отряды восстановлены, волна соберётся заново.';
   updateArenaUI(); renderFighters();

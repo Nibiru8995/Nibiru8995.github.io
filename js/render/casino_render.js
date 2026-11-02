@@ -1,10 +1,10 @@
 'use strict';
-/* ============================================================
-   РЕНДЕР: КАЗИНО (render/casino_render.js)
-   Хаб, слоты, авиатор, рулетка, блэкджек (v1.3.0 — покер заменён по ТЗ). Математика — logic/casino_logic.js.
-   Минимальная ставка MIN_BET (data/casino.js). Казино открывается
-   в Эпохе 4 (CASINO_EPOCH, проверка ниже).
-   ============================================================ */
+/*
+РЕНДЕР: КАЗИНО (render/casino_render.js)
+Хаб, слоты, авиатор, рулетка, блэкджек ( — покер заменён по). Математика — logic/casino_logic.js.
+Минимальная ставка MIN_BET (data/casino.js). Казино открывается
+в Эпохе 4 (CASINO_EPOCH, проверка ниже).
+ ============================================================*/
 
 /* ---------------- Хаб ---------------- */
 mk('hub', '<h2>🎰 Казино</h2><div class="hubg"><button data-g="slots">🎰<br>Слоты</button><button data-g="aviator">🦅<br>Авиатор</button><button data-g="roulette">🎡<br>Рулетка</button><button data-g="blackjack">🂡<br>Блэкджек</button></div><button class="btn btn-take" style="align-self:center" id="hubX">Закрыть</button>');
@@ -103,10 +103,9 @@ function slotsSpin() {
           }
         });
         const resEl = $('slotResult');
-        /* v1.5.13 (QA итерация 1): слоты могут выплатить МЕНЬШЕ ставки
-           (мелкие линии ×0.38) — раньше при этом писалось «Выигрыш: N ТЭ»,
-           и игрок видел «победу», хотя энергии стало меньше. Показываем
-           ЧЕСТНЫЙ итог: класс и знак по реальной разнице. */
+        /* Слоты могут выплатить МЕНЬШЕ ставки (мелкие линии ×0.38).
+ЧЕСТНЫЙ итог: класс и знак по реальной разнице — она может
+ быть отрицательной.*/
         const slotNet = winAmount - casinoBet, slotXf = winData.totalWin * SLOT_WIN_FACTOR;
         let text = '';
         if (winData.totalWin >= 50) { text = '🎉 ДЖЕКПОТ! +' + fmt(slotNet) + ' ТЭ (x' + slotXf.toFixed(1) + ')'; resEl.className = 'jackpot'; }
@@ -129,7 +128,7 @@ function slotsSpin() {
   requestAnimationFrame(spinFrame);
 }
 
-/* ---------------- Авиатор (v1.5.15 — ПАДАЛЬЩИК вместо самолёта) ---------------- */
+/* ---------------- Авиатор ( — ПАДАЛЬЩИК вместо самолёта) ---------------- */
 let av = null, avH = [];
 let scavImg = null;
 function avSprite() {
@@ -159,7 +158,7 @@ function avDraw(m, t, boom) {
   c.beginPath();
   for (let s = 0; s <= t; s += t / 60 || 1) { const v = Math.exp(.1 * s); c.lineTo(X(s), Y(v)); }
   c.lineTo(X(t), Y(m)); c.stroke();
-  /* v1.5.15: вместо ✈ — силуэт ПАДАЛЬЩИКА (спрайт с лёгким покачиванием) */
+  /* вместо ✈ — силуэт ПАДАЛЬЩИКА (спрайт с лёгким покачиванием) */
   const sp = boom ? null : avSprite();
   if (sp) {
     const bob = Math.sin(t * 6) * 2;
@@ -206,12 +205,12 @@ function avTick(now) {
   requestAnimationFrame(avTick);
 }
 
-/* ---------------- Рулетка (v1.5.15 «Таверна Тьмы») ----------------
-   Колесо рисуется на CANVAS: 37 секторов с ЦИФРАМИ, костяной обод
-   с заклёпками, тёмная нежить-палитра. МЕТКА (указатель) — СТАТИЧНЫЙ
-   элемент над колесом, НЕ крутится вместе с ним; выпавшее число
-   появляется в неподвижной ступице. Фон экрана — сгенерированная
-   таверна; иконки ставок — капля крови / череп (спрайты). */
+/* ---------------- Рулетка ----------------
+Колесо рисуется на CANVAS: 37 секторов с ЦИФРАМИ, костяной обод
+с заклёпками, тёмная нежить-палитра. МЕТКА (указатель) — СТАТИЧНЫЙ
+элемент над колесом, НЕ крутится вместе с ним; выпавшее число
+появляется в неподвижной ступице. Фон экрана — сгенерированная
+ таверна; иконки ставок — капля крови / череп (спрайты).*/
 let rb = {}, chip = ROULETTE_CHIPS[0], rrot = 0;
 const rcol = n => n === 0 ? '#0a7a2a' : ROULETTE_RED.has(n) ? '#b01818' : '#1a1a1a';
 const ICON_RED = '<img class="rico" src="assets/casino/icon_red.png' + ASSET_VER_Q + '" alt="красное">';
@@ -238,7 +237,7 @@ function gRoulette() {
   drawRouletteWheel();
 }
 /* Колесо на канве: секторы + ЦИФРЫ + костяной обод с заклёпками.
-   Рисуется ОДИН раз — вращение через CSS transform (дёшево для перфа). */
+ Рисуется ОДИН раз — вращение через CSS transform (дёшево для перфа).*/
 function drawRouletteWheel() {
   const cv = $('rwC'); if (!cv) return;
   const c = cv.getContext('2d'), W = cv.width, R = W / 2, seg = Math.PI * 2 / 37;
@@ -268,8 +267,8 @@ function rMark() {
   });
 }
 function rouletteBoardClick(e) {
-  /* v1.5.15: внутри ячеек теперь спрайты-иконки — таргет может быть <img>,
-     берём БЛИЖАЙШУЮ ячейку [data-chip]/[data-k], а не сам e.target */
+  /* внутри ячеек теперь спрайты-иконки — таргет может быть <img>,
+ берём БЛИЖАЙШУЮ ячейку [data-chip]/[data-k], а не сам e.target*/
   const chipEl = e.target.closest('[data-chip]');
   if (chipEl) {
     chip = +chipEl.dataset.chip;
@@ -293,7 +292,7 @@ function rSpin() {
   crystals -= tot; updateHUD(); busy = 1;
   const n = Math.floor(Math.random() * 37), k = ROULETTE_WHEEL.indexOf(n), seg = 360 / 37;
   rrot = (Math.floor(rrot / 360) + 7) * 360 - (k + .5) * seg;
-  /* v1.5.15: крутится ТОЛЬКО колесо (канва); метка и ступица с числом — статичны */
+  /* крутится ТОЛЬКО колесо (канва); метка и ступица с числом — статичны */
   $('rwC').style.transform = 'rotate(' + rrot + 'deg)';
   $('rn').textContent = '?';
   $('rR').textContent = 'Шарик катится…';
@@ -312,16 +311,16 @@ function rSpin() {
   }, 4300);
 }
 
-/* ---------------- БЛЭКДЖЕК (v1.3.0; v1.5.16 — колода «Кровь и Кости») ----------------
-   Стол 1 на 1, шуе из 4 колод. Блэкджек платит 3:2, дилер добирает до 17.
-   Кнопки: ЕЩЁ / ХВАТИТ / УДВОИТЬ (только первый ход) / НОВАЯ РАЗДАЧА.
-   v1.5.16: полная колода ПЕРЕГЕНЕРИРОВАНА из СПРАЙТОВ ИГРЫ (assets/cards/,
-   генератор scripts/gen_bj_deck.py) — ВАЛЕТ = Псалмопевец (u12), ДАМА =
-   Плакальщик (u6), КОРОЛЬ = Владыка Тлена (u10), ТУЗ = Лич (u8); числовые —
-   классическая раскладка векторных мастей (пики/трефы костяные, черви/бубны
-   кровавые), рубашка — череп в рунном кольце на решётке. Путь прежний:
-   assets/casino/bj_<ранг>_<масть>.png. CSS: 64×90, веер, bjPop-сдача.
-   СПРАЙТЫ ГРИДА НЕ ТРОНУТЫ. Математика — logic/casino_logic.js (bjShoe/bjHandVal...). */
+/* ---------------- БЛЭКДЖЕК (; — колода «Кровь и Кости») ----------------
+Стол 1 на 1, шуе из 4 колод. Блэкджек платит 3:2, дилер добирает до 17.
+Кнопки: ЕЩЁ / ХВАТИТ / УДВОИТЬ (только первый ход) / НОВАЯ РАЗДАЧА.
+полная колода ПЕРЕГЕНЕРИРОВАНА из СПРАЙТОВ ИГРЫ (assets/cards/,
+генератор scripts/gen_bj_deck.py) — ВАЛЕТ = Псалмопевец (u12), ДАМА =
+Плакальщик (u6), КОРОЛЬ = Владыка Тлена (u10), ТУЗ = Лич (u8); числовые
+классическая раскладка векторных мастей (пики/трефы костяные, черви/бубны
+кровавые), рубашка — череп в рунном кольце на решётке. Путь прежний:
+assets/casino/bj_<ранг>_<масть>.png. CSS: 64×90, веер, bjPop-сдача.
+ СПРАЙТЫ ГРИДА НЕ ТРОНУТЫ. Математика — logic/casino_logic.js (bjShoe/bjHandVal...).*/
 let bj = null, bjLast = '';
 const bjImg = c => '<img class="bjc" src="assets/casino/bj_' + (c % 13) + '_' + ((c / 13 | 0) % 4) + '.png' + ASSET_VER_Q + '" alt="' + BJ_RANKS[c % 13] + BJ_SUITS[(c / 13 | 0) % 4] + '">';
 const BJ_BACK = '<img class="bjc back" src="assets/casino/bj_back.png' + ASSET_VER_Q + '" alt="?">';
@@ -358,10 +357,10 @@ function bjRender(showDealer, note) {
 }
 function bjSettle(msg) {
   let p = 0;
-  if (bj.outcome === 'win') p = bj.pot * 2;              // ставка + выигрыш 1:1
-  else if (bj.outcome === 'bj') p = bj.pot + Math.floor(bj.pot * BJ_PAY); // 3:2
-  else if (bj.outcome === 'push') p = bj.pot;            // ничья — возврат
-  else if (bj.outcome === 'surr') p = Math.floor(bj.pot / 2); // сдача — половина
+  if (bj.outcome === 'win') p = bj.pot * 2;  // ставка + выигрыш 1:1
+  else if (bj.outcome === 'bj') p = bj.pot + Math.floor(bj.pot * BJ_PAY);  // 3:2
+  else if (bj.outcome === 'push') p = bj.pot;  // ничья — возврат
+  else if (bj.outcome === 'surr') p = Math.floor(bj.pot / 2);  // сдача — половина
   crystals += p; updateHUD();
   const net = p - bj.pot;
   rec('blackjack', net);

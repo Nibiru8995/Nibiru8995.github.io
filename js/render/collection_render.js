@@ -1,19 +1,19 @@
 'use strict';
-/* ============================================================
-   РЕНДЕР: КОЛЛЕКЦИЯ (render/collection_render.js)
-   Вкладки: открытые фракции + РЕЛИКВИИ (жизнь в коллекции,
-   слоты столбов — ряд над гридом). Фильтр редкостей.
-   v1.2.6: ПРОДАЖА ДУБЛИКАТОВ — сток для сотен лишних карт
-   (к середине забега инвентарь раздувался до 300-400 копий).
-   Кнопки «в бой» видны только с открытой Ареной.
-   ============================================================ */
+/*
+РЕНДЕР: КОЛЛЕКЦИЯ (render/collection_render.js)
+Вкладки: открытые фракции + РЕЛИКВИИ (жизнь в коллекции,
+слоты столбов — ряд над гридом). Фильтр редкостей.
+ПРОДАЖА ДУБЛИКАТОВ — сток для сотен лишних карт
+(к середине забега инвентарь раздувался до 300-400 копий).
+Кнопки «в бой» видны только с открытой Ареной.
+ ============================================================*/
 
 let relicTabActive = false;
 
-/* ---- СТОК КАРТ: v1.6.0 продажа дубликатов ВЫКЛЮЧЕНА ----
-   Инвентарь забега — это выданная колода, продавать её нельзя.
-   Функции оставлены: sellPriceOf может пригодиться Улучшениям.
-   Дубликаты вечной коллекции копятся под будущие апгрейды. */
+/* ---- СТОК КАРТ: продажа дубликатов ВЫКЛЮЧЕНА ----
+Инвентарь забега — это выданная колода, продавать её нельзя.
+Функции оставлены: sellPriceOf может пригодиться Улучшениям.
+ Дубликаты вечной коллекции копятся под будущие апгрейды.*/
 function sellPriceOf(card) {
   const base = { B: 200, 3: 600, 4: 3000, 5: 12000 }[rarityRank(card.rarity)] || 200;
   return Math.round(base * (1 + 0.4 * (epoch - 1)));
@@ -25,7 +25,7 @@ function sellDupesOf(id, silent) {
   const gold = n * sellPriceOf(CARDS[id]);
   inventory[id] = keep;
   crystals += gold; incomeExempt += gold;
-  stats.soldGold = (stats.soldGold || 0) + gold; /* v1.2.9: счётчик для контрактов */
+  stats.soldGold = (stats.soldGold || 0) + gold; /* счётчик для контрактов */
   if (!silent) toast('💰 Продано «' + CARDS[id].name + '» ×' + n + ' → +' + fmtShort(gold) + ' 💎 (осталось ' + keep + ')');
   return gold;
 }
@@ -51,8 +51,7 @@ function renderCollection() {
   renderRarityFilter();
 
   /* Вкладки: заблокированные фракции не отображаем вовсе.
-     Резец Тьмы: сквозной фильтр «Все» убран — первая вкладка «Фракция»
-     показывает карты текущей Эпохи. */
+ Первая вкладка «Фракция» показывает карты текущей Эпохи.*/
   const tabsEl = $('collectionTabs');
   tabsEl.innerHTML = '';
   const invFactions = [...new Set(Object.keys(inventory).map(id => CARDS[id].faction))];
@@ -173,7 +172,7 @@ function placeRelicCol(id, c) {
   toast(r.icon + ' «' + r.name + '» встала в столб ' + (c + 1));
   sfx('place');
   computeIncome(); updateHUD(); saveRun();
-  enforceRelicBans(false); /* v1.4.0: кара-запрет немедленно изгоняет чужие карты */
+  enforceRelicBans(false); /* кара-запрет немедленно изгоняет чужие карты */
   renderGrid(); renderCollection();
 }
 
@@ -188,8 +187,8 @@ function renderRarityFilter() {
 
 function renderActions() {
   const el = $('cardActions');
-  /* Резец Тьмы: масс-кнопка «Продать дубликаты» снята с экрана.
-     sellAllDupes/sellDupesOf живут в коде — судьба решается отдельно. */
+  /* Масс-кнопки «Продать дубликаты» на экране НЕТ
+ (sellAllDupes/sellDupesOf в коде не привязаны к интерфейсу).*/
   if (relicTabActive) {
     el.innerHTML = '<span class="act-hint">Реликвии — усиливают один столб Алтаря (у культистов — весь ритуал). Живут до конца Эпохи.</span>' +
       '<button id="autoBtn2">Стак</button>';
@@ -198,8 +197,8 @@ function renderActions() {
       '<button id="autoBtn2">Стак</button>';
   } else {
     const c = CARDS[pendingCard], n = inventory[pendingCard];
-    /* v1.6.0: продажа дубликатов снята — инвентарь забега = колода,
-       дубликаты коллекции копятся под будущие Улучшения */
+    /* Продажи дубликатов НЕТ: инвентарь забега = колода,
+ дубликаты коллекции копятся под будущие Улучшения*/
     el.innerHTML = '<b>' + cardArtHTML(c, 'inline-art', '') + ' ' + c.name + '</b> ×' + n +
       ' <button data-n="1">В бой ×1</button>' + (n > 5 ? '<button data-n="5">В бой ×5</button>' : '') +
       (n > 1 ? '<button data-n="' + n + '">В бой все (' + n + ')</button>' : '') +
