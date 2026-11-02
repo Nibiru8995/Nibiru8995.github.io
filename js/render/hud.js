@@ -1,16 +1,16 @@
 'use strict';
 /* ============================================================
-   РЕНДЕР: HUD (render/hud.js)
-   Верхняя панель, кнопки круток (под Алтарём), большая кнопка
-   Эпохи (над Алтарём), скрытие заблокированных фич (пункт 9 ТЗ),
-   баннер режимов, тултип карт.
+   РЕНДЕР: HUD (render/hud.js) — v1.8.0
+   Верхняя панель, большая кнопка Эпохи (над Алтарём), скрытие
+   некупленных фич, баннер режимов, тултип карт. Печатей 🔱 больше
+   нет — только ТЭ и Души.
    ============================================================ */
 
-/* Скрытие недоступных фич: до разблокировки их ВООБЩЕ НЕ ВИДНО.
+/* Скрытие некупленных фич: до покупки в «Улучшениях» их ВООБЩЕ НЕ ВИДНО.
    v1.5.9 (perf): пишем в style/class только при изменении — вызывается 5 раз/с. */
 function applyFeatureLocks() {
-  const arenaOn = epochHasArena(epoch);
-  const casinoOn = epochHasCasino(epoch);
+  const arenaOn = featOwned('arena');
+  const casinoOn = featOwned('casino');
   /* v1.2.7: арена — компактный док под гридом + оверлей «поле боя» */
   const arenaDock = $('arenaDock'), arenaOverlay = $('arenaOverlay'), fightersPanel = $('fightersPanel');
   if (arenaDock && _hud.flDock !== arenaOn) { _hud.flDock = arenaOn; arenaDock.style.display = arenaOn ? '' : 'none'; }
@@ -53,8 +53,7 @@ function updateHUD(now) {
     applyFeatureLocks();
   }
   hudSet('cr', $('crystals'), 'text', fmt(crystals));
-  hudSet('se', $('sealsTop'), 'text', fmt(seals));
-  /* v1.6.0: Души — мета-валюта Призыва, копятся в забеге (контракты, Арена) */
+  /* v1.6.0: Души — мета-валюта Призыва и Улучшений */
   const soulsEl = $('soulsTop');
   if (soulsEl) hudSet('souls', soulsEl, 'text', fmt(souls));
   hudSet('rate', $('rate'), 'text', '+' + calculateIncome().toFixed(2) + '/сек');
@@ -75,7 +74,7 @@ function updateHUD(now) {
     upBtn.disabled = false;
     if (!upBtn.classList.contains('ready')) { upBtn.classList.remove('notready'); upBtn.classList.add('ready'); }
     hudSet('epPct', upBtn, 'pct', '100%');
-    hudSet('epCost', upBtn.querySelector('.cost'), 'text', 'Начать Эпоху ' + (epoch + 1) + ' «' + epochName(epoch + 1) + '» → +' + epochSealsGain(epoch) + ' печатей');
+    hudSet('epCost', upBtn.querySelector('.cost'), 'text', 'Начать Эпоху ' + (epoch + 1) + ' «' + epochName(epoch + 1) + '» → +1 Душа');
   } else {
     upBtn.disabled = false;
     if (!upBtn.classList.contains('notready')) { upBtn.classList.remove('ready'); upBtn.classList.add('notready'); }
@@ -170,7 +169,8 @@ function showCardTooltip(e, card, income, r, c) {
       mechLine += '<div class="tt-synergy"><div class="tt-synergy-title">Угли Хаоса</div>' + st + '</div>';
     }
   }
-  /* v1.4.0: ЗАКОН И КАРА столба (реликвия в этом столбце) */
+  /* v1.4.0: ЗАКОН И КАРА столба (реликвия в этом столбце) — пока реликвии
+     неоткуда взять, блок не показывается (relicAtCol вернёт null) */
   if (r !== undefined && c !== undefined && epoch >= RELIC_SLOT_EPOCH) {
     const rel = relicAtCol(c);
     if (rel) mechLine += '<div class="tt-synergy"><div class="tt-synergy-title">⚒ Закон столба: ' + rel.name + '</div>' +

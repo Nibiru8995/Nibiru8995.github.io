@@ -17,6 +17,8 @@
 
 let grimSelDeckId = null;   // выбранная колода в правой панели
 let grimRaceTab = null;     // раса фильтра коллекции (null = текущая gachaRace)
+/* v1.8.0: возврат к выбору колоды (окно выбора расы на Эпоху → «Собрать в Гримуаре») */
+let grimPickReturn = null;
 
 function openGrimuar() {
   /* Первая колода — стартовая (создастся, если колод ещё нет) */
@@ -25,7 +27,7 @@ function openGrimuar() {
     const act = deckById(activeDeck[faction]) || decks[0];
     grimSelDeckId = act ? act.id : null;
   }
-  if (!grimRaceTab || !epochFactions(epoch).includes(grimRaceTab)) grimRaceTab = gachaRace;
+  if (!grimRaceTab || !availFactions().includes(grimRaceTab)) grimRaceTab = gachaRace;
   mk('grimModal',
     '<div class="grim-head">' +
     '<h2 style="margin:0">📖 ГРИМУАР</h2>' +
@@ -44,13 +46,13 @@ function openGrimuar() {
     '<div class="grim-collstats" id="grimCollStats"></div>' +
     '</div>' +
     '<div class="grim-col">' +
-    '<div class="grim-col-title">КОЛОДЫ <small>до ' + DECK_SIZE + ' карт · стаки до ×' + DECK_STACK_MAX + ' · своя раса</small></div>' +
+    '<div class="grim-col-title">КОЛОДЫ <small>до ' + DECK_SIZE + ' копий · стак до ×' + deckStackMax() + ' · своя раса</small></div>' +
     '<div class="grim-decks" id="grimDecks"></div>' +
     '<div class="grim-deckview" id="grimDeckView"></div>' +
     '</div>' +
     '</div>' +
     '<div class="grim-gacha" id="grimGacha"></div>', 900);
-  $('grimX').onclick = () => { close_('grimModal'); if (gameStarted) { updateHUD(); } };
+  $('grimX').onclick = () => { close_('grimModal'); if (gameStarted) { updateHUD(); } const back = grimPickReturn; grimPickReturn = null; if (back) back(); };
   /* mk() ставит inline max-width — перебиваем для широкого экрана Гримуара,
      открываем ДО рендера (рендер гвардится по .show) */
   const card = $('grimModal').querySelector('.modal-card');
@@ -61,7 +63,7 @@ function openGrimuar() {
   renderGrimuar();
 }
 
-function grimUnlocked() { return epochFactions(epoch); }
+function grimUnlocked() { return availFactions(); }
 
 function renderGrimuar() {
   if (!$('grimModal') || !$('grimModal').classList.contains('show')) return;
@@ -76,15 +78,13 @@ function renderGrimuar() {
 function renderGrimHead() {
   hudSet('gsouls', $('grimSouls'), 'text', fmt(souls));
   const free = $('grimFree');
-  /* v1.7.0: бесплатных круток нет — каждая крутка платит Душой */
-  const txt = '1 Душа = 1 крутка · Души: старт, смена Эпохи, каждые 5 этажей Арены, контракты';
+  /* v1.8.0: Души — валюта Призыва И Улучшений */
+  const txt = '1 Душа = 1 крутка · Души также тратятся в «Улучшениях» · источники: старт 30, смена Эпохи, каждые 5 этажей Арены, контракты';
   if (free.dataset.sig !== txt) { free.dataset.sig = txt; free.textContent = txt; }
   /* Примечание про применение изменений */
   const note = $('grimNote');
-  const relicN = relicStash.length;
   let n = '';
   if (gameStarted) n += '⚠ Забег уже идёт: крутки пополнят коллекцию, а состав колоды применится со СЛЕДУЮЩЕГО забега. ';
-  if (relicN) n += '⚒ В схроне реликвий: ' + relicN + ' — выдадутся на старте следующего забега. ';
   if (n !== (note.dataset.sig || '')) { note.dataset.sig = n; note.innerHTML = n || '&nbsp;'; note.style.display = n ? '' : 'none'; }
 }
 
@@ -114,7 +114,7 @@ function renderGrimCollection() {
       const card = CARDS[id];
       const owned = collection[id];
       const inDeck = deck && deck.race === grimRaceTab ? deckUsedCount(deck, id) : 0;
-      const canAdd = deck && deck.race === grimRaceTab && deck.cards.length < DECK_SIZE && inDeck < owned;
+      const canAdd = deck && deck.race === grimRaceTab && deckTotal(deck) < DECK_SIZE && inDeck < owned;
       return '<div class="coll-card star' + card.rarity + ' f-' + card.faction + (canAdd ? ' grim-addable' : ' grim-dim') + '" data-gid="' + id + '" style="--glow:' + rarityColor(card.rarity) + ';--cardBg:' + rarityBg(card.rarity) + (card.isBuilding ? ';border-style:double' : '') + '">' +
         cardArtHTML(card, 'coll-art', 'coll-glyph') +
         '<span class="faction-dot" style="background:' + FACTION_INFO[card.faction].color + '"></span>' +
@@ -131,10 +131,9 @@ function renderGrimCollection() {
         const d = deckById(grimSelDeckId);
         if (!d) { toast('Сначала выберите или создайте колоду справа'); return; }
         if (d.race !== CARDS[id].faction) { toast('Эта колода расы «' + FACTION_INFO[d.race].name + '» — карты других рас в неё не входят'); return; }
-        if (d.cards.length >= DECK_SIZE) { toast('В колоде уже ' + DECK_SIZE + ' карт — лимит'); return; }
-        if (deckUsedCount(d, id) >= DECK_STACK_MAX) { toast('Стак «' + CARDS[id].name + '» в колоде достиг максимума ×' + DECK_STACK_MAX); return; }
+        if (deckTotal(d) >= DECK_SIZE) { toast('В колоде уже ' + DECK_SIZE + ' копий — лимит'); return; }
         if (deckUsedCount(d, id) >= collectionFree(id)) { toast('Свободных копий «' + CARDS[id].name + '» больше нет — сделайте Призыв'); return; }
-        addToDeck(d, id);
+        addToDeck(d, id); /* v1.8.0: клик — добавить как ДУБЛИКАТ (новый блок) */
         sfx('click');
         renderGrimuar();
       });
@@ -142,8 +141,7 @@ function renderGrimCollection() {
   }
   const ownedTypes = Object.keys(collection).length;
   const st = 'Типов карт в коллекции: ' + ownedTypes + ' из ' + Object.keys(CARDS).length +
-    ' · копий всего: ' + fmt(Object.values(collection).reduce((a, b) => a + b, 0)) +
-    (relicStash.length ? ' · ⚒ в схроне: ' + relicStash.length : '');
+    ' · копий всего: ' + fmt(Object.values(collection).reduce((a, b) => a + b, 0));
   if ($('grimCollStats').dataset.sig !== st) { $('grimCollStats').dataset.sig = st; $('grimCollStats').textContent = st; }
 }
 
@@ -158,7 +156,7 @@ function renderGrimDecks() {
       return '<div class="grim-deck-row' + (grimSelDeckId === d.id ? ' sel' : '') + (act ? ' active' : '') + '" data-d="' + d.id + '">' +
         '<span class="gdr-dot" style="background:' + FACTION_INFO[d.race].color + '" title="' + FACTION_INFO[d.race].name + '"></span>' +
         '<span class="gdr-name">' + d.name + '</span>' +
-        '<span class="gdr-count">' + d.cards.length + '/' + DECK_SIZE + '</span>' +
+        '<span class="gdr-count">' + deckTotal(d) + '/' + DECK_SIZE + '</span>' +
         (act ? '<span class="gdr-star" title="Активная колода этой расы — выдаётся на старте забега">★</span>' : '') +
         '<button class="mini gdr-rename" title="Переименовать">✎</button>' +
         '<button class="mini gdr-del" title="Удалить колоду">🗑</button>' +
@@ -217,36 +215,38 @@ function renderGrimDeckView() {
     const act = activeDeck[d.race] === d.id;
     html += '<div class="grim-deckhead">' +
       '<b>' + d.name + '</b> <span class="grim-race-badge" style="border-color:' + FACTION_INFO[d.race].color + ';color:' + FACTION_INFO[d.race].color + '">' + FACTION_INFO[d.race].name + '</span>' +
-      '<span style="margin-left:auto">' + d.cards.length + '/' + DECK_SIZE + '</span>' +
+      '<span style="margin-left:auto">' + deckTotal(d) + '/' + DECK_SIZE + '</span>' +
       (act ? '<span class="gdr-star" title="Выдаётся на старте забега этой расы">★ активная</span>'
            : '<button class="mini" id="grimSetActive">★ Сделать активной</button>') +
       '</div>' +
       '<div class="deck-list" id="grimDeckCards">';
     if (d.cards.length) {
-      /* v1.7.0: карты колоды — СПИСОК ПРЯМОУГОЛЬНЫХ БЛОКОВ:
-         слева спрайт, имя и редкость, справа стак ×N и
-         ФИОЛЕТОВАЯ СТРЕЛКА ▲ — поднять стак дубликатом из коллекции. */
-      const counts = {};
-      d.cards.forEach(id => counts[id] = (counts[id] || 0) + 1);
-      html += Object.keys(counts).sort((a, b) => rarityRank(CARDS[b].rarity) - rarityRank(CARDS[a].rarity) || a.localeCompare(b)).map(id => {
-        const card = CARDS[id];
-        const n = counts[id];
-        const canStack = canStackInDeck(d, id);
-        return '<div class="deck-row star' + card.rarity + '" data-rm="' + id + '" style="--glow:' + rarityColor(card.rarity) + ';--cardBg:' + rarityBg(card.rarity) + '" title="' + card.name + ' — клик: убрать копию из колоды">' +
+      /* v1.8.0: колода — СПИСОК ПРЯМОУГОЛЬНЫХ БЛОКОВ, КАЖДАЯ КОПИЯ —
+         ОТДЕЛЬНАЯ ЗАПИСЬ: клик по карте коллекции добавляет ДУБЛИКАТ
+         (новый блок ×1), а клик по ФИОЛЕТОВОЙ СТРЕЛКЕ ▲ стакаает
+         ИМЕННО ТУ запись, на которую кликнули (+1 копия из коллекции,
+         до deckStackMax()). На старте забега запись ×N станет юнитом ×N. */
+      const dsm = deckStackMax();
+      html += d.cards.map((en, idx) => {
+        const card = CARDS[en.id];
+        const n = en.n || 1;
+        const canStack = canStackEntry(d, idx);
+        return '<div class="deck-row star' + card.rarity + '" data-rm="' + idx + '" style="--glow:' + rarityColor(card.rarity) + ';--cardBg:' + rarityBg(card.rarity) + '" title="' + card.name + ' — клик: убрать копию из колоды">' +
           cardArtHTML(card, 'deck-art', 'deck-glyph') +
           '<div class="deck-info"><span class="deck-name">' + card.name + ' <i>' + starsOf(card.rarity) + (card.isBuilding ? ' · постройка' : '') + '</i></span>' +
-          '<span class="deck-sub">' + FACTION_INFO[card.faction].name + (n >= DECK_STACK_MAX ? ' · стак полон ×' + n : '') + '</span></div>' +
+          '<span class="deck-sub">' + FACTION_INFO[card.faction].name + (n >= dsm ? ' · стак полон ×' + n : '') + '</span></div>' +
           (n > 1 ? '<span class="deck-count">×' + n + '</span>' : '<span class="deck-count dim">×1</span>') +
-          (canStack ? '<button class="deck-up" data-up="' + id + '" title="Застакать: +1 копия из коллекции (стак ×' + (n + 1) + ')">▲</button>' : '') +
+          (canStack ? '<button class="deck-up" data-up="' + idx + '" title="Застакать ЭТУ копию: +1 из коллекции (×' + (n + 1) + ')">▲</button>' : '') +
           '</div>';
       }).join('');
     } else {
-      html += '<div class="fighter-empty" style="grid-column:1/-1">Пусто. Кликайте карты коллекции слева — они лягут сюда списком.</div>';
+      html += '<div class="fighter-empty" style="grid-column:1/-1">Пусто. Кликайте карты коллекции слева — каждая ляжет сюда отдельным блоком (дубликаты разрешены).</div>';
     }
     html += '</div>' +
       '<div class="grim-deckhint">' +
-      '▲ — застакать карту дубликатом из коллекции (до ×' + DECK_STACK_MAX + '): на старте забега она встанет на грид ГОТОВОЙ стопкой ×N. ' +
-      'Клик по карте — убрать копию. ' + (gameStarted
+      'Клик по карте коллекции — добавить копию как дубликат (новый блок). ' +
+      '▲ у блока — застакать ИМЕННО ЭТУ копию из коллекции (до ×' + deckStackMax() + '): на старте забега она встанет на грид ГОТОВОЙ стопкой ×N. ' +
+      'Клик по блоку — убрать копию. ' + (gameStarted
       ? 'Состав применится со следующего забега этой расы.'
       : 'На старте забега этой расы вся колода выдаётся в инвентарь целиком.') + '</div>';
   } else {
@@ -266,21 +266,21 @@ function renderGrimDeckView() {
     renderGrimuar();
   };
   if (d) el.querySelectorAll('[data-rm]').forEach(el2 => {
-    const id = el2.dataset.rm;
+    const idx = +el2.dataset.rm;
     el2.addEventListener('click', e => {
       if (e.target.closest('.deck-up')) return; /* стрелка — свой обработчик */
-      removeFromDeck(d, id); renderGrimuar();
+      removeFromDeck(d, idx); renderGrimuar();
     });
-    el2.addEventListener('mouseenter', e => showCardTooltip(e, CARDS[id], CARDS[id].baseRate));
+    el2.addEventListener('mouseenter', e => showCardTooltip(e, CARDS[d.cards[idx].id], CARDS[d.cards[idx].id].baseRate));
     el2.addEventListener('mousemove', moveTooltip);
     el2.addEventListener('mouseleave', hideTooltip);
   });
   if (d) el.querySelectorAll('[data-up]').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
-      const id = btn.dataset.up;
-      if (!canStackInDeck(d, id)) return;
-      if (!addToDeck(d, id)) { toast('Копий «' + CARDS[id].name + '» больше нет — сделайте Призыв'); return; }
+      const idx = +btn.dataset.up;
+      if (!canStackEntry(d, idx)) return;
+      if (!stackUpEntry(d, idx)) { toast('Свободных копий «' + CARDS[d.cards[idx].id].name + '» больше нет — сделайте Призыв'); return; }
       sfx('place');
       renderGrimuar();
     });
@@ -333,19 +333,19 @@ function grimDoRolls(count) {
 }
 
 /* ---------------- Окно результатов Призыва ----------------
-   Карты уже в коллекции, реликвии — в схроне. Группировка + шоу редкостей. */
+   Карты уже в коллекции. Группировка + шоу редкостей.
+   v1.8.0: реликвий в Призыве больше нет. */
 function grimShowResults(res) {
-  const cards = res.cards || [], relics = res.relics || [];
+  const cards = res.cards || [];
   mk('grimRollModal',
     '<div class="rarity-banner" id="grRarityBanner"></div>' +
     '<h2 id="grTitle">Призыв</h2>' +
     '<div class="multi-reveal" id="grReveal" style="max-height:46vh;overflow:auto"></div>' +
-    '<div class="flavor">Карты — в вечную коллекцию Гримуара.' + (relics.length ? ' Реликвии — в схрон: выдадутся на старте следующего забега.' : '') + '</div>' +
+    '<div class="flavor">Карты — в вечную коллекцию Гримуара. Реликвий в Призыве больше нет — источник появится позже.</div>' +
     '<div class="btn-row"><button class="btn btn-take" id="grOk">ПРИНЯТЬ</button></div>', 960);
   const cardEl = document.getElementById('grimRollModal').querySelector('.modal-card');
   playRarityEffect(cardEl, $('grRarityBanner'),
-    relics.some(id => relicById(id).rarity === 5) || cards.some(id => CARDS[id].rarity === 5) ? 5 :
-    relics.some(id => relicById(id).rarity === 4) || cards.some(id => CARDS[id].rarity === 4) ? 4 : 3);
+    cards.some(id => CARDS[id].rarity === 5) ? 5 : cards.some(id => CARDS[id].rarity === 4) ? 4 : 3);
 
   const counts = {};
   cards.forEach(id => counts[id] = (counts[id] || 0) + 1);
@@ -359,14 +359,9 @@ function grimShowResults(res) {
         '<span class="mr-name">' + c.name + ' <i>' + starsOf(c.rarity) + (newSet.has(id) ? ' · <b style="color:#8fc87f">НОВАЯ</b>' : '') + '</i></span>' +
         '<span class="mr-count">×' + counts[id] + '</span></div>';
     }).join('');
-  const relRows = relics.map(id => {
-    const r = relicById(id);
-    return '<div class="multi-row relic">' + relicArtHTML(r, 'mr-art', '') +
-      '<span class="mr-name">' + r.name + ' <i>' + '★'.repeat(r.rarity) + ' РЕЛИКВИЯ → схрон</i></span><span class="mr-count">×1</span></div>';
-  }).join('');
-  $('grReveal').innerHTML = (rows || '') + relRows;
-  $('grTitle').textContent = 'Призыв: ' + (cards.length + relics.length) + ' карт · за Души ×' + res.paid;
-  if (cards.length + relics.length === 1 && cards.length === 1) {
+  $('grReveal').innerHTML = rows;
+  $('grTitle').textContent = 'Призыв: ' + cards.length + ' карт · за Души ×' + res.paid;
+  if (cards.length === 1) {
     const c = CARDS[cards[0]];
     $('grTitle').textContent = c.name + ' · ' + starsOf(c.rarity) + ' · ' + FACTION_INFO[c.faction].name;
   }

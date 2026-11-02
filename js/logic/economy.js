@@ -488,7 +488,7 @@ function computeIncome() {
 
   const uniquePairs = Object.keys(pairSeen).length;
   /* v1.3.1: надбавка за уникальные пары УБРАНА — уникальность считается для ачивок */
-  const sealMult = 1 + 0.25 * sealLv.rich;
+  const sealMult = 1 + 0.25 * upgLv.rich;
 
   /* Контекст для factionMult: уникальные пары + ЖИВЫЕ факторы звеньев
      (v1.5.14: Псалмопевец читает факторы ЭТОГО прохода, а не прошлый кэш) */

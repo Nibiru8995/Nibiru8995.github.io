@@ -72,7 +72,7 @@ function waveMaxHp(wave) {
 /* ---------------- НАБОР БОЙЦОВ ---------------- */
 function addFighter(cardId, cnt = 1) {
   /* Арена закрыта до своей Эпохи — бойцов не набираем */
-  if (!epochHasArena(epoch)) { toast('⚔ Колыбель Войны откроется в Эпохе ' + ARENA_EPOCH); return; }
+  if (!featOwned('arena')) { toast('⚔ Колыбель Войны не куплена — смотрите «Улучшения» (за Души)'); return; }
   const have = inventory[cardId] || 0;
   cnt = Math.min(cnt, have);
   if (cnt <= 0) return;
@@ -334,18 +334,17 @@ function endBattle(win) {
   }, 2000);
 }
 
-/* v1.2: ВЫБОР ТРОФЕЯ БОССА — три пути силы:
-   добыча (Тёмная энергия ×2 сверху) / реликвия / королевская добыча (ТЭ ×6 — v1.7.0: круток даром больше нет) */
+/* v1.2: ВЫБОР ТРОФЕЯ БОССА — два пути силы:
+   добыча (ТЭ ×2 сверху) / королевская добыча (ТЭ ×6).
+   v1.8.0: варианта «Реликвия» больше нет — способа получить
+   реликвии пока не существует (см. «Улучшения»). */
 function showBossTrophy(reward) {
   const bonus = reward * 2;
-  const avail = RELICS.filter(r => !hasRelic(r.id) && r.faction === faction);
-  const relicName = avail.length ? '«' + pick(avail).name + '»' : null;
   mk('trophyModal',
     '<h2>👑 ТРОФЕЙ БОССА</h2>' +
     '<div class="res">Побеждённый владыка предлагает выбор. Возьмите ОДНУ награду:</div>' +
     '<div class="trophy-list">' +
     '<div class="trophy-opt" data-t="gold"><b>💰 Добыча</b><small>+' + fmt(bonus) + ' ' + DE_IMG + ' сверх награды</small></div>' +
-    '<div class="trophy-opt" data-t="relic"><b>⚒ Реликвия</b><small>' + (relicName ? 'Случайная неполученная реликвия фракции' : 'Все реликвии фракции собраны → +' + fmt(reward) + ' ' + DE_IMG) + '</small></div>' +
     '<div class="trophy-opt" data-t="royal"><b>👑 Королевская добыча</b><small>+' + fmt(bonus * 3) + ' ' + DE_IMG + ' — втрое больше награды</small></div>' +
     '</div>', 560);
   document.querySelectorAll('#trophyModal .trophy-opt').forEach(el => {
@@ -353,11 +352,8 @@ function showBossTrophy(reward) {
       const t = el.dataset.t;
       close_('trophyModal');
       if (t === 'gold') {
-        crystals += bonus; incomeExempt += bonus; /* v1.2.6: трофеи босса — не в порог Эпохи */
+        crystals += bonus; incomeExempt += bonus; /* трофеи босса — не в порог Эпохи */
         toast('💰 Добыча босса: +' + fmt(bonus) + ' ' + DE_IMG + '!');
-      } else if (t === 'relic') {
-        if (avail.length) { grantRelic(pick(avail).id, false); fxConfetti(50); }
-        else { crystals += reward; incomeExempt += reward; toast('💰 Компенсация: +' + fmt(reward) + ' ' + DE_IMG); }
       } else {
         /* v1.7.0: круток даром больше НЕТ — королевская добыча ТЭ */
         const royal = bonus * 3;

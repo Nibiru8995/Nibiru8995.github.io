@@ -85,7 +85,7 @@ function buildGrid() {
 function renderRelicSlots() {
   const row = $('relicSlotRow');
   if (!row) return;
-  if (epoch < RELIC_SLOT_EPOCH) { if (row.style.display !== 'none') row.style.display = 'none'; return; }
+  if (!RELICS_OWNED.size) { if (row.style.display !== 'none') row.style.display = 'none'; return; }
   row.style.display = '';
   const st = gridStart();
   /* сигнатура для мемоиза: какие столбы заняты чем */
@@ -111,7 +111,7 @@ function renderRelicSlots() {
 }
 
 function onColSlotClick(c) {
-  if (epoch < RELIC_SLOT_EPOCH) return;
+  if (!RELICS_OWNED.size) return;
   if (relicSlots[c]) {
     const r = relicById(relicSlots[c]);
     delete relicSlots[c];
@@ -120,7 +120,7 @@ function onColSlotClick(c) {
     return;
   }
   const avail = unassignedRelics();
-  if (!avail.length) { toast('Свободных реликвий нет — они добываются из гачи (с Эпохи ' + RELIC_DROP_EPOCH + ')'); return; }
+  if (!avail.length) { toast('Свободных реликвий нет — способа получить их пока нет (см. «Улучшения»)'); return; }
   const cultGlobal = FACTION_INFO[faction].mechanic === 'formation';
   mk('relicPick', '<h2>Реликвия в столб ' + (c + 1) + '</h2>' +
     '<div class="res">' + (cultGlobal

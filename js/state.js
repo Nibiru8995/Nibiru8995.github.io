@@ -3,8 +3,10 @@
    СОСТОЯНИЕ ИГРЫ (state.js)
    Все изменяемые переменные в одном месте. Логика и рендер
    читают/меняют состояние отсюда. Сохранения:
-   - meta (gg3_meta_v2): вечное — печати, ачивки, коллекция Гримуара, Души
-   - run  (gg3_run_v2):  текущая Эпоха — ТЭ, грид, инвентарь (колода), deckStacks
+   - meta (gg3_meta_v2): вечное — ачивки, коллекция Гримуара, Души,
+     УЛУЧШЕНИЯ (upgLv/fieldLv/feats/factionsOwned, v1.8.0)
+   - run  (gg3_run_v2):  текущая Эпоха — ТЭ, грид, инвентарь (колода),
+     deckStacks (очереди стаков), runDeck (снапшот стартовой колоды)
    ============================================================ */
 
 /* v1.7.0 «Плата Душами»: версии сейвов подняты до v2 — ОБНУЛЕНИЕ ВСЕХ УЧЁТОК
@@ -15,8 +17,48 @@ const SAVE_META = 'gg3_meta_v2';
 const SAVE_LEGACY = ['gg3_run_v1', 'gg3_meta_v1'];
 
 /* --- Валюта и ресурсы --- */
-let crystals = 2500;         // ТЁМНАЯ ЭНЕРГИЯ (бывшие кристаллы; функционал тот же: доход, порог Эпохи, казино)
-let souls = 30;              // ДУШИ — валюта Призыва в Гримуаре (мета; v1.7.0: старт 30 на первые крутки)
+let crystals = 2500;         // ТЁМНАЯ ЭНЕРГИЯ (доход, порог Эпохи, казино)
+let souls = 30;              // ДУШИ — валюта Призыва и Улучшений (старт 30)
+let stats = {
+  g: {},            // казино: {slots:{w,l,net},...}
+  pulls: {},        // {cardId: count}
+  rolls: 0,         // круток всего
+  soulsEarned: 0,   // Душ заработано за всё время (v1.8.0, ачивки)
+  maxInc: 0,        // рекорд дохода
+  casinoLost: 0,    // суммарный проигрыш в казино
+  casinoBest: 0,    // лучший множитель выигрыша
+  arenaDeaths: 0,
+  floorMax: 1,
+  bossKills: 0,
+  eliteKills: 0,
+  streakMax: 0,
+  surges: 0,        // всплесков резонанса ритуала (v1.0)
+  mercy: 0,         // пощажённых владык Арены (v1.2.10 «Милосердие»)
+  bells: 0,         // Знамений «Колокол» собрано (v1.2.10)
+  dailyStreak: 0,   // дней подряд с «Знамением Судьбы» (v1.2.10)
+  predKills: 0,     // убийств хищниками на Алтаре (v1.1)
+  demonBooms: 0,    // взрывов Хаоса (v1.1)
+  deleted: 0,
+  placed: 0,
+  omens: 0,       // собранных Знамений
+  speedUsed: 0    // играл на ускорении > ×1
+};
+/* Единая точка начисления Душ (v1.8.0): заодно копим вечную статистику */
+function gainSouls(n) {
+  souls += n;
+  stats.soulsEarned = (stats.soulsEarned || 0) + n;
+}
+
+/* --- v1.8.0 «Вечная Эпоха»: УЛУЧШЕНИЯ (мета, вечные) ---
+   upgLv — уровни бонусов (бывшие печати: rich/greed/impulse/arch/fate);
+   fieldLv — купленные расширения поля (3×3 → 5×5 → 7×7 → 9×9);
+   feats — купленные фичи: arena, casino, r4 (★4 в Призыве), r5;
+   factionsOwned — купленные фракции: cultist, beast, demon.
+   Печати 🔱 («эссенция») УДАЛЕНЫ из игры — всё платит Душами. */
+let upgLv = { rich: 0, greed: 0, impulse: 0, arch: 0, fate: 0 };
+let fieldLv = 0;
+let feats = [];
+let factionsOwned = [];
 
 /* Разовое обнуление учеток: ключи прошлых версий + локальный «рекорд,
    отправленный в базу» (иначе после чистки Таблички Тьмы новые рекорды
@@ -27,30 +69,32 @@ function wipeLegacySaves() {
     localStorage.removeItem('gg3_lbBest');
   } catch (e) { }
 }
-let seals = 0;               // печати (НЕ сбрасываются)
-let sealsTotal = 0;          // сколько печатей заработано за всё время
+/* --- v1.8.0: ПЕЧАТИ 🔱 («эссенция») УДАЛЕНЫ ИЗ ИГРЫ —
+   бонусы магазина печатей переехали в «Улучшения» и платят Душами. */
 
 /* --- v1.6.0 «ГРИМУАР»: мета-слой карт ---
    collection — ВЕЧНАЯ коллекция карт Призыва {cardId: количество}.
-   decks — колоды [{id, name, race, cards:[cardId,...]}], лимит 64, дубликаты разрешены.
+   decks — колоды [{id, name, race, cards:[{id, n}]}], лимит 64 копии,
+   дубликаты разрешены (v1.8.0: каждая копия — отдельный блок-запись,
+   стак до deckStackMax() через фиолетовую стрелку ▲).
    activeDeck — {раса: id колоды}, какая колода выдаётся на старте забега этой расы.
-   gachaRace — раса, выбранная в Призыве. relicStash — схрон реликвий из Призыва
-   (реликвии — расходник забега: выдаются на старте следующего). */
+   gachaRace — раса, выбранная в Призыве. */
 let collection = {};
 let decks = [];
 let activeDeck = {};
 let gachaRace = 'undead';
-let relicStash = [];
+/* v1.8.0: реликвии больше НЕ выпадают из Призыва (схрон удалён) —
+   способа получить реликвии пока нет, это доработаем позже. */
 
 /* --- Эпоха --- */
 let epoch = 1;               // текущая Эпоха
 let maxEpoch = 1;            // рекорд
 let faction = 'undead';      // фракция текущей Эпохи
-let sealLv = { rich: 0, greed: 0, impulse: 0, arch: 0, fate: 0 }; // уровни магазина печатей
 
 /* --- Грид (Алтарь) ---
-   Открыта только центральная зона playableSize×playableSize (нечётные: 3→5→7→9).
-   Размер растёт АВТОМАТИЧЕСКИ при переходе Эпохи (logic/epochs.js, doEpochUp). */
+   Открыта только центральная зона playableSize×playableSize (нечётные: 3/5/7/9).
+   v1.8.0: размер задаётся купленными расширениями поля («Улучшения»),
+   от Эпохи больше НЕ растёт. */
 const GRID_SIZE = 9;
 let grid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
 let playableSize = 3;        // сторона открытого квадрата (3..9)
@@ -94,19 +138,26 @@ let surgeUntil = 0;           // gameTime конца всплеска
    Призыва платит Душой (Гримуар). Вехи дают только временные ускорения. --- */
 let milestoneIdx = 0;
 
-/* --- v1.7.0 «Плата Душами»: ЗАСТАКАННЫЕ КАРТЫ КОЛОДЫ ---
-   deckStacks — {cardId: N} — какие карты выданы из колоды СТАКОМ ×N
-   (собраны в Гримуаре из дубликатов, максимум 5). При постановке такой
-   карты на грид встанет готовый юнит ×N (аналог стака на клетке),
-   а НЕ одна копия. Ручной стак на гриде отключён (v1.7.0). --- */
+/* --- v1.8.0 «Вечная Эпоха»: ЗАСТАКАННЫЕ КАРТЫ КОЛОДЫ (очереди) ---
+   deckStacks — {cardId: [n, n, …]} — стаки, с которыми копии выданы
+   из колоды (каждая запись колоды {id, n} со n≥2 кладёт своё N в
+   очередь, отсортированную по убыванию). Постановка такой карты на
+   грид берёт ПЕРВЫЙ стак очереди и встанет готовым юнитом ×N
+   (аналог стака на клетке), а НЕ одной копией. Ручной стак на
+   гриде отключён (v1.7.0). --- */
 let deckStacks = {};
+
+/* --- v1.8.0: СТАРТОВАЯ КОЛОДА ЗАБЕГА (снапшот) ---
+   Плоский список id карт (с дубликатами), выданный на старте Эпохи.
+   По нему сверяются req-требования контрактов: задание обязано быть
+   выполнимым с той колодой, с которой игрок начал Эпоху. --- */
+let runDeck = [];
 
 /* --- Скорость игры (настройка, мета): ×1 / ×2 / ×4 --- */
 let speedMult = 1;
 
-/* --- Гача. v1.6.0: pity4/pity5/relicPity — ВЕЧНЫЕ (мета), крутки идут из
-   Гримуара между забегами; сброса на Эпохе больше нет. runRolls — круток
-   за текущую Эпоху (для наград контрактов и статистики). --- */
+/* --- Гача. pity4/pity5 — ВЕЧНЫЕ (мета); крутки идут из Гримуара за Души.
+   runRolls — круток за текущую Эпоху (для статистики). --- */
 let pity4 = 0, pity5 = 0, runRolls = 0;
 
 /* --- Прогресс забега --- */
@@ -118,31 +169,6 @@ let gamePaused = false, gameStarted = false, noSave = false;
    компенсации реликвий, награды Арены, знамения). Прогресс Эпохи
    растёт ТОЛЬКО от дохода Алтаря — иначе Эпохи копились слишком быстро. */
 let incomeExempt = 0;
-
-/* --- Статистика (вечная, для ачивок) --- */
-let stats = {
-  g: {},            // казино: {slots:{w,l,net},...}
-  pulls: {},        // {cardId: count}
-  rolls: 0,         // круток всего
-  maxInc: 0,        // рекорд дохода
-  casinoLost: 0,    // суммарный проигрыш в казино
-  casinoBest: 0,    // лучший множитель выигрыша
-  arenaDeaths: 0,
-  floorMax: 1,
-  bossKills: 0,
-  eliteKills: 0,
-  streakMax: 0,
-  surges: 0,        // всплесков резонанса ритуала (v1.0)
-  mercy: 0,         // пощажённых владык Арены (v1.2.10 «Милосердие»)
-  bells: 0,         // Знамений «Колокол» собрано (v1.2.10)
-  dailyStreak: 0,   // дней подряд с «Знамением Судьбы» (v1.2.10)
-  predKills: 0,     // убийств хищниками на Алтаре (v1.1)
-  demonBooms: 0,    // взрывов Хаоса (v1.1)
-  deleted: 0,
-  placed: 0,
-  omens: 0,       // собранных Знамений
-  speedUsed: 0    // играл на ускорении > ×1
-};
 
 /* --- Достижения --- */
 let achDone = {};
@@ -166,14 +192,14 @@ let busy = 0; // активный раунд казино (блокирует в
 let incomeCache = { total: 0, uniquePairs: 0, perCell: {}, pairUsage: {}, linkFactors: {}, linkRoyal: {}, linkLich: {}, lichZone: [] };
 
 /* ================== СОХРАНЕНИЕ ==================
-   v1.7.0: ключи v2 (обнуление учеток), deckStacks в сейве забега. */
+   v1.8.0: deckStacks — очереди стаков, runDeck — снапшот стартовой колоды. */
 function buildRunSave() {
   return {
     t: Date.now(), crystals, epoch, faction, grid,
-    playableSize, inventory, deckStacks, fighters, fighterHpState,
+    playableSize, inventory, deckStacks, runDeck, fighters, fighterHpState,
     arena: { floor: arenaState.floor, room: arenaState.room, cleared: arenaState.cleared, fallen: arenaState.fallen },
     arenaStreak,
-    runRolls, runEarned, runTime, sealLv,
+    runRolls, runEarned, runTime,
     milestoneIdx, relicSlots,
     relics: [...RELICS_OWNED],
     ritualResonance, surgeUntil,
@@ -202,19 +228,23 @@ function loadRun() {
     crystals = d.crystals ?? 2500;
     epoch = d.epoch ?? 1; faction = d.faction ?? 'undead';
     grid = d.grid ?? grid;
-    playableSize = clamp(d.playableSize ?? 3, 3, epochMaxSize(epoch));
+    /* v1.8.0: потолок размера поля — купленные расширения (не Эпоха) */
+    playableSize = clamp(d.playableSize ?? 3, 3, typeof fieldSize === 'function' ? fieldSize() : 9);
     inventory = d.inventory ?? {};
-    /* v1.7.0: застакованные карты колоды (валидация: известные карты, 2..5) */
+    /* v1.8.0: снапшот стартовой колоды для req-требований контрактов */
+    runDeck = Array.isArray(d.runDeck) ? d.runDeck.filter(id => CARDS[id]) : [];
+    /* v1.8.0: deckStacks — ОЧЕРЕДИ стаков {id: [n≥2, …]}, сортировка по убыванию */
     deckStacks = {};
     if (d.deckStacks && typeof d.deckStacks === 'object') for (const k in d.deckStacks) {
-      const n = Math.floor(+d.deckStacks[k] || 0);
-      if (CARDS[k] && n >= 2 && n <= 5) deckStacks[k] = n;
+      const arr = Array.isArray(d.deckStacks[k])
+        ? d.deckStacks[k].map(x => Math.floor(+x || 0)).filter(n => CARDS[k] && n >= 2 && n <= 9)
+        : [];
+      if (arr.length) { arr.sort((a, b) => b - a); deckStacks[k] = arr; }
     }
     fighters = d.fighters ?? {}; fighterHpState = d.fighterHpState ?? {};
     if (d.arena) Object.assign(arenaState, d.arena);
     arenaStreak = d.arenaStreak ?? 0;
     runRolls = d.runRolls ?? 0; runEarned = d.runEarned ?? 0; runTime = d.runTime ?? 0;
-    if (d.sealLv) Object.assign(sealLv, d.sealLv);
     milestoneIdx = d.milestoneIdx ?? 0;
     ritualResonance = d.ritualResonance ?? 0; surgeUntil = d.surgeUntil ?? 0;
     /* РЕЛИКВИИ v1.2.5: владение живёт В ЗАБЕГЕ (сброс при смене Эпохи) */
@@ -246,15 +276,17 @@ function loadRun() {
       setTimeout(() => toast('Пока вас не было: +' + fmt(gain) + ' ' + DE_IMG), 600);
     }
     return true;
-  } catch (e) { return false; }
+  } catch (e) { console.error('loadRun fail:', e); return false; }
 }
 
 function buildMetaSave() {
-  return { seals, sealsTotal, maxEpoch, disc: [...discovered], achDone, stats, totalTime: gameTime, guide: guideSeen,
+  return { maxEpoch, disc: [...discovered], achDone, stats, totalTime: gameTime, guide: guideSeen,
     chron, lastDaily, /* v1.2.9: Хроники Тьмы + дата ежедневного дара */
     /* Гримуар: мета-слой карт + вечные гача-счётчики (v1.7.0: без freeRolls) */
-    souls, collection, decks, activeDeck, gachaRace, relicStash,
-    pity4, pity5, relicPity,
+    souls, collection, decks, activeDeck, gachaRace,
+    pity4, pity5,
+    /* v1.8.0: УЛУЧШЕНИЯ — уровни бонусов, поле, фичи, фракции (печати удалены) */
+    upgLv, fieldLv, feats, factionsOwned,
     sfx: soundOn, music: musicOn, fx: fxOn, speedMult };
 }
 function saveMeta() {
@@ -264,28 +296,36 @@ function loadMeta() {
   try {
     const d = JSON.parse(localStorage.getItem(SAVE_META) || 'null');
     if (!d) return;
-    seals = d.seals ?? 0; sealsTotal = d.sealsTotal ?? 0; maxEpoch = d.maxEpoch ?? 1;
+    maxEpoch = d.maxEpoch ?? 1;
     discovered = new Set(d.disc || []); achDone = d.achDone || {};
     if (d.stats) stats = Object.assign(stats, d.stats);
     guideSeen = d.guide || {};
     gameTime = d.totalTime ?? 0;
     chron = (d.chron && typeof d.chron === 'object') ? d.chron : {}; /* v1.2.9 */
     lastDaily = d.lastDaily || '';                                  /* v1.2.9 */
-    /* Мета-слой Гримуара. v1.7.0: старт 30 Душ у новичка (обнуление учеток). */
+    /* Мета-слой Гримуара. Старт 30 Душ у новичка. */
     souls = d.souls ?? 30;
     collection = (d.collection && typeof d.collection === 'object') ? d.collection : {};
-    decks = Array.isArray(d.decks) ? d.decks.filter(k => k && CARDS) : [];
-    decks = decks.filter(k => k && Array.isArray(k.cards) && FACTION_KEYS.includes(k.race)).map((k, i) => ({
+    /* v1.8.0: колода — ЗАПИСИ {id, n}. Старый плоский формат [id,…]
+       мигрирует: каждая копия становится отдельной записью ×1. */
+    const flatToEntries = arr => arr.map(v => typeof v === 'object' && v ? { id: String(v.id), n: clamp(Math.floor(+v.n || 1), 1, 9) } : { id: String(v), n: 1 });
+    decks = Array.isArray(d.decks) ? d.decks : [];
+    decks = decks.filter(k => k && (Array.isArray(k.cards) || Array.isArray(k.entries)) && FACTION_KEYS.includes(k.race)).map((k, i) => ({
       id: k.id || ('dk' + Date.now() + '_' + i),
       name: String(k.name || 'Колода').slice(0, 24),
       race: k.race,
-      cards: k.cards.filter(cid => CARDS[cid]).slice(0, 64)
+      cards: flatToEntries((k.cards || []).filter(v => (typeof v === 'object' && v ? CARDS[v.id] : CARDS[v])))
     }));
     activeDeck = (d.activeDeck && typeof d.activeDeck === 'object') ? d.activeDeck : {};
     gachaRace = FACTION_KEYS.includes(d.gachaRace) ? d.gachaRace : 'undead';
-    relicStash = Array.isArray(d.relicStash) ? d.relicStash.filter(id => relicById(id)) : [];
-    pity4 = d.pity4 ?? 0; pity5 = d.pity5 ?? 0; relicPity = d.relicPity ?? 0;
-    /* Реликвии больше НЕ хранятся в мета (v1.2.5: расходник забега) */
+    pity4 = d.pity4 ?? 0; pity5 = d.pity5 ?? 0;
+    /* v1.8.0: УЛУЧШЕНИЯ. Уровни бонусов читаем и из старых сейвов
+       (ключ sealLv — бывший магазин печатей, уровни сохраняются). */
+    const lvSrc = d.upgLv || d.sealLv || {};
+    upgLv = { rich: lvSrc.rich || 0, greed: lvSrc.greed || 0, impulse: lvSrc.impulse || 0, arch: lvSrc.arch || 0, fate: lvSrc.fate || 0 };
+    fieldLv = clamp(Math.floor(d.fieldLv ?? 0), 0, 3);
+    feats = Array.isArray(d.feats) ? d.feats.filter(k => UPG_ONCE && UPG_ONCE[k]) : [];
+    factionsOwned = Array.isArray(d.factionsOwned) ? d.factionsOwned.filter(f => FACTION_KEYS.includes(f)) : [];
     soundOn = d.sfx ?? true; musicOn = d.music ?? true;
     fxOn = d.fx ?? true; speedMult = d.speedMult ?? 1;
   } catch (e) { }

@@ -120,11 +120,17 @@ function onCellClick(r, c) {
       return;
     }
     const hp = cardHp(card.rarity);
-    /* v1.7.0: ЗАСТАКАННАЯ КАРТА КОЛОДЫ — ставим готовым юнитом ×N
-       (сколько копий реально есть в инвентаре, но не больше стака).
-       Ставится «как если бы N раз карта была стакнута на гриде»:
-       суммарный HP, суммарный доход клетки, особенности — как у стака. */
-    const stackN = Math.min(deckStacks[pendingCard] || 1, inventory[pendingCard] || 1);
+    /* v1.8.0: ЗАСТАКАННАЯ КАРТА КОЛОДЫ — ставим готовым юнитом ×N.
+       Очередь deckStacks[id]: берём ПЕРВЫЙ (старший) стак; сколько
+       копий реально есть в инвентаре — не больше. Ставится «как
+       если бы N раз карта была стакнута на гриде»: суммарный HP,
+       суммарный доход клетки, особенности — как у стака. */
+    const q = deckStacks[pendingCard];
+    const stackN = Math.min((q && q.length ? q[0] : 1), inventory[pendingCard] || 1);
+    /* Списываем стак из очереди: постановка «тратит» первый элемент */
+    const consumeStack = () => {
+      if (q && q.length) { q.shift(); if (!q.length || (q.length === 1 && q[0] <= 1)) delete deckStacks[pendingCard]; }
+    };
     /* ХТОНЬ (★5) встаёт НА МЕСТО Ритуального Алтаря: Алтарь вернётся в коллекцию */
     if (item && (card.id === 'c10' || card.id === 'c11') && item.cardId === 'bl_altar') {
       if (item.stacks > 1) { inventory.bl_altar = (inventory.bl_altar || 0) + item.stacks; }
@@ -133,7 +139,7 @@ function onCellClick(r, c) {
         predBuff: 0, mutBuff: 1, embers: 0, hunger: 1, graze: 0, floraBuff: 0, scavBuff: 0, boomUntil: 0, petrCount: 0 };
       if (pendingCard === 'd3') grid[r][c].embers = 1;
       inventory[pendingCard] -= stackN;
-      if (stackN > 1) delete deckStacks[pendingCard];
+      consumeStack();
       stats.placed++;
       sfx('epoch');
       fxAtCell(r, c, ['#c030c0', '#ff40ff', '#fff'], 20, 'big');
@@ -156,7 +162,7 @@ function onCellClick(r, c) {
     fxAtCell(r, c, [FACTION_INFO[card.faction].color, '#fff', '#e8c060'], 12);
     if (stackN > 1) fxFloatFromCell(r, c, 'СТАК ×' + stackN, '#b070ff');
     inventory[pendingCard] -= stackN;
-    if (stackN > 1) delete deckStacks[pendingCard];
+    consumeStack();
     computeIncome();
     if (inventory[pendingCard] <= 0) { delete inventory[pendingCard]; cancelSelection(); }
     else { renderGrid(); renderCollection(); updateHUD(); }

@@ -144,8 +144,8 @@ function queueFeatureGuides() {
   const q = [];
   const f = 'faction_' + faction;
   if (!guideSeen[f]) q.push(f);
-  if (epochHasArena(epoch) && !guideSeen.arena) q.push('arena');
-  if (epochHasCasino(epoch) && !guideSeen.casino) q.push('casino');
+  if (featOwned('arena') && !guideSeen.arena) q.push('arena');
+  if (featOwned('casino') && !guideSeen.casino) q.push('casino');
   if (q.length) {
     q.forEach(x => { if (!guideQueue.includes(x)) guideQueue.push(x); });
     setTimeout(guideQueueRun, 900); /* дать интерфейсу перерисоваться после Эпохи */
@@ -155,8 +155,8 @@ function queueFeatureGuides() {
 /* Старые сохранения: уже открытые фичи не объясняем задним числом,
  но незнакомую фракцию текущей Эпохи показываем один раз.*/
 function initGuidesForSave() {
-  if (epochHasArena(epoch)) guideMarkSeen('arena');
-  if (epochHasCasino(epoch)) guideMarkSeen('casino');
+  if (featOwned('arena')) guideMarkSeen('arena');
+  if (featOwned('casino')) guideMarkSeen('casino');
   queueFeatureGuides();
 }
 

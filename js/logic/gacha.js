@@ -1,30 +1,31 @@
 'use strict';
 /* ============================================================
-   ЛОГИКА: ГАЧА / ГРИМУАР (logic/gacha.js) — v1.7.0 «Плата Душами»
+   ЛОГИКА: ГАЧА / ГРИМУАР (logic/gacha.js) — v1.8.0 «Вечная Эпоха»
    Пити-система 20/80 — ВЕЧНАЯ (мета). Крутки (Призыв) происходят
-   в Гримуаре МЕЖДУ забегами и ВСЕГДА стоят ДУШИ (v1.7.0: бесплатные
-   крутки убраны СОВСЕМ — 1 Душа = 1 крутка). Выпавшие карты ложатся
-   в ВЕЧНУЮ коллекцию (collection), а не в инвентарь забега.
-   Расу Призыва выбирает игрок (среди открытых в Эпохе).
-   РЕЛИКВИИ: шанс 2%/пити 30 остался — выпавшие реликвии идут в
-   СХРОН (relicStash) и выдаются на старте следующего забега.
-   КОЛОДЫ: decks [{id, name, race, cards[]}], лимит 64 карты,
-   дубликаты разрешены (копия списывается из коллекции при добавлении).
-   v1.7.0: СТАКИ КОЛОДЫ — до DECK_STACK_MAX копий одной карты (по умолчанию 5);
-   в UI колоды у стакуемой карты — фиолетовая стрелка ▲. Застакованная
-   карта ставится на грид сразу юнитом ×N (logic/grid.js, deckStacks).
-   Улучшения за дубликаты — в следующей итерации (окно «Улучшения»).
+   в Гримуаре МЕЖДУ забегами и ВСЕГДА стоят ДУШИ (1 Душа = 1 крутка).
+   Выпавшие карты ложатся в ВЕЧНУЮ коллекцию (collection).
+   Расу Призыва выбирает игрок (среди купленных в «Улучшениях»).
+   РЕЛИКВИИ (v1.8.0): из Призыва больше НЕ выпадают — способа
+   получить реликвии пока нет, это доработаем позже (заглушка —
+   в «Улучшениях»).
+   КОЛОДЫ: decks [{id, name, race, cards: [{id, n}]}], лимит 64 КОПИИ,
+   дубликаты разрешены. v1.8.0: каждая копия — ОТДЕЛЬНАЯ запись-блок:
+   - клик по карте коллекции ГРИМУАРА добавляет её в колоду как
+     дубликат (новая запись ×1);
+   - клик по ФИОЛЕТОВОЙ СТРЕЛКЕ ▲ у записи стакаает ИМЕННО ТУ запись,
+     на которую кликнули: +1 копия из коллекции, до deckStackMax() (5);
+   - застакованная запись на старте забега становится юнитом ×N
+     (очередь deckStacks в state.js / logic/epochs.js, logic/grid.js).
    ============================================================ */
 
-/* Шансы: 32% ЗДАНИЕ, 63% ★3, 4% ★4, 1% ★5 (если открыто). */
-function unlockedRarities() { return epochRarities(epoch); }
+/* Шансы: 32% ЗДАНИЕ, 63% ★3, 4% ★4 (куплено), 1% ★5 (куплено). */
 function pity4Max() { return 20; }
 
 function rollRarity() {
   const unlocked = unlockedRarities();
   const has4 = unlocked.includes(4), has5 = unlocked.includes(5);
   const best = has5 ? 5 : has4 ? 4 : 3; /* старшая ДОСТУПНАЯ редкость */
-  const fateBonus = sealLv.fate;
+  const fateBonus = upgLv.fate || 0;
   pity4 += 1 + fateBonus; pity5 += 1 + fateBonus;
   const hitSmallPity = pity4 >= pity4Max(), hitBigPity = pity5 >= 80;
 
@@ -42,8 +43,8 @@ function rollRarity() {
   return t;
 }
 
-/* Пул редкости t из карт ЗАДАННОЙ расы (v1.6.0: расу Призыва выбирает игрок;
-   по умолчанию — фракция текущего забега, как раньше) */
+/* Пул редкости t из карт ЗАДАННОЙ расы (расу Призыва выбирает игрок;
+   по умолчанию — фракция текущего забега) */
 function factionPool(t, race) {
   const f = race || faction;
   const base = POOLS[t] || POOL_3;
@@ -59,25 +60,20 @@ function rollOne(race) {
 }
 
 /* ---------------- ПРИЗЫВ (Гримуар): крутки за ДУШИ ----------------
-   v1.7.0: бесплатные крутки УБРАНЫ СОВСЕМ — каждая крутка стоит
-   GRIM_ROLL_COST Душ. Карты — в вечную коллекцию, реликвии — в схрон.
-   Возвращает {cards, relics, paid} или null. */
+   Каждая крутка стоит GRIM_ROLL_COST Душ. Карты — в вечную коллекцию.
+   Возвращает {cards, paid} или null. */
 const GRIM_ROLL_COST = 1; /* Душ за крутку */
 
 function performGrimRolls(count) {
   count = Math.max(1, Math.min(count | 0, 1000));
   if (souls < count * GRIM_ROLL_COST) return null;
   souls -= count * GRIM_ROLL_COST;
-  const cards = [], relics = [];
-  for (let i = 0; i < count; i++) {
-    if (relicRollDue()) relics.push(rollRelicId(gachaRace));
-    else { relicPity++; cards.push(rollOne(gachaRace)); }
-  }
+  const cards = [];
+  for (let i = 0; i < count; i++) cards.push(rollOne(gachaRace));
   const newTypes = cards.filter(id => !collection[id]); /* впервые полученные типы — для метки «НОВАЯ» */
   cards.forEach(id => collectionAdd(id, 1));
-  relics.forEach(id => relicStash.push(id));
   saveMeta(); saveRun();
-  return { cards, relics, paid: count, newTypes };
+  return { cards, paid: count, newTypes };
 }
 
 /* ---------------- ВЕЧНАЯ КОЛЛЕКЦИЯ ---------------- */
@@ -85,44 +81,58 @@ function collectionAdd(id, n) {
   collection[id] = (collection[id] || 0) + (n || 1);
   discovered.add(id);
 }
-/* Сколько копий карты уже лежит в колодах этой расы (для честного учёта) */
+/* Сколько копий карты требуется колодам (для честного учёта):
+   в колоде может лежать не больше копий, чем есть в коллекции */
 function collectionFree(id) {
   return (collection[id] || 0);
 }
 
-/* ---------------- КОЛОДЫ ---------------- */
-const DECK_SIZE = 64;
-/* v1.7.0: максимальный стак одной карты в колоде («дефолтные стаки до 5x»).
-   Улучшения могут поднять этот потолок в будущих итерациях. */
-const DECK_STACK_MAX = 5;
+/* ---------------- КОЛОДЫ (записи {id, n}) ---------------- */
+const DECK_SIZE = 64; /* копий, суммарно */
+/* Суммарное число копий в колоде */
+function deckTotal(deck) { return deck ? deck.cards.reduce((s, e) => s + (e.n || 1), 0) : 0; }
 function deckById(id) { return decks.find(k => k.id === id) || null; }
 function activeDeckFor(race) {
   const d = deckById(activeDeck[race]);
   return (d && d.race === race) ? d : null;
 }
+/* Сколько копий карты лежит в колоде (по всем записям) */
 function deckUsedCount(deck, cardId) {
-  return deck.cards.filter(cid => cid === cardId).length;
+  return deck.cards.reduce((s, e) => s + (e.id === cardId ? (e.n || 1) : 0), 0);
 }
-/* v1.7.0: можно ли поднять стак этой карты в колоде (есть копия в коллекции) */
-function canStackInDeck(deck, cardId) {
-  return !!deck && deckUsedCount(deck, cardId) < DECK_STACK_MAX &&
-    collectionFree(cardId) > deckUsedCount(deck, cardId);
+/* v1.8.0: можно ли поднять стак записи idx (+1 копия из коллекции):
+   стак записи не полон и в коллекции есть свободные копии */
+function canStackEntry(deck, idx) {
+  if (!deck || !deck.cards[idx]) return false;
+  const id = deck.cards[idx].id;
+  return (deck.cards[idx].n || 1) < deckStackMax() &&
+    deckTotal(deck) < DECK_SIZE &&
+    deckUsedCount(deck, id) < collectionFree(id);
 }
+/* Клик по карте коллекции ГРИМУАРА → добавить копию как ДУБЛИКАТ
+   (новая запись-блок ×1 в списке колоды) */
 function addToDeck(deck, cardId) {
   if (!deck || !CARDS[cardId]) return false;
   if (CARDS[cardId].faction !== deck.race) return false;      /* колода принадлежит расе */
-  if (deck.cards.length >= DECK_SIZE) return false;           /* лимит 64 */
-  if (deckUsedCount(deck, cardId) >= DECK_STACK_MAX) return false; /* v1.7.0: стак до 5x */
+  if (deckTotal(deck) >= DECK_SIZE) return false;             /* лимит 64 копий */
   if (deckUsedCount(deck, cardId) >= collectionFree(cardId)) return false; /* копий нет */
-  deck.cards.push(cardId);
+  deck.cards.push({ id: cardId, n: 1 });
   saveMeta();
   return true;
 }
-function removeFromDeck(deck, cardId) {
-  if (!deck) return false;
-  const i = deck.cards.indexOf(cardId);
-  if (i < 0) return false;
-  deck.cards.splice(i, 1);
+/* Клик по ▲ у записи: стакает ИМЕННО ЭТУ запись (+1 копия из коллекции) */
+function stackUpEntry(deck, idx) {
+  if (!canStackEntry(deck, idx)) return false;
+  deck.cards[idx].n = (deck.cards[idx].n || 1) + 1;
+  saveMeta();
+  return true;
+}
+/* Клик по записи: убрать ОДНУ копию (запись с нулём — удаляется) */
+function removeFromDeck(deck, idx) {
+  if (!deck || !deck.cards[idx]) return false;
+  const e = deck.cards[idx];
+  if ((e.n || 1) > 1) e.n--;
+  else deck.cards.splice(idx, 1);
   saveMeta();
   return true;
 }
@@ -149,7 +159,7 @@ function ensureStarterDeck(race) {
   if (decks.some(k => k.race === race)) return deckById(activeDeck[race]) || decks.find(k => k.race === race);
   const d = createDeck(race, 'Колода ' + FACTION_INFO[race].name);
   const startR1 = POOL_3.filter(id => CARDS[id].faction === race);
-  drawDistinct(startR1, 2).concat(startKitFor(race)).forEach(id => { collectionAdd(id, 1); d.cards.push(id); });
+  drawDistinct(startR1, 2).concat(startKitFor(race)).forEach(id => { collectionAdd(id, 1); d.cards.push({ id, n: 1 }); });
   if (!activeDeck[race]) activeDeck[race] = d.id;
   saveMeta();
   return d;

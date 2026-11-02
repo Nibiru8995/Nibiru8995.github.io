@@ -1,11 +1,11 @@
 'use strict';
 /* ============================================================
-   РЕНДЕР: КОЛЛЕКЦИЯ (render/collection_render.js) — v1.7.0
-   Вкладки: открытые фракции + РЕЛИКВИИ (жизнь в коллекции,
-   слоты столбов — ряд над гридом). Фильтр редкостей.
-   В забеге коллекция = ВЫДАННАЯ КОЛОДА (v1.6.0): продавать нельзя.
-   v1.7.0: застакованные карты помечены ▲ (первая постановка
-   ставит на грид стопку ×N), кнопка «Стак» снята.
+   РЕНДЕР: КОЛЛЕКЦИЯ (render/collection_render.js) — v1.8.0
+   В забеге коллекция = ВЫДАННАЯ КОЛОДА: продавать нельзя.
+   v1.8.0: ЛИШНИЙ ПЕРЕКЛЮЧАТЕЛЬ «Фракция» УДАЛЁН — колода
+   принадлежит одной расе, фильтровать вкладками нечего; остаётся
+   только фильтр редкостей «Все ★». Вкладка «⚒ Реликвии» появится
+   только когда в забеге будут реликвии (сейчас источника нет).
    ============================================================ */
 
 let relicTabActive = false;
@@ -45,45 +45,42 @@ function renderCollection() {
   const cont = $('collectGrid');
   cont.innerHTML = '';
   const sel = placingMode && pendingCard ? CARDS[pendingCard] : null;
-  const relicsUnlocked = epoch >= RELIC_SLOT_EPOCH;
+  /* v1.8.0: реликвий в забеге пока неоткуда взять — вкладка видна,
+     только если реликвии как-то появились (на будущее) */
+  const relicsUnlocked = RELICS_OWNED.size > 0;
 
-  /* Фильтр редкостей: только открытые в текущей Эпохе */
+  /* Фильтр редкостей: только купленные в «Улучшениях» */
   renderRarityFilter();
 
-  /* Вкладки: заблокированные фракции не отображаем вовсе.
-     Резец Тьмы: сквозной фильтр «Все» убран — первая вкладка «Фракция»
-     показывает карты текущей Эпохи. */
+  /* v1.8.0: ВКЛАДКИ РАС УДАЛЕНЫ (лишний переключатель — колода одной расы).
+     Остался только переключатель «Колода / ⚒ Реликвии» — и то при наличии реликвий. */
   const tabsEl = $('collectionTabs');
   tabsEl.innerHTML = '';
-  const invFactions = [...new Set(Object.keys(inventory).map(id => CARDS[id].faction))];
-  const visible = FACTION_KEYS.filter(f => epochFactions(epoch).includes(f) &&
-    (f === faction || invFactions.includes(f)));
-  const tabs = [['faction', 'Фракция']].concat(visible.map(f => [f, FACTION_INFO[f].name]));
-  if (relicsUnlocked) tabs.push(['relics', 'Реликвии']);
-  if (collectionFilter === 'all' || collectionFilter === '') collectionFilter = 'faction';
-  if (collectionFilter !== 'faction' && collectionFilter !== 'relics' && !visible.includes(collectionFilter)) collectionFilter = 'faction';
-  if (!relicsUnlocked && collectionFilter === 'relics') collectionFilter = 'faction';
-  relicTabActive = collectionFilter === 'relics';
+  if (relicsUnlocked) {
+    const tabs = [['faction', 'Колода'], ['relics', '⚒ Реликвии']];
+    if (collectionFilter !== 'relics') collectionFilter = 'faction';
+    tabs.forEach(([f, label]) => {
+      const t = document.createElement('div');
+      t.className = 'coll-tab' + (collectionFilter === f ? ' active' : '');
+      t.dataset.faction = f;
+      t.textContent = label;
+      t.onclick = () => {
+        qsa('.coll-tab').forEach(x => x.classList.remove('active'));
+        t.classList.add('active');
+        collectionFilter = f; renderCollection();
+      };
+      tabsEl.appendChild(t);
+    });
+  } else collectionFilter = 'faction';
+  relicTabActive = collectionFilter === 'relics' && relicsUnlocked;
   /* Фильтр редкостей не имеет смысла на вкладке реликвий */
   $('rarityFilter').style.visibility = relicTabActive ? 'hidden' : 'visible';
-  tabs.forEach(([f, label]) => {
-    const t = document.createElement('div');
-    t.className = 'coll-tab' + (collectionFilter === f ? ' active' : '');
-    t.dataset.faction = f;
-    t.textContent = label;
-    t.onclick = () => {
-      qsa('.coll-tab').forEach(x => x.classList.remove('active'));
-      t.classList.add('active');
-      collectionFilter = f; renderCollection();
-    };
-    tabsEl.appendChild(t);
-  });
 
   /* ===== ВКЛАДКА РЕЛИКВИЙ ===== */
   if (relicTabActive) { renderRelicTab(cont); return; }
 
   const ids = Object.keys(inventory).filter(id =>
-    (collectionFilter === 'faction' ? CARDS[id].faction === faction : CARDS[id].faction === collectionFilter) &&
+    CARDS[id].faction === faction &&
     (rarityFilter === 'all' || String(CARDS[id].rarity) === String(rarityFilter)));
   const pv = id => sel && sel.id !== id && linked(sel, CARDS[id]) ? 1 : 0;
   ids.sort((a, b) => pv(b) - pv(a) || rarityRank(CARDS[b].rarity) - rarityRank(CARDS[a].rarity) || a.localeCompare(b));
@@ -100,9 +97,9 @@ function renderCollection() {
     if (sel && sel.id === id) el.classList.add('selected');
     el.innerHTML = cardArtHTML(card, 'coll-art', 'coll-glyph') +
       '<span class="faction-dot" style="background:' + FACTION_INFO[card.faction].color + '"></span>' +
-      '<span class="count' + (deckStacks[id] > 1 ? ' count-stacked' : '') + '"' +
-      (deckStacks[id] > 1 ? ' title="Застаковано в колоде: первая постановка встанет на грид стопкой ×' + deckStacks[id] + '"' : '') +
-      '>' + count + (deckStacks[id] > 1 ? ' ▲' : '') + '</span>';
+      '<span class="count' + ((deckStacks[id] && deckStacks[id][0]) > 1 ? ' count-stacked' : '') + '"' +
+      ((deckStacks[id] && deckStacks[id][0]) > 1 ? ' title="Застаковано в колоде: первая постановка встанет на грид стопкой ×' + deckStacks[id][0] + '"' : '') +
+      '>' + count + ((deckStacks[id] && deckStacks[id][0]) > 1 ? ' ▲' : '') + '</span>';
     el.addEventListener('mouseenter', e => showCardTooltip(e, card, card.baseRate));
     el.addEventListener('mousemove', moveTooltip);
     el.addEventListener('mouseleave', hideTooltip);
@@ -137,13 +134,13 @@ function renderRelicTab(cont) {
     return '<div class="relic-pick" data-id="' + r.id + '" style="border-color:' + RELIC_RARITY_COLOR(r.rarity) + (own ? '' : ';opacity:.35') + '">' +
       relicArtHTML(r, 'relic-pick-img', '') +
       '<span><b>' + (own ? r.name : '???') + '</b> ' + (own ? '★'.repeat(r.rarity) : '') +
-      '<br><small style="color:#8fc87f">✅ ' + (own ? r.rule : 'источник: гача с Эпохи ' + RELIC_DROP_EPOCH) + '</small>' +
+      '<br><small style="color:#8fc87f">✅ ' + (own ? r.rule : 'источник появится в будущих итерациях') + '</small>' +
       (own ? '<br><small style="color:#e08a8a">❌ ' + r.curse + '</small>' : '') +
       (own ? '<br><small style="color:' + (col !== null ? '#c9a227' : '#8a7a5a') + '">' + (col !== null ? '📍 стоит в столбе ' + (col + 1) + ' (клик — снять)' : 'клик — поставить в столб') + '</small>' +
         (cultGlobal ? '<br><small style="color:#c9a227">ритуальная — закон и кара на ВЕСЬ ритуал</small>' : '')
         : '') + '</span></div>';
   }).join('') +
-    (RELICS_OWNED.size === 0 ? '<div class="fighter-empty">Реликвий пока нет — падают из гачи с Эпохи ' + RELIC_DROP_EPOCH + '.<br>Слоты столбов — в ряду НАД Алтарём.</div>' : '');
+    (RELICS_OWNED.size === 0 ? '<div class="fighter-empty">Реликвий пока нет — источник появится в будущих итерациях (см. «Улучшения»).<br>Слоты столбов — в ряду НАД Алтарём.</div>' : '');
   cont.querySelectorAll('.relic-pick').forEach(el => {
     const id = el.dataset.id;
     if (!hasRelic(id)) return;
@@ -198,7 +195,8 @@ function renderActions() {
     el.innerHTML = '<span class="act-hint">Выберите карту: <b style="color:#8fbf72">зелёная рамка</b> — партнёры по синергии подсветят лучшие клетки. ПКМ / Shift+клик — в бой. Застакованная карта (▲) встанет стопкой ×N.</span>';
   } else {
     const c = CARDS[pendingCard], n = inventory[pendingCard];
-    const stk = deckStacks[pendingCard] || 1;
+    const q = deckStacks[pendingCard];
+    const stk = (q && q.length ? q[0] : 1) || 1;
     /* v1.6.0: продажа дубликатов снята — инвентарь забега = колода,
        дубликаты коллекции копятся под будущие Улучшения */
     el.innerHTML = '<b>' + cardArtHTML(c, 'inline-art', '') + ' ' + c.name + '</b> ×' + n +

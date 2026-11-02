@@ -11,7 +11,7 @@ mk('hub', '<h2>🎰 Казино</h2><div class="hubg"><button data-g="slots">�
 mk('cgModal', '<div id="cgBody"></div><button class="btn btn-take" id="cgClose" style="align-self:center">Назад</button>');
 
 function openCasino() {
-  if (!epochHasCasino(epoch)) { toast('🎰 Казино откроется в Эпохе ' + CASINO_EPOCH); return; }
+  if (!featOwned('casino')) { toast('🎰 Казино ещё не куплено — смотрите «Улучшения» (за Души)'); return; }
   open_('hub');
 }
 

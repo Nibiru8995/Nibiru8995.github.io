@@ -172,12 +172,16 @@ const RELIC_RARITY_COLOR = r => r === 3 ? '#7080a0' : r === 4 ? '#a070b0' : '#d4
  реликвии не переживают смену Эпохи — расходник забега ---*/
 let RELICS_OWNED = new Set();  // run: собранные реликвии
 let relicSlots = {};  // run: {colIndex(абсолютный 0..8): relicId}
-let relicPity = 0;  // run: круток без реликвии (гарантия за 18)
 
-const RELIC_SLOT_EPOCH = 2;  // слоты столбов открываются на Эпохе 2
-const RELIC_DROP_EPOCH = 2;  // и из гачи падают с Эпохи 2
-const RELIC_DROP_CHANCE = 0.05;  // 5% за крутку
-const RELIC_PITY_MAX = 18;  // гарантия: не дольше 18 круток без реликвии
+/* v1.8.0 «Вечная Эпоха»: СПОСОБА ПОЛУЧИТЬ РЕЛИКВИИ ПОКА НЕТ —
+   из гачи они больше НЕ падают, трофей босса их не даёт, знамения
+   не дают. Слоты/законы/кары столбов уже в коде — «доработаем
+   позже»: источники вернут в будущей итерации. Ворота закрыты
+   огромным порогом (эквивалент «никогда»). */
+const RELIC_SLOT_EPOCH = 1e9;   // ворота закрыты: реликвии неоткуда взять
+const RELIC_DROP_EPOCH = 1e9;   // из Призыва не падают
+const RELIC_DROP_CHANCE = 0.05;
+const RELIC_PITY_MAX = 18;
 const RELIC_TIER_W = { 3: 65, 4: 28, 5: 7 };
 
 /* --- ДВИЖОК ЗАКОНОВ И КАР : по столбам, читается economy.js /
@@ -369,13 +373,11 @@ function unassignedRelics() {
 }
 function relicsOfFaction(f) { return RELICS.filter(r => r.faction === f); }
 
-/* Выпадение из гачи: шанс 5% + гарантия за 18 круток (только с Э2) */
+/* Выпадение из гачи: ВЫКЛЮЧЕНО (v1.8.0 — источника реликвий нет) */
 function relicRollDue() {
-  if (epoch < RELIC_DROP_EPOCH) return false;
-  return Math.random() < RELIC_DROP_CHANCE || relicPity >= RELIC_PITY_MAX;
+  return false;
 }
 function rollRelicId(race) {
-  relicPity = 0;
   const f = race || faction;
   const tier = weightedPick(RELIC_TIER_W);
   for (let t = tier; t >= 3; t--) {

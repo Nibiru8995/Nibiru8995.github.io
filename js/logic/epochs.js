@@ -1,9 +1,10 @@
 'use strict';
 /* ============================================================
-   ЛОГИКА: ЭПОХИ (logic/epochs.js)
-   Пункт 1 ТЗ: престиж → Эпоха. Прогресс, переход, сброс,
-   печати и магазин печатей. Поле расширяется АВТОМАТИЧЕСКИ при
-   переходе (epochMaxSize), докупать ничего не нужно.
+   ЛОГИКА: ЭПОХИ (logic/epochs.js) — v1.8.0 «Вечная Эпоха»
+   Прогресс, переход, сброс. ЭПОХИ БЕСКОНЕЧНЫ и ничего не
+   открывают (все покупки — за Души в «Улучшениях»); порог растёт
+   множителем ×4 (data/epochs.js). Поле задаётся купленными
+   расширениями (fieldSize()), от Эпохи не растёт.
    ============================================================ */
 
 function epochProgress() {
@@ -16,56 +17,58 @@ function canEpochUp() { return runEarned >= epochThreshold(epoch); }
 function epochResetSummary() {
   return {
     reset: ['Грид (Алтарь) и расставленные карты', 'Инвентарь забега (включая застакованные карты колоды)', 'Бойцы и этажи Арены',
-      'Тёмная энергия', 'РЕЛИКВИИ (собранные и расставленные)'],
-    keep: ['Достижения 🏅', 'Печати 🔱 и магазин печатей', 'Открытые фишки карт',
-      'Доступные фракции и разблокировки Эпох',
+      'Тёмная энергия'],
+    keep: ['Достижения 🏅', 'Улучшения (за Души)', 'Открытые фишки карт',
       'ДУШИ, коллекция и колоды Гримуара']
   };
 }
 
-/* ПОЛЕ РАСТЁТ САМО: при переходе playableSize = epochMaxSize(epoch) —
-   докупать расширения не нужно (пользователь молодец, что апал Эпоху) */
 /* v1.7.0: ВЫДАЧА КОЛОДЫ В ЗАБЕГ + ЗАСТАКОВАННЫЕ КАРТЫ.
-   Копии одной карты в колоде (до DECK_STACK_MAX = 5) приходят стаком:
-   deckStacks[cardId] = N — первая постановка такой карты на грид
-   встанет ГОТОВЫМ юнитом ×N (logic/grid.js), а не одной копией. */
+   v1.8.0: колода — ЗАПИСИ {id, n}. Каждая запись со стаком n≥2 кладёт
+   своё N в ОЧЕРЕДЬ deckStacks[id] (по убыванию). Постановка карты на
+   грид берёт ПЕРВЫЙ стак очереди и встанет готовым юнитом ×N.
+   Отдельные записи ×1 приходят одиночками — игрок сам решает в
+   Гримуаре, что застакать (фиолетовая стрелка ▲ — та запись, на
+   которую кликнули), а что оставить развёрнутым.
+   Снапшот runDeck — для req-требований контрактов. */
 function handOutDeck(deck) {
   deckStacks = {};
+  runDeck = [];
   if (!deck || !deck.cards.length) return '';
-  const cnt = {};
-  deck.cards.forEach(id => {
-    inventory[id] = (inventory[id] || 0) + 1;
-    cnt[id] = (cnt[id] || 0) + 1;
+  const q = {};
+  deck.cards.forEach(en => {
+    const id = en.id, n = en.n || 1;
+    inventory[id] = (inventory[id] || 0) + n;
+    runDeck.push(id);
+    if (n >= 2) (q[id] = q[id] || []).push(n);
     discovered.add(id);
   });
-  Object.keys(cnt).forEach(id => { if (cnt[id] >= 2) deckStacks[id] = Math.min(cnt[id], DECK_STACK_MAX); });
+  Object.keys(q).forEach(id => { q[id].sort((a, b) => b - a); deckStacks[id] = q[id]; });
   return deck.name;
 }
 
 /* ---------------- Общий сброс забега (v1.4.3) ----------------
    Единая правда для Вознесения (doEpochUp) и Рестарта Эпохи (doEpochRestart).
-   ВАЖНО: вызывать ПОСЛЕ epoch++/назначения эпохи и уже с НОВОЙ фракцией —
-   playableSize считается как epochMaxSize(epoch) по АКТУАЛЬНОЙ эпохе.
+   ВАЖНО: вызывать ПОСЛЕ epoch++/назначения эпохи и уже с НОВОЙ фракцией.
    Возвращает время завершённого забега (для Таблички Тьмы).
 
-   v1.6.0 «Гримуар»: на старте забега игроку выдаётся ВСЯ активная колода
-   его расы (пункт 6 итерации: механика выдачи будет усложнена позже).
-   Нет колоды/она пуста — фолбэк на классический старт-кит.
-   v1.7.0: застакованные карты колоды идут через deckStacks; ручной
-   стак на гриде отключён; pity — мета, крутки платят Душами. */
-function resetRunCommon(newFaction) {
+   v1.6.0: на старте забега игроку выдаётся выбранная колода его расы
+   целиком (обязательный выбор колоды при выборе расы — v1.8.0).
+   Нет колоды (чит-режим) — фолбэк на классический старт-кит.
+   v1.8.0: записи {id, n} → очереди deckStacks; контракты
+   инициализируются ПОСЛЕ выдачи колоды (req сверяется с runDeck). */
+function resetRunCommon(newFaction, deck) {
   const _runSecsAtEnd = runTime;
   faction = newFaction;
-  applyFactionTheme(); /* v1.5.0: новая фракция — новая тема (фон/палитра) */
-  /* Сброс забега. Поле растёт АВТОМАТИЧЕСКИ (бесплатно) до размера Эпохи.
-     РЕЛИКВИИ — расходник забега: коллекция и расстановка сбрасываются,
-     но из СХРОНА Призыва выдаются накопленные реликвии (relicStash). */
+  applyFactionTheme(); /* новая фракция — новая тема (фон/палитра) */
+  /* Сброс забега. Поле = купленный размер (Улучшения).
+     РЕЛИКВИИ — расходник забега, но пока способа получить их нет
+     (v1.8.0): схрон удалён, коллекция всегда пуста. */
   const baseCr = 2500;
-  crystals = baseCr + (sealLv.impulse > 0 ? 2500 * Math.pow(2, sealLv.impulse) : 0);
-  RELICS_OWNED = new Set(relicStash.filter(id => relicById(id))); relicStash = [];
-  relicSlots = {}; blessedRelics = new Set(); runRituals = 0; runOffline = 0;
+  crystals = baseCr + (upgLv.impulse > 0 ? 2500 * Math.pow(2, upgLv.impulse) : 0);
+  RELICS_OWNED = new Set(); relicSlots = {}; blessedRelics = new Set(); runRituals = 0; runOffline = 0;
   grid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
-  playableSize = epochMaxSize(epoch);
+  playableSize = fieldSize();
   rebuildPlayableMask();
   inventory = {}; pendingCard = null;
   fighters = {}; fighterHpState = {};
@@ -76,25 +79,27 @@ function resetRunCommon(newFaction) {
   altBuff = { mult: 1, until: 0, label: '' };
   ritualResonance = 0; surgeUntil = 0;
   milestoneIdx = 0;
-  contractsInit(); /* v1.2.9: Тёмный Пакт начинается заново с каждой Эпохой */
   omens = []; omenTimer = 60; renderOmens();
 
-  /* ВЫДАЁМ КОЛОДУ (v1.6.0): вся активная колода расы забега — в инвентарь сразу.
-     v1.7.0: застакованные копии — через deckStacks (постановка = юнит ×N).
+  /* ВЫДАЁМ КОЛОДУ (v1.6.0): выбранная колода расы забега — в инвентарь сразу.
+     v1.8.0: записи {id, n} → очереди deckStacks; runDeck-снапшот.
      Пусто → старт-кит фракции, как раньше. */
   let deckTitle = '';
-  const deck = ensureStarterDeck(faction);
-  const src = (deck && deck.cards.length) ? deck : null;
-  if (src) {
+  const src = (deck && deck.cards.length) ? deck : ensureStarterDeck(faction);
+  if (src && src.cards.length) {
     deckTitle = handOutDeck(src);
   } else {
-    deckStacks = {};
+    deckStacks = {}; runDeck = [];
     const startR1 = POOL_3.filter(id => CARDS[id].faction === faction);
     const gift = drawDistinct(startR1, 2).concat(startKitFor(faction));
-    gift.forEach(id => { inventory[id] = (inventory[id] || 0) + 1; discovered.add(id); });
+    gift.forEach(id => { inventory[id] = (inventory[id] || 0) + 1; discovered.add(id); runDeck.push(id); });
   }
-  /* Заголовок коллекции = колода, с которой начат забег (v1.6.0, пункт 2) */
+  /* Заголовок коллекции = колода, с которой начат забег */
   const ct = $('collectionTitle'); if (ct) ct.textContent = deckTitle ? 'Колода: ' + deckTitle : 'Колода';
+
+  /* v1.8.0: контракты ПОСЛЕ выдачи колоды — 4 случайных, выполнимых
+     с той колодой, с которой начата Эпоха */
+  contractsInit();
 
   computeIncome();
   saveMeta(); saveRun();
@@ -104,46 +109,31 @@ function resetRunCommon(newFaction) {
   return _runSecsAtEnd;
 }
 
-/* ---------------- Подготовка нового забега внутри выбранной фракции ---------------- */
-function doEpochUp(newFaction) {
-  const gain = epochSealsGain(epoch);
-  seals += gain; sealsTotal += gain;
+/* ---------------- Вознесение: новая Эпоха ---------------- */
+function doEpochUp(newFaction, deck) {
   epoch++;
   maxEpoch = Math.max(maxEpoch, epoch);
-  /* v1.6.0: СМЕНА ЭПОХИ ПЛАТИТ ДУШОЙ — источник Призыва №1 */
-  souls += 1;
+  /* СМЕНА ЭПОХИ ПЛАТИТ ДУШОЙ — источник Призыва и Улучшений №1 */
+  gainSouls(1);
   /* Шоу Эпохи */
   sfx('epoch');
   fxConfetti(130);
   fxShockwave(window.innerWidth / 2, window.innerHeight / 2, '#e8c060');
-  const _runSecsAtEnd = resetRunCommon(newFaction);
-  toast('⚜ ЭПОХА ' + epoch + ' «' + epochName(epoch) + '» · ' + FACTION_INFO[faction].epochTitle + ': +' + gain + ' 🔱 · ' + SOUL_IMG + ' +1 Душа');
-  supaSubmit(_runSecsAtEnd, true); /* v1.2.9.2: Вознесение — гарантированная запись (Эпоха выросла) */
+  const _runSecsAtEnd = resetRunCommon(newFaction, deck);
+  toast('⚜ ЭПОХА ' + epoch + ' «' + epochName(epoch) + '» · ' + FACTION_INFO[faction].epochTitle + ': ' + SOUL_IMG + ' +1 Душа');
+  supaSubmit(_runSecsAtEnd, true); /* Вознесение — гарантированная запись (Эпоха выросла) */
   checkAchievements();
-  queueFeatureGuides(); /* онбординг: новая фракция/фичи этой Эпохи */
+  queueFeatureGuides(); /* онбординг: новая фракция/фичи */
 }
 
 /* v1.4.3 «Второй Круг»: РЕСТАРТ ТЕКУЩЕЙ Эпохи — кнопка над «Меню».
-   Забег сгорает целиком, Эпоха ОСТАЁТСЯ той же, фракцию можно сменить.
-   Вознесением НЕ считается: печатей 🔱 НЕ даёт (иначе рестарт-фарм). */
-function doEpochRestart(newFaction) {
-  const _runSecsAtEnd = resetRunCommon(newFaction);
+   Забег сгорает целиком, Эпоха ОСТАЁТСЯ той же, фракцию и колоду
+   можно выбрать заново. Вознесением НЕ считается. */
+function doEpochRestart(newFaction, deck) {
+  const _runSecsAtEnd = resetRunCommon(newFaction, deck);
   sfx('epoch');
   toast('⟲ ЭПОХА ' + epoch + ' «' + epochName(epoch) + '» начата заново · ' + FACTION_INFO[faction].epochTitle);
   supaSubmit(_runSecsAtEnd, false, true); /* тихая запись: Эпоха не выросла — только если рекорд побит */
   checkAchievements();
   queueFeatureGuides();
-}
-
-/* Магазин печатей */
-function sealCost(seal) { return seal.cost(sealLv[seal.id]); }
-function buySeal(id) {
-  const seal = SEALS_SHOP.find(s => s.id === id);
-  if (!seal || sealLv[id] >= seal.max) return;
-  const cost = sealCost(seal);
-  if (seals < cost) { toast('Не хватает печатей 🔱: нужно ' + cost); return; }
-  seals -= cost; sealLv[id]++;
-  saveMeta();
-  renderEpochMenu(); updateHUD();
-  toast(seal.icon + ' ' + seal.name + ': уровень ' + sealLv[id]);
 }

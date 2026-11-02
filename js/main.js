@@ -63,15 +63,15 @@ const TUT = [
   { t: '<b>Шаг 1. Колода — уже у вас.</b> С этой итерации забег выдаёт ВСЮ колоду сразу — она лежит в коллекции слева. Кликните по любой карте — она возьмётся «в руку» (крутки и пополнение колоды — в Гримуаре, за Души).', hl: () => collSel(Object.keys(inventory)[0]), ok: () => placingMode },
   { t: '<b>Шаг 2. Поставьте карту.</b> Кликните по любой клетке Алтаря. Карта начнёт приносить ТЭ/сек — счётчик над Алтарём.', hl: '#grid', ok: () => cardsOnGrid() > 0 },
   { t: '<b>Шаг 3. ЗДАНИЕ!</b> Мы выдали <b>«Кладбище»</b> — постройку: она сама раз в 12с поднимает бесплатную нежить и усиливает соседей. Выберите её в коллекции и поставьте рядом с картами.', pre: () => TUT_GIVE([['bl_grave', 1]]), hl: () => collSel('bl_grave'), ok: () => gridHas('bl_grave') },
-  { t: '<b>Шаг 4. СТАК — главный секрет Алтаря!</b> В Гримуаре дубликаты застакиваются в карту колоды (фиолетовая стрелка ▲, до ×5). Мы выдали <b>«Скелета» ×3</b> — уже застакованного. Выберите его в коллекции (подсвечен, метка ▲).', pre: () => { TUT_GIVE([['u0', 3]]); deckStacks['u0'] = 3; renderCollection(); }, hl: () => collSel('u0'), ok: () => placingMode && pendingCard === 'u0' },
+  { t: '<b>Шаг 4. СТАК — главный секрет Алтаря!</b> В Гримуаре каждая копия в колоде — отдельный блок, а фиолетовая стрелка ▲ стакаает ИМЕННО ЕЁ (до ×5). Мы выдали <b>«Скелета» ×3</b> — уже застакованного. Выберите его в коллекции (подсвечен, метка ▲).', pre: () => { TUT_GIVE([['u0', 3]]); deckStacks['u0'] = [3]; renderCollection(); }, hl: () => collSel('u0'), ok: () => placingMode && pendingCard === 'u0' },
   { t: '<b>Шаг 5. Стак.</b> Поставьте Скелета на любую свободную клетку — на грид встанет ГОТОВАЯ стопка ×3 с ТРОЙНЫМ доходом клетки. Ручных стаков на поле больше нет: стопки собираются в колоде Гримуара.', hl: '#grid', ok: () => { const it = grid.flat().find(x => x && x.cardId === 'u0'); return !!(it && it.stacks >= 3); } },
   { t: '<b>Шаг 6. ПЕРВАЯ КОМБИНАЦИЯ!</b> Мы выдали <b>«Костяного Рыцаря»</b> — партнёра Скелета. Выберите его в коллекции (золотая подсветка).', pre: () => TUT_GIVE([['u4', 1]]), hl: () => collSel('u4'), ok: () => placingMode && pendingCard === 'u4' },
   { t: '<b>Шаг 7. Завершите связку.</b> Кликните по подсвеченной ЗЕЛЁНЫМ клетке рядом со Скелетом. Между картами вспыхнет линия — это синергия, доход обоих вырастет.', hl: '#grid', ok: () => pairLinkCount('u0', 'u4') > 0 },
   { t: '🎉 <b>Первая комбинация собрана!</b> Линия на Алтаре = активное звено. Тултип (наведи мышь) показывает звенья и доход карты.', n: 1 },
   { t: '<b>Шаг 8. Повторы слабее.</b> Мы выдали ещё Скелета и Рыцаря. Соберите ВТОРУЮ такую же пару в сторонке и заметьте, что линия стала тусклее.', pre: () => TUT_GIVE([['u0', 1], ['u4', 1]]), hl: '#grid', ok: () => pairLinkCount('u0', 'u4') >= 2 },
   { t: '⚠️ Видите? Вторая линия <b>бледная</b> — повтор одной и той же пары даёт всё меньше: 2-е звено ×0.7, 3-е ×0.45… у нежити — ещё жёстче. <b>Стройте РАЗНЫЕ связки</b> — каждая новая пара работает в полную силу.', n: 1 },
-  { t: '<b>Шаг 9. Эпоха.</b> Большая кнопка над Алтарём показывает % порога. Наберёте — она откроет переход в следующую Эпоху (+печати 🔱 и <b>+1 Душа</b>). Эпохи открывают: Э2 — ⚔ Арену и <b>реликвии</b>; Э3 — поле 5×5 и ★4; Э4 — 🎰 Казино; Э5 — Культистов. Поле растёт само.', hl: '#epochUpBtn', n: 1 },
-  { t: '✅ <b>Готово!</b> Между забегами заходите в <b>Меню → Гримуар</b>: Души тратятся на Призыв карт, коллекция вечна, колоды собираются под расу. Удачи, Гриндер!', n: 1, last: 1 }
+  { t: '<b>Шаг 9. Эпоха.</b> Большая кнопка над Алтарём показывает % порога. Наберёте — Вознесение в следующую Эпоху (' + 'за это дают <b>+1 Душу</b>). Эпохи бесконечны и ничего не открывают — фичи, поле, ★4/★5 и фракции покупаются Душами в <b>Меню → «Улучшения»</b>.', hl: '#epochUpBtn', n: 1 },
+  { t: '✅ <b>Готово!</b> Между забегами заходите в <b>Меню → Гримуар</b>: Души тратятся на Призыв карт и Улучшения, коллекция вечна, колоды собираются под расу. Удачи, Гриндер!', n: 1, last: 1 }
 ];
 let tutI = -1, tutTimer = null;
 function tutGo(i) {
@@ -103,39 +103,14 @@ function startTutorial() {
   tutTimer = setInterval(() => { const st = TUT[tutI]; if (st && st.ok && st.ok()) tutGo(tutI + 1); }, 400);
 }
 
-/* ---------------- Новая игра ---------------- */
-function startFreshRun() {
-  epoch = 1; maxEpoch = Math.max(maxEpoch, 1); faction = 'undead';
-  crystals = 2500 + (sealLv.impulse > 0 ? 2500 * Math.pow(2, sealLv.impulse) : 0);
-  grid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
-  playableSize = 3;
-  rebuildPlayableMask();
-  inventory = {}; pendingCard = null; deckStacks = {};
-  fighters = {}; fighterHpState = {};
-  arenaState = { floor: 1, room: 1, enemy: null, fighting: false, status: '', cleared: Array(ARENA.roomsPerFloor).fill(false), fallen: {} };
-  arenaAuto = false; arenaStreak = 0;
-  runRolls = 0; runEarned = 0; runTime = 0;
-  relicSlots = {};
-  altBuff = { mult: 1, until: 0, label: '' };
-  ritualResonance = 0; surgeUntil = 0;
-  milestoneIdx = 0;
-  omens = []; omenTimer = 60;
-  /* v1.6.0: выдаём активную колоду расы (нет — старт-кит); v1.7.0: со стаками */
-  const deck = ensureStarterDeck(faction);
-  if (deck && deck.cards.length) {
-    const dn = handOutDeck(deck);
-    const ct = $('collectionTitle'); if (ct) ct.textContent = 'Колода: ' + dn;
-  } else {
-    deckStacks = {};
-    const startR1 = POOL_3.filter(id => CARDS[id].faction === faction);
-    drawDistinct(startR1, 2).concat(startKitFor(faction)).forEach(id => { inventory[id] = (inventory[id] || 0) + 1; discovered.add(id); });
-  }
-  computeIncome();
+/* ---------------- Новая игра ----------------
+   v1.8.0: при старте игрок ОБЯЗАН выбрать колоду (окно выбора колоды
+   расы). Никакого авто-старта с «активной» — раса = нежить, колода = ваш выбор. */
+function startFreshRun(f, deck) {
+  epoch = 1; maxEpoch = Math.max(maxEpoch, 1);
   gameStarted = true; noSave = false;
-  contractsInit(); /* v1.2.9: серия контрактов нового забега */
+  resetRunCommon(f || 'undead', deck || null); /* колода/старт-кит, deckStacks, runDeck, контракты */
   checkDailyGift(); /* v1.2.9: первый вход за день — Знамение Судьбы */
-  saveRun(); saveMeta();
-  refreshAll();
   toast('⚜ ' + FACTION_INFO[faction].epochTitle);
   queueFeatureGuides(); /* первая Эпоха за фракцию — краткое обучение */
 }
@@ -189,7 +164,7 @@ function startDebugRun(ep, f, rich, keepSave) {
   epoch = ep; maxEpoch = Math.max(maxEpoch, ep); faction = f;
   crystals = 2500 * ep + (rich ? 1e9 : 0);
   grid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
-  playableSize = epochMaxSize(epoch);
+  playableSize = 9; /* чит-режим: сразу всё поле */
   rebuildPlayableMask();
   inventory = {}; pendingCard = null; deckStacks = {};
   fighters = {}; fighterHpState = {};
@@ -354,7 +329,7 @@ function wireEvents() {
   /* Реликвии */
   /* Реликвии v1.2.6: вкладка коллекции «⚒ РЕЛИКВИИ» + ряд слотов над Алтарём */
   $('resetBtn').addEventListener('click', () => {
-    ask('Стереть ВЕСЬ прогресс (включая печати и ачивки)?', () => {
+    ask('Стереть ВЕСЬ прогресс (включая Души, коллекцию, Улучшения и ачивки)?', () => {
       noSave = true; wipeAll(); location.reload();
     });
   });
@@ -367,8 +342,12 @@ function wireEvents() {
     hideMenu();
   };
   $('menuNew').onclick = () => {
-    const go = () => { try { localStorage.removeItem(SAVE_RUN); } catch (e) { } startFreshRun(); hideMenu(); };
-    if (hasRunSave() || gameStarted) ask('Начать заново? Прогресс текущей Эпохи будет сброшен. Достижения и печати останутся.', go);
+    const go = () => {
+      try { localStorage.removeItem(SAVE_RUN); } catch (e) { }
+      /* v1.8.0: обязательный выбор колоды перед стартом */
+      openDeckPick('undead', d => { startFreshRun('undead', d); hideMenu(); });
+    };
+    if (hasRunSave() || gameStarted) ask('Начать заново? Прогресс текущей Эпохи будет сброшен. Достижения и Улучшения останутся.', go);
     else go();
   };
   $('menuTut').onclick = () => restartWith('tutorial');
@@ -376,27 +355,14 @@ function wireEvents() {
      Раньше hideMenu() «выбрасывал» игрока из меню: закрытие окна Эпохи
      оставляло пустой экран игры вместо главного меню. */
   $('menuEpoch').onclick = () => openEpochMenu();
-  /* v1.6.0: ГРИМУАР и УЛУЧШЕНИЯ в главном меню */
+  /* v1.6.0: ГРИМУАР и УЛУЧШЕНИЯ в главном меню; v1.8.0: Улучшения — рабочая мастерская за Души */
   $('menuGrim').onclick = () => { openGrimuar(); };
-  $('menuUpgrades').onclick = () => {
-    mk('upgModal',
-      '<h2>✦ УЛУЧШЕНИЯ</h2>' +
-      '<div class="res">Мастерская Тьмы готовится открыться.</div>' +
-      '<div id="upgList" style="width:100%">' +
-      '<div class="epoch-row off"><span class="er-icon">🔒</span><span class="er-txt"><b>Улучшение карт</b><br><small>Дубликаты из коллекции будут качать уровень карты: +доход, +эффект. Уровень остаётся навсегда.</small></span></div>' +
-      '<div class="epoch-row off"><span class="er-icon">🔒</span><span class="er-txt"><b>Слоты колоды</b><br><small>Расширение лимита колоды сверх 64 карт.</small></span></div>' +
-      '<div class="epoch-row off"><span class="er-icon">🔒</span><span class="er-txt"><b>Улучшения печатей</b><br><small>Второй круг прокачки для магазина печатей.</small></span></div>' +
-      '</div>' +
-      '<div class="flavor">Появится в следующей итерации переработки. Дубликаты коллекции копятся уже сейчас — не пропадут.</div>' +
-      '<div class="btn-row"><button class="btn btn-take" id="upgX">Закрыть</button></div>', 560);
-    $('upgX').onclick = () => close_('upgModal');
-    open_('upgModal');
-  };
+  $('menuUpgrades').onclick = () => { openUpgrades(); };
 
   /* Клавиши и глобальные события */
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
-      for (const id of ['casinoModal', 'cgModal', 'hub', 'epochWarn', 'factionModal', 'epochModal', 'achvModal', 'dlg', 'dbgModal', 'relicPick', 'relicsModal', 'arenaOverlay', 'contractModal', 'wallNameModal', 'grimModal', 'grimRollModal', 'upgModal']) {
+      for (const id of ['casinoModal', 'cgModal', 'hub', 'epochWarn', 'factionModal', 'deckPickModal', 'epochModal', 'achvModal', 'dlg', 'dbgModal', 'relicPick', 'relicsModal', 'arenaOverlay', 'contractModal', 'wallNameModal', 'grimModal', 'grimRollModal', 'upgModal']) {
         const m = $(id);
         if (m && m.classList.contains('show')) {
           if (id === 'casinoModal' && casinoSpinning) return;
@@ -460,6 +426,7 @@ setInterval(() => {
   window.BOOT_MODE = m;
   wipeLegacySaves(); /* v1.7.0: обнуление учеток — старые сейвы v1 и «отправленный рекорд» вычищаются */
   loadMeta();
+  migrateUpgrades(); /* v1.8.0: разовый перенос открывавшегося Эпохами в покупки за Души */
   supaPing(); /* v1.2.9.2: уникальный игрок за день */
   maybeAskNick(); /* v1.2.9.2: имя для Таблички Тьмы — спрашиваем один раз */
   wallInit(); /* v1.3.0: СТЕНА ТЬМЫ — чат в главном меню */
