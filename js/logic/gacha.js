@@ -1,16 +1,19 @@
 'use strict';
 /* ============================================================
-   ЛОГИКА: ГАЧА (logic/gacha.js)
-   Пункт 6 ТЗ: пул зависит от Эпохи (старт — только ★1/★3),
-   pity-система 20/80. Пункт 11 ТЗ: моно-фракция — гача выдаёт
-   ТОЛЬКО карты текущей фракции.
-   РЕЛИКВИИ 2.0 (фидбек 7-8): с Эпохи 2 каждая крутка с шансом 2%
-   приносит РЕЛИКВИЮ вместо карты (гарантия за 30 круток без неё).
+   ЛОГИКА: ГАЧА / ГРИМУАР (logic/gacha.js) — v1.6.0 «Гримуар»
+   Пити-система 20/80 — теперь ВЕЧНАЯ (мета). Крутки (Призыв)
+   происходят в Гримуаре МЕЖДУ забегами за ДУШИ (1 душа = 1 крутка),
+   бесплатные крутки списываются первыми. Выпавшие карты ложатся
+   в ВЕЧНУЮ коллекцию (collection), а не в инвентарь забега.
+   Расу Призыва выбирает игрок (среди открытых в Эпохе).
+   РЕЛИКВИИ: шанс 2%/пити 30 остался — выпавшие реликвии идут в
+   СХРОН (relicStash) и выдаются на старте следующего забега.
+   КОЛОДЫ: decks [{id, name, race, cards[]}], лимит 64 карты,
+   дубликаты разрешены (копия списывается из коллекции при добавлении).
+   Улучшения за дубликаты — в следующей итерации (окно «Улучшения»).
    ============================================================ */
 
-/* Шансы: 32% ЗДАНИЕ, 63% ★3, 4% ★4, 1% ★5 (если открыто).
-   v1.2.6: зданий меньше (было 45%) — они перегружали коллекцию
-   и дубликаты; ★3 — основная масса дропа. */
+/* Шансы: 32% ЗДАНИЕ, 63% ★3, 4% ★4, 1% ★5 (если открыто). */
 function unlockedRarities() { return epochRarities(epoch); }
 function pity4Max() { return 20; }
 
@@ -36,34 +39,109 @@ function rollRarity() {
   return t;
 }
 
-/* Пул редкости t только из карт ТЕКУЩЕЙ фракции */
-function factionPool(t) {
+/* Пул редкости t из карт ЗАДАННОЙ расы (v1.6.0: расу Призыва выбирает игрок;
+   по умолчанию — фракция текущего забега, как раньше) */
+function factionPool(t, race) {
+  const f = race || faction;
   const base = POOLS[t] || POOL_3;
-  const own = base.filter(id => CARDS[id].faction === faction);
+  const own = base.filter(id => CARDS[id].faction === f);
   return own.length ? own : base;
 }
-function rollOne() {
+function rollOne(race) {
   const t = rollRarity();
-  const id = pick(factionPool(t));
+  const id = pick(factionPool(t, race));
   stats.rolls++; runRolls++;
   stats.pulls[id] = (stats.pulls[id] || 0) + 1;
   return id;
 }
 
-/* Сыграть count круток. free — СКОЛЬКО из них бесплатные (за вехи/контракты/
-   Призыв/Знамение), остальные — за кристаллы. v1.2.9.1: раньше бесплатные
-   работали только при count===1, из-за чего «×100/×1000» их игнорировали.
-   Возвращает {cards: [id, ...], relics: [id, ...], free, paid} */
-function performRolls(count, free) {
-  const freeN = Math.max(0, Math.min(count, free | 0));
+/* ---------------- ПРИЗЫВ (Гримуар): крутки за ДУШИ ----------------
+   Сначала списываются бесплатные (freeRolls — вехи/контракты/Арена/
+   Знамение), остаток — по 1 Душе за крутку. Карты — в вечную коллекцию,
+   реликвии — в схрон. Возвращает {cards, relics, free, paid} или null. */
+const GRIM_ROLL_COST = 1; /* Душ за крутку */
+
+function performGrimRolls(count) {
+  count = Math.max(1, Math.min(count | 0, 1000));
+  const freeN = Math.max(0, Math.min(freeRolls, count));
   const paidN = count - freeN;
-  const cost = paidN ? rollCost() * paidN : 0;
-  if (crystals < cost) return null;
-  crystals -= cost;
+  if (paidN > 0 && souls < paidN * GRIM_ROLL_COST) return null;
+  souls -= paidN * GRIM_ROLL_COST;
+  freeRolls -= freeN;
   const cards = [], relics = [];
   for (let i = 0; i < count; i++) {
-    if (relicRollDue()) relics.push(rollRelicId());
-    else { relicPity++; cards.push(rollOne()); }
+    if (relicRollDue()) relics.push(rollRelicId(gachaRace));
+    else { relicPity++; cards.push(rollOne(gachaRace)); }
   }
-  return { cards, relics, free: freeN, paid: paidN };
+  const newTypes = cards.filter(id => !collection[id]); /* впервые полученные типы — для метки «НОВАЯ» */
+  cards.forEach(id => collectionAdd(id, 1));
+  relics.forEach(id => relicStash.push(id));
+  saveMeta(); saveRun();
+  return { cards, relics, free: freeN, paid: paidN, newTypes };
+}
+
+/* ---------------- ВЕЧНАЯ КОЛЛЕКЦИЯ ---------------- */
+function collectionAdd(id, n) {
+  collection[id] = (collection[id] || 0) + (n || 1);
+  discovered.add(id);
+}
+/* Сколько копий карты уже лежит в колодах этой расы (для честного учёта) */
+function collectionFree(id) {
+  return (collection[id] || 0);
+}
+
+/* ---------------- КОЛОДЫ ---------------- */
+const DECK_SIZE = 64;
+function deckById(id) { return decks.find(k => k.id === id) || null; }
+function activeDeckFor(race) {
+  const d = deckById(activeDeck[race]);
+  return (d && d.race === race) ? d : null;
+}
+function deckUsedCount(deck, cardId) {
+  return deck.cards.filter(cid => cid === cardId).length;
+}
+function addToDeck(deck, cardId) {
+  if (!deck || !CARDS[cardId]) return false;
+  if (CARDS[cardId].faction !== deck.race) return false;      /* колода принадлежит расе */
+  if (deck.cards.length >= DECK_SIZE) return false;           /* лимит 64 */
+  if (deckUsedCount(deck, cardId) >= collectionFree(cardId)) return false; /* копий нет */
+  deck.cards.push(cardId);
+  saveMeta();
+  return true;
+}
+function removeFromDeck(deck, cardId) {
+  if (!deck) return false;
+  const i = deck.cards.indexOf(cardId);
+  if (i < 0) return false;
+  deck.cards.splice(i, 1);
+  saveMeta();
+  return true;
+}
+function createDeck(race, name) {
+  if (!FACTION_KEYS.includes(race)) return null;
+  const d = { id: 'dk' + Date.now() + '_' + rand(9999), name: (name || '').trim() || 'Колода ' + (decks.length + 1), race, cards: [] };
+  decks.push(d);
+  saveMeta();
+  return d;
+}
+function deleteDeck(id) {
+  const i = decks.findIndex(k => k.id === id);
+  if (i < 0) return false;
+  const race = decks[i].race;
+  decks.splice(i, 1);
+  if (activeDeck[race] === id) delete activeDeck[race];
+  saveMeta();
+  return true;
+}
+/* Стартовая колода расы: старт-кит (механика + здание + пара ★3).
+   Создаётся, если у расы ещё нет ни одной колоды. */
+function ensureStarterDeck(race) {
+  if (!FACTION_KEYS.includes(race)) return null;
+  if (decks.some(k => k.race === race)) return deckById(activeDeck[race]) || decks.find(k => k.race === race);
+  const d = createDeck(race, 'Колода ' + FACTION_INFO[race].name);
+  const startR1 = POOL_3.filter(id => CARDS[id].faction === race);
+  drawDistinct(startR1, 2).concat(startKitFor(race)).forEach(id => { collectionAdd(id, 1); d.cards.push(id); });
+  if (!activeDeck[race]) activeDeck[race] = d.id;
+  saveMeta();
+  return d;
 }

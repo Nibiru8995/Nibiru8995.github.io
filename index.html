@@ -8,15 +8,16 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Philosopher:wght@400;700&family=Alegreya:ital,wght@0,400;0,500;0,700;1,400&family=Ruslan+Display&display=swap">
-<link rel="stylesheet" href="css/style.css?v=1.5.16">
+<link rel="stylesheet" href="css/style.css?v=1.6.0">
 </head>
 <body>
 
 <div id="topBar">
   <span id="brand"><b>Гача-Гриндер 2</b><small>Тёмное Наследие</small></span>
   <div id="hudCenter">
-    <span class="res-chip"><span class="crystal-icon"></span><span id="crystals">2500</span></span>
+    <span class="res-chip" title="Тёмная энергия: доход Алтаря, порог Эпохи, казино"><span class="crystal-icon"></span><span id="crystals">2500</span></span>
     <span id="rate">+0/сек</span>
+    <span class="res-chip" id="soulsChip" title="Души: валюта Призыва в Гримуаре (смена Эпохи, каждые 5 этажей Арены, контракты)"><span class="soul-icon"></span><span id="soulsTop">3</span></span>
     <span class="res-chip" id="sealsChip" title="Печати: вечная валюта Эпох"><svg class="ic" viewBox="0 0 24 24"><path d="M12 3v15M8 4c0 4 1.6 6 4 7 2.4-1 4-3 4-7M8.5 17h7M10 20h4"/></svg><span id="sealsTop">0</span></span>
   </div>
 </div>
@@ -24,7 +25,7 @@
 <div id="main">
   <div id="leftCol">
     <div id="collection">
-      <div id="collectionTitle">Коллекция</div>
+      <div id="collectionTitle">Колода</div>
       <div id="collectionHead">
         <div id="collectionTabs"></div>
         <select id="rarityFilter"><option value="all">Все ★</option></select>
@@ -37,7 +38,7 @@
 
   <div id="centerCol">
     <div id="epochBar">
-      <button id="epochUpBtn" class="epoch-big-btn notready"><span id="epochBtnLabel">Эпоха 1</span><span class="cost">0 / 25 тыс 💎 (0%)</span></button>
+      <button id="epochUpBtn" class="epoch-big-btn notready"><span id="epochBtnLabel">Эпоха 1</span><span class="cost">0 / 25 тыс ТЭ (0%)</span></button>
     </div>
     <div id="gridTitleRow">
       <span class="grid-title">Алтарь Синергий</span>
@@ -59,14 +60,7 @@
         <div id="omenLayer"></div>
       </div>
     </div>
-    <div id="rollBar">
-      <span id="pity"></span>
-      <button class="roll-btn" id="roll1">Крутка<span class="cost">150</span></button>
-      <button class="roll-btn" id="roll10">Крутка ×10<span class="cost">1500</span></button>
-      <button class="roll-btn" id="roll100">Крутка ×100<span class="cost">15 тыс</span></button>
-      <button class="roll-btn" id="roll1000">Крутка ×1000<span class="cost">150 тыс</span></button>
-      <button class="roll-btn" id="rollAll">На всё<span class="cost">макс. круток</span></button>
-    </div>
+    <!-- v1.6.0: строка круток (#rollBar) снята — Призыв переехал в Гримуар (Меню → Гримуар) -->
   </div>
 
   <div id="rightCol">
@@ -106,7 +100,7 @@
   </div>
 </div>
 
-<footer id="verFoot">версия v1.5.14 «Полный Учёт» · Аудит нежити (19 числовых проверок, сверка с независимой моделью): починены спец-механики, которых не было в расчёте — «Плотные захоронения» Могильщика (+12% за соседа в стопке) и «Жажда» Упыря (+15% за раненого рядом); «Гимн» Псалмопевца больше не считает мёртвые звенья; строка «Армия» показывает реальный кап (×2.6 со Штандартом Легиона); исправлены описания карт (u0, u6, u10, Кладбище, Гора, Склеп) и задокументирован бонус строя (3 в ряд ×1.15, 5 в ряд ×1.5, 2×2 ×1.3)</footer>
+<footer id="verFoot">версия v1.6.0 «Гримуар» — переработка гачи, итерация 1: КРИСТАЛЛЫ → ТЁМНАЯ ЭНЕРГИЯ (спрайт, функционал прежний); введены ДУШИ (+1 за смену Эпохи, +1 за каждые 5 этажей Арены, +1 за контракт); гача переехала из забега в ГРИМУАР (Меню → Гримуар): слева вечная коллекция, справа колоды до 64 карт (дубликаты разрешены, у каждой расы своя, переименовываются, активная выдаётся на старте забега ЦЕЛИКОМ), снизу Призыв за Души с выбором расы и вечными гарантами 20/80; pity и бесплатные крутки больше не сбрасываются на Эпохе; продажа дубликатов снята (копятся под «Улучшения» — окно-заглушка в меню); контракт «продайте дубликаты» заменён на «соберите колоду»; Печать Жадности теперь даёт +2 крутки к вехам за уровень</footer>
 <div id="toast"></div>
 <canvas id="fxCanvas"></canvas>
 
@@ -134,7 +128,7 @@
 </div>
 
 <div class="modal show" id="menu" style="z-index:500"><div class="modal-card" style="max-width:340px"><h2 style="font-size:24px">⚜ Гача-Гриндер 2 ⚜</h2><div class="desc">Тёмное Наследие · Эпохи Тьмы</div>
-<button class="btn btn-take" id="menuContinue" style="width:100%;max-width:none">▶ Продолжить</button><button class="btn btn-take" id="menuNew" style="width:100%;max-width:none">✦ Новая игра</button><button class="btn btn-take" id="menuTut" style="width:100%;max-width:none">📖 Обучение</button><button class="btn btn-take" id="menuEpoch" style="width:100%;max-width:none">⚜ Меню Эпохи <small>(печати 🔱, Алтарь)</small></button>
+<button class="btn btn-take" id="menuContinue" style="width:100%;max-width:none">▶ Продолжить</button><button class="btn btn-take" id="menuNew" style="width:100%;max-width:none">✦ Новая игра</button><button class="btn btn-take" id="menuTut" style="width:100%;max-width:none">📖 Обучение</button><button class="btn btn-take" id="menuEpoch" style="width:100%;max-width:none">⚜ Меню Эпохи <small>(печати 🔱, Алтарь)</small></button><button class="btn btn-take" id="menuGrim" style="width:100%;max-width:none">📖 ГРИМУАР <small>(коллекция · колоды · Призыв за Души)</small></button><button class="btn btn-take" id="menuUpgrades" style="width:100%;max-width:none">✦ Улучшения <small>(скоро)</small></button>
 <div id="lbBox">
   <div id="lbHead"><span>🏆 ТАБЛИЦА ТЬМЫ</span><span id="lbRefresh" title="Обновить">⟳</span></div>
   <div id="lbTabs"></div>
@@ -151,14 +145,12 @@
   </div>
 </div>
 <div id="wallDaily" style="display:none"></div>
-<div class="flavor">Крутите карты одной фракции, стройте синергии на Алтаре, качайте Эпохи.</div>
+<div class="flavor">Колода выдаётся целиком на старте забега. Крутки — в Гримуаре, за Души.</div>
 <div class="flavor" id="menuFlavor">Тёмное Наследие · Эпохи Тьмы</div>
-<div class="flavor" style="color:#a08c56">версия 1.5.16 «Кровь и Кости»</div></div></div><div id="tutPanel"><div id="tutText"></div><div id="tutBtns"><span id="tutStep"></span><button class="mini" id="tutExit">Выйти</button><button class="btn btn-take" id="tutNext" style="max-width:120px;padding:5px 10px">Далее</button></div></div>
+<div class="flavor" style="color:#a08c56">версия 1.6.0 «Гримуар»</div></div></div><div id="tutPanel"><div id="tutText"></div><div id="tutBtns"><span id="tutStep"></span><button class="mini" id="tutExit">Выйти</button><button class="btn btn-take" id="tutNext" style="max-width:120px;padding:5px 10px">Далее</button></div></div>
 <div id="guidePanel"><div id="guideText"></div><div id="guideBtns"><span id="guideStepLbl"></span><button class="mini" id="guideSkip">Пропустить</button><button class="btn btn-take" id="guideNext" style="max-width:120px;padding:5px 10px">Далее</button></div></div>
 <div id="tooltip"></div><div id="selectionBanner"></div>
 
-<div class="modal" id="dropModal"><div class="modal-card" id="dropModalCard"><div class="rarity-banner" id="dropRarityBanner"></div><div class="big-card" id="dropCard" style="cursor:pointer;"></div><div class="stars-big" id="dropStars"></div><h2 id="dropName"></h2><div class="desc" id="dropEffect"></div><div class="flavor" id="dropFlavor"></div><div class="btn-row"><button class="btn btn-take" id="takeBtn">ПРИНЯТЬ</button><button class="btn btn-take" id="placeBtn">НА ПОЛЕ</button></div></div></div>
-<div class="modal" id="multiModal"><div class="modal-card" id="multiModalCard" style="max-width: 520px;"><div class="rarity-banner" id="multiRarityBanner"></div><h2 id="multiTitle">Крутки</h2><div class="multi-reveal" id="multiReveal"></div><div class="btn-row"><button class="btn btn-take" id="multiOk">ПРИНЯТЬ ВСЁ</button><button class="btn btn-take" id="multiFight">МЕЛОЧЬ СРАЗУ В БОЙ</button></div></div></div>
 <div class="modal" id="settingsModal"><div class="modal-card"><h2>НАСТРОЙКИ</h2><div class="desc">Игра сохраняется автоматически каждые 5 секунд.</div>
   <div class="set-row"><span>⏩ Скорость игры (для нетерпеливых и показов):</span><span><button class="mini speed-btn" data-s="1">×1</button> <button class="mini speed-btn" data-s="2">×2</button> <button class="mini speed-btn" data-s="4">×4</button></span></div>
   <div class="set-row"><span>🔊 Звуковые эффекты:</span><button class="mini" id="sfxToggle">ВКЛ</button></div>
@@ -172,7 +164,7 @@
     <div class="slot-machine-container">
       <div class="slot-grid" id="slotGrid"><svg class="paylines-svg" id="paylinesSvg"></svg></div>
       <div class="slot-bet-panel">
-        <div class="slot-bet-label">ВАША СТАВКА: <b id="slotBetAmount">0</b> 💎</div>
+        <div class="slot-bet-label">ВАША СТАВКА: <b id="slotBetAmount">0</b> ТЭ</div>
         <div class="slot-bet-btns"><button id="betAdd1000">+1000</button><button id="betAdd10000">+10000</button><button id="betAll">ВСЁ</button><button id="betReset">СБРОС</button></div>
         <div id="slotResult"></div>
         <button id="slotLeverBtn">НАЖАТЬ НА РЫЧАГ</button>
@@ -182,41 +174,42 @@
   </div>
 </div>
 
-<script src="js/utils.js?v=1.5.16"></script>
-<script src="js/sound.js?v=1.5.16"></script>
-<script src="js/data/factions.js?v=1.5.16"></script>
-<script src="js/data/cards.js?v=1.5.16"></script>
-<script src="js/data/buildings.js?v=1.5.16"></script>
-<script src="js/data/relics.js?v=1.5.16"></script>
-<script src="js/data/synergies.js?v=1.5.16"></script>
-<script src="js/data/epochs.js?v=1.5.16"></script>
-<script src="js/data/contracts.js?v=1.5.16"></script>
-<script src="js/data/achievements.js?v=1.5.16"></script>
-<script src="js/data/arena.js?v=1.5.16"></script>
-<script src="js/data/casino.js?v=1.5.16"></script>
-<script src="js/state.js?v=1.5.16"></script>
-<script src="js/logic/economy.js?v=1.5.16"></script>
-<script src="js/logic/faction_mechanics.js?v=1.5.16"></script>
-<script src="js/logic/gacha.js?v=1.5.16"></script>
-<script src="js/logic/grid.js?v=1.5.16"></script>
-<script src="js/logic/arena.js?v=1.5.16"></script>
-<script src="js/logic/casino_logic.js?v=1.5.16"></script>
-<script src="js/logic/epochs.js?v=1.5.16"></script>
-<script src="js/logic/achievements_logic.js?v=1.5.16"></script>
-<script src="js/logic/events.js?v=1.5.16"></script>
-<script src="js/logic/milestones.js?v=1.5.16"></script>
-<script src="js/logic/contracts.js?v=1.5.16"></script>
-  <script src="js/logic/leaderboard.js?v=1.5.16"></script>
-  <script src="js/logic/wall.js?v=1.5.16"></script>
-<script src="js/logic/guide.js?v=1.5.16"></script>
-<script src="js/render/hud.js?v=1.5.16"></script>
-<script src="js/render/fx.js?v=1.5.16"></script>
-<script src="js/render/grid_render.js?v=1.5.16"></script>
-<script src="js/render/collection_render.js?v=1.5.16"></script>
-<script src="js/render/arena_render.js?v=1.5.16"></script>
-<script src="js/render/gacha_render.js?v=1.5.16"></script>
-<script src="js/render/casino_render.js?v=1.5.16"></script>
-<script src="js/render/epoch_render.js?v=1.5.16"></script>
-<script src="js/main.js?v=1.5.16"></script>
+<script src="js/utils.js?v=1.6.0"></script>
+<script src="js/sound.js?v=1.6.0"></script>
+<script src="js/data/factions.js?v=1.6.0"></script>
+<script src="js/data/cards.js?v=1.6.0"></script>
+<script src="js/data/buildings.js?v=1.6.0"></script>
+<script src="js/data/relics.js?v=1.6.0"></script>
+<script src="js/data/synergies.js?v=1.6.0"></script>
+<script src="js/data/epochs.js?v=1.6.0"></script>
+<script src="js/data/contracts.js?v=1.6.0"></script>
+<script src="js/data/achievements.js?v=1.6.0"></script>
+<script src="js/data/arena.js?v=1.6.0"></script>
+<script src="js/data/casino.js?v=1.6.0"></script>
+<script src="js/state.js?v=1.6.0"></script>
+<script src="js/logic/economy.js?v=1.6.0"></script>
+<script src="js/logic/faction_mechanics.js?v=1.6.0"></script>
+<script src="js/logic/gacha.js?v=1.6.0"></script>
+<script src="js/logic/grid.js?v=1.6.0"></script>
+<script src="js/logic/arena.js?v=1.6.0"></script>
+<script src="js/logic/casino_logic.js?v=1.6.0"></script>
+<script src="js/logic/epochs.js?v=1.6.0"></script>
+<script src="js/logic/achievements_logic.js?v=1.6.0"></script>
+<script src="js/logic/events.js?v=1.6.0"></script>
+<script src="js/logic/milestones.js?v=1.6.0"></script>
+<script src="js/logic/contracts.js?v=1.6.0"></script>
+  <script src="js/logic/leaderboard.js?v=1.6.0"></script>
+  <script src="js/logic/wall.js?v=1.6.0"></script>
+<script src="js/logic/guide.js?v=1.6.0"></script>
+<script src="js/render/hud.js?v=1.6.0"></script>
+<script src="js/render/fx.js?v=1.6.0"></script>
+<script src="js/render/grid_render.js?v=1.6.0"></script>
+<script src="js/render/collection_render.js?v=1.6.0"></script>
+<script src="js/render/arena_render.js?v=1.6.0"></script>
+<script src="js/render/gacha_render.js?v=1.6.0"></script>
+<script src="js/render/casino_render.js?v=1.6.0"></script>
+<script src="js/render/epoch_render.js?v=1.6.0"></script>
+<script src="js/render/grimuar_render.js?v=1.6.0"></script>
+<script src="js/main.js?v=1.6.0"></script>
 </body>
 </html>

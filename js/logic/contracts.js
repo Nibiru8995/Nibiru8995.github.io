@@ -2,7 +2,7 @@
 /* ============================================================
    ЛОГИКА: КОНТРАКТЫ ЭПОХИ + ЗНАМЕНИЕ СУДЬБЫ (logic/contracts.js) — v1.2.9
    «Тёмный Пакт»: серия из 6 заданий на забег, 3 активных сразу.
-   - Награда: крутки + кристаллы (СТРОГО мимо порога Эпохи — incomeExempt).
+   - Награда: крутки + Тёмная энергия (СТРОГО мимо порога Эпохи — incomeExempt) + Душа за каждый контракт (v1.6.0).
    - За все 6 — «ПАКТ ИСПОЛНЕН»: +1 печать 🔱 и шоу.
    - Прогресс — дельты от stats/живых значений; в сохранении забега
      лежит только плоский массив (валидация при загрузке).
@@ -99,14 +99,16 @@ function checkContracts() {
     freeRolls += c.rolls;
     stats.freeRolls = (stats.freeRolls || 0) + c.rolls;
     crystals += c.gold; incomeExempt += c.gold;   /* мимо порога Эпохи — честный прогресс */
+    /* v1.6.0: КАЖДЫЙ ИСПОЛНЕННЫЙ КОНТРАКТ ПЛАТИТ ДУШОЙ — источник Призыва №3 */
+    souls += 1; saveMeta();
     /* Шоу: волна по кнопке контрактов + всплывающий текст */
     const btn = $('contractsBtn');
     if (btn && btn.getBoundingClientRect) {
       const b = btn.getBoundingClientRect();
       fxFxAt(btn, ['#e8c060', '#fff8d0', '#c9a227'], 22);
-      fxFloat(b.left + b.width / 2, b.top, '📜 +' + c.rolls + ' 🎲 · +' + fmtShort(c.gold) + ' 💎', '#ffe080', 18);
+      fxFloat(b.left + b.width / 2, b.top, '📜 +' + c.rolls + ' 🎲 · +' + fmtShort(c.gold) + ' ТЭ · +1 Душа', '#ffe080', 18);
     }
-    toast('📜 <b>Контракт исполнен:</b> ' + (tpl ? tpl.icon : '') + ' +' + c.rolls + ' круток · +' + fmtShort(c.gold) + ' 💎 <small>(вне порога Эпохи)</small>', 'contract', 10);
+    toast('📜 <b>Контракт исполнен:</b> ' + (tpl ? tpl.icon : '') + ' +' + c.rolls + ' круток · +' + fmtShort(c.gold) + ' ' + DE_IMG + ' · ' + SOUL_IMG + ' +1 Душа <small>(энергия — вне порога Эпохи)</small>', 'contract', 10);
     sfx('relic');
     if (contracts.done >= CONTRACTS_PER_RUN && !contracts.pact) {
       contracts.pact = true;
@@ -139,7 +141,7 @@ function contractRowHTML(c, idx) {
     '<span class="cr-text">' + tpl.text(c.target) + '</span>' +
     '<span class="cr-count">' + fmt(prog) + ' / ' + fmt(c.target) + '</span></div>' +
     '<div class="cr-track"><div class="cr-fill" style="width:' + pct + '%"></div></div>' +
-    '<div class="cr-reward">Награда: +' + c.rolls + ' круток · +' + fmtShort(c.gold) + ' 💎 (вне порога Эпохи)</div>' +
+    '<div class="cr-reward">Награда: +' + c.rolls + ' круток · +' + fmtShort(c.gold) + ' ' + DE_IMG + ' · ' + SOUL_IMG + ' +1 (энергия — вне порога Эпохи)</div>' +
     '</div>';
 }
 
@@ -174,9 +176,10 @@ function dailyKey() { const d = new Date(); return d.getFullYear() + '-' + (d.ge
 function checkDailyGift() {
   if (noSave || !gameStarted) return;
   if (lastDaily === dailyKey()) return;
-  lastDaily = dailyKey(); saveMeta();
+  lastDaily = dailyKey();
   freeRolls += 5;
   stats.freeRolls = (stats.freeRolls || 0) + 5;
+  saveMeta(); /* v1.6.0: freeRolls — мета, сохраняем сразу */
   altBuff = { mult: 2, until: gameTime + 300, label: '✨ ЗНАМЕНИЕ СУДЬБЫ ×2' };
   fxShockwave(window.innerWidth / 2, 120, '#80e0ff');
   sfx('relic');

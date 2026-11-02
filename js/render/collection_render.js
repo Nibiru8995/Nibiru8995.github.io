@@ -10,10 +10,10 @@
 
 let relicTabActive = false;
 
-/* ---- СТОК КАРТ: продажа дубликатов (v1.2.6) ----
-   Продаются копии СВЕРХ лимита стека (остаётся 5 на каждый тип).
-   Выручка НЕ идёт в порог Эпохи (incomeExempt) — иначе крутки
-   становились бы бесплатным фармом прогресса. */
+/* ---- СТОК КАРТ: v1.6.0 продажа дубликатов ВЫКЛЮЧЕНА ----
+   Инвентарь забега — это выданная колода, продавать её нельзя.
+   Функции оставлены: sellPriceOf может пригодиться Улучшениям.
+   Дубликаты вечной коллекции копятся под будущие апгрейды. */
 function sellPriceOf(card) {
   const base = { B: 200, 3: 600, 4: 3000, 5: 12000 }[rarityRank(card.rarity)] || 200;
   return Math.round(base * (1 + 0.4 * (epoch - 1)));
@@ -115,8 +115,8 @@ function renderCollection() {
     el.addEventListener('contextmenu', e => { e.preventDefault(); addFighter(id, 1); });
     cont.appendChild(el);
   });
-  if (!ids.length) cont.innerHTML = '<div class="fighter-empty">Здесь пусто. Крутите карты!</div>';
-  $('collectStats').textContent = 'Карт: ' + Object.values(inventory).reduce((a, b) => a + b, 0) + ' · открыто ' + discovered.size + '/' + Object.keys(CARDS).length;
+  if (!ids.length) cont.innerHTML = '<div class="fighter-empty">В колоде этой вкладки нет карт.</div>';
+  $('collectStats').textContent = 'Карт в колоде: ' + Object.values(inventory).reduce((a, b) => a + b, 0) + ' · открыто типов: ' + discovered.size + '/' + Object.keys(CARDS).length;
   renderActions();
 }
 
@@ -198,15 +198,14 @@ function renderActions() {
       '<button id="autoBtn2">Стак</button>';
   } else {
     const c = CARDS[pendingCard], n = inventory[pendingCard];
-    const extra = n > maxStacks() ? ' <button id="sellThisBtn">продать лишние ×' + (n - maxStacks()) + ' → +' + fmtShort((n - maxStacks()) * sellPriceOf(c)) + '</button>' : '';
+    /* v1.6.0: продажа дубликатов снята — инвентарь забега = колода,
+       дубликаты коллекции копятся под будущие Улучшения */
     el.innerHTML = '<b>' + cardArtHTML(c, 'inline-art', '') + ' ' + c.name + '</b> ×' + n +
       ' <button data-n="1">В бой ×1</button>' + (n > 5 ? '<button data-n="5">В бой ×5</button>' : '') +
-      (n > 1 ? '<button data-n="' + n + '">В бой все (' + n + ')</button>' : '') + extra +
+      (n > 1 ? '<button data-n="' + n + '">В бой все (' + n + ')</button>' : '') +
       '<span class="act-hint">или кликните по Алтарю</span>' + '<button id="autoBtn2">Стак</button>';
   }
   $('autoBtn2').onclick = autoStack;
   $('autoBtn2').title = 'Уложить карты из инвентаря в существующие стопки на поле';
-  const sd = $('sellDupesBtn'); if (sd) sd.onclick = sellAllDupes;
-  const s1 = $('sellThisBtn'); if (s1) s1.onclick = () => { sellDupesOf(pendingCard); computeIncome(); renderCollection(); updateHUD(); saveRun(); };
   el.querySelectorAll('[data-n]').forEach(b => b.onclick = () => addFighter(pendingCard, +b.dataset.n));
 }

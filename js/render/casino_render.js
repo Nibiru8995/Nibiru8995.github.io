@@ -42,7 +42,7 @@ function renderSlotGrid(sg, winLines = []) {
 }
 function openSlots() {
   if (casinoSpinning) return;
-  if (crystals < MIN_BET) { toast('Минимальная ставка ' + fmt(MIN_BET) + ' 💎'); return; }
+  if (crystals < MIN_BET) { toast('Минимальная ставка ' + fmt(MIN_BET) + ' ТЭ'); return; }
   casinoBet = Math.max(MIN_BET, Math.min(casinoBet, Math.floor(crystals)));
   updateCasinoUI();
   renderSlotGrid(generateSlotGrid());
@@ -104,21 +104,21 @@ function slotsSpin() {
         });
         const resEl = $('slotResult');
         /* v1.5.13 (QA итерация 1): слоты могут выплатить МЕНЬШЕ ставки
-           (мелкие линии ×0.38) — раньше при этом писалось «Выигрыш: N 💎»,
-           и игрок видел «победу», хотя кристаллов стало меньше. Показываем
+           (мелкие линии ×0.38) — раньше при этом писалось «Выигрыш: N ТЭ»,
+           и игрок видел «победу», хотя энергии стало меньше. Показываем
            ЧЕСТНЫЙ итог: класс и знак по реальной разнице. */
         const slotNet = winAmount - casinoBet, slotXf = winData.totalWin * SLOT_WIN_FACTOR;
         let text = '';
-        if (winData.totalWin >= 50) { text = '🎉 ДЖЕКПОТ! +' + fmt(slotNet) + ' 💎 (x' + slotXf.toFixed(1) + ')'; resEl.className = 'jackpot'; }
-        else if (winData.totalWin >= 10 && slotNet > 0) { text = '✨ Крупный выигрыш: +' + fmt(slotNet) + ' 💎 (x' + slotXf.toFixed(1) + ')'; resEl.className = 'win'; }
-        else if (slotNet > 0) { text = 'Выигрыш: +' + fmt(slotNet) + ' 💎 (x' + slotXf.toFixed(1) + ')'; resEl.className = 'win'; }
-        else if (slotNet === 0) { text = 'Выигрыш вернул ставку: ' + fmt(winAmount) + ' 💎 (x' + slotXf.toFixed(2) + ')'; resEl.className = 'win'; }
-        else { text = 'Выигрыш по линии (' + fmt(winAmount) + ' 💎, x' + slotXf.toFixed(2) + ') не покрыл ставку — итог −' + fmt(-slotNet) + ' 💎'; resEl.className = 'lose'; }
+        if (winData.totalWin >= 50) { text = '🎉 ДЖЕКПОТ! +' + fmt(slotNet) + ' ТЭ (x' + slotXf.toFixed(1) + ')'; resEl.className = 'jackpot'; }
+        else if (winData.totalWin >= 10 && slotNet > 0) { text = '✨ Крупный выигрыш: +' + fmt(slotNet) + ' ТЭ (x' + slotXf.toFixed(1) + ')'; resEl.className = 'win'; }
+        else if (slotNet > 0) { text = 'Выигрыш: +' + fmt(slotNet) + ' ТЭ (x' + slotXf.toFixed(1) + ')'; resEl.className = 'win'; }
+        else if (slotNet === 0) { text = 'Выигрыш вернул ставку: ' + fmt(winAmount) + ' ТЭ (x' + slotXf.toFixed(2) + ')'; resEl.className = 'win'; }
+        else { text = 'Выигрыш по линии (' + fmt(winAmount) + ' ТЭ, x' + slotXf.toFixed(2) + ') не покрыл ставку — итог −' + fmt(-slotNet) + ' ТЭ'; resEl.className = 'lose'; }
         resEl.textContent = text;
       } else {
         rec('slots', -casinoBet);
         const resEl = $('slotResult');
-        resEl.textContent = 'Нет совпадений. Вы проиграли ' + fmt(casinoBet) + ' 💎.';
+        resEl.textContent = 'Нет совпадений. Вы проиграли ' + fmt(casinoBet) + ' ТЭ.';
         resEl.className = 'lose';
       }
       casinoSpinning = false;
@@ -187,7 +187,7 @@ function avEnd(win, m) {
   if (win) stats.casinoBest = Math.max(stats.casinoBest, m);
   updateHUD(); avH.push(av.crash); avHist();
   $('avGo').textContent = 'СТАРТ';
-  $('avR').textContent = win ? '✔ Забрали на ' + m.toFixed(2) + '× → +' + fmt(net) + ' 💎 (падальщик улетел бы на ' + av.crash.toFixed(2) + '×)'
+  $('avR').textContent = win ? '✔ Забрали на ' + m.toFixed(2) + '× → +' + fmt(net) + ' ТЭ (падальщик улетел бы на ' + av.crash.toFixed(2) + '×)'
     : '💥 Улетел на ' + av.crash.toFixed(2) + '× — ставка потеряна';
   $('avR').className = 'res ' + (win ? 'w' : 'l');
   checkAchievements();
@@ -280,7 +280,7 @@ function rouletteBoardClick(e) {
   const k = cell ? cell.dataset.k : null;
   if (!k || busy) return;
   const tot = Object.values(rb).reduce((a, b) => a + b, 0);
-  if (tot + chip > crystals) return toast('Не хватает 💎');
+  if (tot + chip > crystals) return toast('Не хватает Тёмной энергии');
   rb[k] = (rb[k] || 0) + chip;
   rMark();
 }
@@ -288,8 +288,8 @@ function rSpin() {
   if (busy) return;
   const tot = Object.values(rb).reduce((a, b) => a + b, 0);
   if (!tot) return toast('Сделайте ставку');
-  if (tot < MIN_BET) return toast('Минимальная ставка ' + fmt(MIN_BET) + ' 💎');
-  if (tot > crystals) return toast('Не хватает 💎');
+  if (tot < MIN_BET) return toast('Минимальная ставка ' + fmt(MIN_BET) + ' ТЭ');
+  if (tot > crystals) return toast('Не хватает Тёмной энергии');
   crystals -= tot; updateHUD(); busy = 1;
   const n = Math.floor(Math.random() * 37), k = ROULETTE_WHEEL.indexOf(n), seg = 360 / 37;
   rrot = (Math.floor(rrot / 360) + 7) * 360 - (k + .5) * seg;
@@ -307,7 +307,7 @@ function rSpin() {
     $('rn').style.color = n === 0 ? '#6f6' : ROULETTE_RED.has(n) ? '#f66' : '#fff';
     $('rR').className = 'res ' + (pay > tot ? 'w' : 'l');
     $('rR').textContent = 'Выпало ' + n + ' ' + (n === 0 ? '🟢' : ROULETTE_RED.has(n) ? '🔴' : '⚫') + ' · ' +
-      (pay > tot ? '+' + fmt(pay - tot) : pay === tot ? 'в ноль' : '−' + fmt(tot - pay)) + ' 💎';
+      (pay > tot ? '+' + fmt(pay - tot) : pay === tot ? 'в ноль' : '−' + fmt(tot - pay)) + ' ТЭ';
     rb = {}; rMark(); checkAchievements();
   }, 4300);
 }
@@ -347,7 +347,7 @@ function bjRender(showDealer, note) {
   const dVal = hideHole ? bjRankVal(dh[0]) : bjHandVal(dh);
   $('bjT').innerHTML =
     '<div>Дилер: ' + dTxt + ' ' + (hideHole ? '' : '· ' + bjScore(dh)) + (bj.dBust ? ' · <span style="color:#ff8080">ПЕРЕБОР</span>' : '') + '</div>' +
-    '<div class="pkb"><small>Шуе: ' + bj.shoe.length + ' карт · Банк: ' + fmt(bj.pot) + ' 💎</small></div>' +
+    '<div class="pkb"><small>Шуе: ' + bj.shoe.length + ' карт · Банк: ' + fmt(bj.pot) + ' ТЭ</small></div>' +
     '<div>Вы: ' + ph.map(bjMoney).join(' ') + ' · ' + bjScore(ph) + (bj.pBust ? ' · <span style="color:#ff8080">ПЕРЕБОР</span>' : '') + '</div>' +
     '<div class="res">' + (note || bj.msg) + '</div><div class="btn-row">' +
     (bj.phase === 'play'
@@ -367,8 +367,8 @@ function bjSettle(msg) {
   rec('blackjack', net);
   if (net > 0) stats.casinoBest = Math.max(stats.casinoBest, p / bj.pot);
   bj.phase = 'end';
-  bj.msg = msg + (net > 0 ? ' <b>(+' + fmt(net) + ' 💎)</b>' : net === 0 ? ' (возврат)' : ' (−' + fmt(-net) + ' 💎)');
-  bjLast = 'Итог прошлой раздачи: ' + (net >= 0 ? '+' : '−') + fmt(Math.abs(net)) + ' 💎';
+  bj.msg = msg + (net > 0 ? ' <b>(+' + fmt(net) + ' ТЭ)</b>' : net === 0 ? ' (возврат)' : ' (−' + fmt(-net) + ' ТЭ)');
+  bjLast = 'Итог прошлой раздачи: ' + (net >= 0 ? '+' : '−') + fmt(Math.abs(net)) + ' ТЭ';
   busy = 0; bjRender(true); checkAchievements();
 }
 function bjDeal() {
@@ -398,7 +398,7 @@ function bjHit() {
 }
 function bjDouble() {
   if (!bj || bj.phase !== 'play' || !bj.first) return;
-  if (bj.pot > crystals) { toast('Не хватает 💎 для удвоения'); return; }
+  if (bj.pot > crystals) { toast('Не хватает Тёмной энергии для удвоения'); return; }
   crystals -= bj.pot; bj.pot *= 2; updateHUD();
   bj.pHand.push(bj.shoe.pop());
   bj.first = false;

@@ -321,7 +321,7 @@ function blessRelic(id) {
   if (blessedRelics.has(id)) { toast('🕯 «' + r.name + '» уже освящена'); return; }
   if (blessedRelics.size >= BLESS_MAX) { toast('🕯 За забег можно осветить не больше ' + BLESS_MAX + ' реликвий'); return; }
   const cost = blessCost();
-  if (crystals < cost) { toast('🕯 Не хватает 💎: Освящение стоит ' + fmtShort(cost)); return; }
+  if (crystals < cost) { toast('🕯 Не хватает Тёмной энергии: Освящение стоит ' + fmtShort(cost) + ' ' + DE_IMG); return; }
   crystals -= cost;
   blessedRelics.add(id);
   computeIncome(); saveRun();
@@ -375,14 +375,15 @@ function relicRollDue() {
   if (epoch < RELIC_DROP_EPOCH) return false;
   return Math.random() < RELIC_DROP_CHANCE || relicPity >= RELIC_PITY_MAX;
 }
-function rollRelicId() {
+function rollRelicId(race) {
   relicPity = 0;
+  const f = race || faction;
   const tier = weightedPick(RELIC_TIER_W);
   for (let t = tier; t >= 3; t--) {
-    const pool = RELICS.filter(r => r.rarity === t && r.faction === faction);
+    const pool = RELICS.filter(r => r.rarity === t && r.faction === f);
     if (pool.length) return pick(pool).id;
   }
-  const any = RELICS.filter(r => r.faction === faction);
+  const any = RELICS.filter(r => r.faction === f);
   return (any.length ? pick(any) : RELICS[0]).id;
 }
 /* Выдать реликвию (гача). Дубликат → компенсация 💎 (НЕ в прогресс Эпохи) */
@@ -391,7 +392,7 @@ function grantRelic(id, silent) {
   if (RELICS_OWNED.has(id)) {
     const comp = Math.max(1500, Math.round(calculateIncome() * 25));
     crystals += comp; incomeExempt += comp;
-    toast(relicArtHTML(r, 'relic-inline-art', '') + ' <b>ДУБЛИКАТ:</b> «' + r.name + '» → компенсация ' + fmtShort(comp) + ' 💎');
+    toast(relicArtHTML(r, 'relic-inline-art', '') + ' <b>ДУБЛИКАТ:</b> «' + r.name + '» → компенсация ' + fmtShort(comp) + ' ' + DE_IMG);
     sfx('relic');
     return;
   }

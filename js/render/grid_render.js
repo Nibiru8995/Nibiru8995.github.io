@@ -779,7 +779,7 @@ function renderRitualBar() {
   let infoTxt;
   if (E.speed > 0) {
     label.textContent = '🔥 РИТУАЛ';
-    infoTxt = '⚡ ' + E.speed.toFixed(2) + '%/с' + (E.capped ? ' (макс)' : '') + ' · 💰 +' + fmtShort(E.payout) + ' 💎 за цикл' +
+    infoTxt = '⚡ ' + E.speed.toFixed(2) + '%/с' + (E.capped ? ' (макс)' : '') + ' · 💰 +' + fmtShort(E.payout) + ' ' + DE_IMG + ' за цикл' +
       (E.outer ? ' · круг +' + Math.round(E.outerPay * 100) + '%' : '') + (E.banner ? ' · ' + E.banner : '');
   } else if (E.ready) {
     label.textContent = '🔥 РИТУАЛ';

@@ -11,9 +11,22 @@ const SAVE_RUN = 'gg3_run_v1';
 const SAVE_META = 'gg3_meta_v1';
 
 /* --- Валюта и ресурсы --- */
-let crystals = 2500;         // кристаллы (сбрасываются на Эпохе)
+let crystals = 2500;         // ТЁМНАЯ ЭНЕРГИЯ (бывшие кристаллы; функционал тот же: доход, порог Эпохи, казино)
+let souls = 3;               // v1.6.0: ДУШИ — валюта Призыва в Гримуаре (мета; старт 3 — на первые крутки)
 let seals = 0;               // печати (НЕ сбрасываются)
 let sealsTotal = 0;          // сколько печатей заработано за всё время
+
+/* --- v1.6.0 «ГРИМУАР»: мета-слой карт ---
+   collection — ВЕЧНАЯ коллекция карт Призыва {cardId: количество}.
+   decks — колоды [{id, name, race, cards:[cardId,...]}], лимит 64, дубликаты разрешены.
+   activeDeck — {раса: id колоды}, какая колода выдаётся на старте забега этой расы.
+   gachaRace — раса, выбранная в Призыве. relicStash — схрон реликвий из Призыва
+   (реликвии — расходник забега: выдаются на старте следующего). */
+let collection = {};
+let decks = [];
+let activeDeck = {};
+let gachaRace = 'undead';
+let relicStash = [];
 
 /* --- Эпоха --- */
 let epoch = 1;               // текущая Эпоха
@@ -63,13 +76,16 @@ const BLESS_MULT = 1.2;        // множитель эффекта благос
 let ritualResonance = 0;      // 0..100
 let surgeUntil = 0;           // gameTime конца всплеска
 
-/* --- Вехи забега + бесплатные крутки (logic/milestones.js) --- */
+/* --- Вехи забега. freeRolls — бесплатные крутки Призыва: ПОЛУЧАЮТСЯ в забеге
+   (вехи/контракты/Арена/Знамение), ТРАТЯТСЯ в Гримуаре — поэтому вечные (мета). --- */
 let milestoneIdx = 0, freeRolls = 0;
 
 /* --- Скорость игры (настройка, мета): ×1 / ×2 / ×4 --- */
 let speedMult = 1;
 
-/* --- Гача --- */
+/* --- Гача. v1.6.0: pity4/pity5/relicPity — ВЕЧНЫЕ (мета), крутки идут из
+   Гримуара между забегами; сброса на Эпохе больше нет. runRolls — круток
+   за текущую Эпоху (для наград контрактов и статистики). --- */
 let pity4 = 0, pity5 = 0, runRolls = 0;
 
 /* --- Прогресс забега --- */
@@ -129,15 +145,17 @@ let busy = 0; // активный раунд казино (блокирует в
 /* Кэш расчёта дохода (заполняется logic/economy.js) */
 let incomeCache = { total: 0, uniquePairs: 0, perCell: {}, pairUsage: {}, linkFactors: {}, linkRoyal: {}, linkLich: {}, lichZone: [] };
 
-/* ================== СОХРАНЕНИЕ ================== */
+/* ================== СОХРАНЕНИЕ ==================
+   v1.6.0: pity4/pity5/relicPity/freeRolls переехали в МЕТА (перекрываем без
+   миграции — по решению верстки итерации №1). */
 function buildRunSave() {
   return {
     t: Date.now(), crystals, epoch, faction, grid,
     playableSize, inventory, fighters, fighterHpState,
     arena: { floor: arenaState.floor, room: arenaState.room, cleared: arenaState.cleared, fallen: arenaState.fallen },
     arenaStreak,
-    pity4, pity5, runRolls, runEarned, runTime, sealLv,
-    milestoneIdx, freeRolls, relicSlots, relicPity,
+    runRolls, runEarned, runTime, sealLv,
+    milestoneIdx, relicSlots,
     relics: [...RELICS_OWNED],
     ritualResonance, surgeUntil,
     blessed: [...blessedRelics], rituals: runRituals, offline: runOffline, /* v1.2.10 */
@@ -170,10 +188,9 @@ function loadRun() {
     fighters = d.fighters ?? {}; fighterHpState = d.fighterHpState ?? {};
     if (d.arena) Object.assign(arenaState, d.arena);
     arenaStreak = d.arenaStreak ?? 0;
-    pity4 = d.pity4 ?? 0; pity5 = d.pity5 ?? 0;
     runRolls = d.runRolls ?? 0; runEarned = d.runEarned ?? 0; runTime = d.runTime ?? 0;
     if (d.sealLv) Object.assign(sealLv, d.sealLv);
-    milestoneIdx = d.milestoneIdx ?? 0; freeRolls = d.freeRolls ?? 0;
+    milestoneIdx = d.milestoneIdx ?? 0;
     ritualResonance = d.ritualResonance ?? 0; surgeUntil = d.surgeUntil ?? 0;
     /* РЕЛИКВИИ v1.2.5: владение живёт В ЗАБЕГЕ (сброс при смене Эпохи) */
     RELICS_OWNED = new Set((d.relics || []).filter(id => relicById(id)));
@@ -191,7 +208,6 @@ function loadRun() {
       const rr = relicById(d.relicSlots[k]);
       if (c >= 0 && c < GRID_SIZE && rr && rr.faction === faction) relicSlots[c] = d.relicSlots[k];
     }
-    relicPity = d.relicPity ?? 0;
     let need = 3;
     for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++)
       if (grid[r][c]) need = Math.max(need, 2 * Math.max(Math.abs(4 - r), Math.abs(4 - c)) + 1);
@@ -202,7 +218,7 @@ function loadRun() {
     const gain = calculateIncome() * Math.min((Date.now() - (d.t || Date.now())) / 1000, capS) * rate;
     if (gain >= 1) {
       crystals += gain; runEarned += gain; runOffline += gain; /* v1.2.10: в Сводку Эпохи */
-      setTimeout(() => toast('Пока вас не было: +' + fmt(gain) + ' 💎'), 600);
+      setTimeout(() => toast('Пока вас не было: +' + fmt(gain) + ' ' + DE_IMG), 600);
     }
     return true;
   } catch (e) { return false; }
@@ -211,6 +227,9 @@ function loadRun() {
 function buildMetaSave() {
   return { seals, sealsTotal, maxEpoch, disc: [...discovered], achDone, stats, totalTime: gameTime, guide: guideSeen,
     chron, lastDaily, /* v1.2.9: Хроники Тьмы + дата ежедневного дара */
+    /* v1.6.0 «Гримуар»: мета-слой карт + вечные гача-счётчики */
+    souls, collection, decks, activeDeck, gachaRace, relicStash,
+    pity4, pity5, relicPity, freeRolls,
     sfx: soundOn, music: musicOn, fx: fxOn, speedMult };
 }
 function saveMeta() {
@@ -227,6 +246,22 @@ function loadMeta() {
     gameTime = d.totalTime ?? 0;
     chron = (d.chron && typeof d.chron === 'object') ? d.chron : {}; /* v1.2.9 */
     lastDaily = d.lastDaily || '';                                  /* v1.2.9 */
+    /* v1.6.0: мета-слой Гримуара. Без миграции: у старых сейвов коллекция
+       пуста, pity обнуляются — ровно то, что решено «перекрыть». */
+    souls = d.souls ?? 3;
+    collection = (d.collection && typeof d.collection === 'object') ? d.collection : {};
+    decks = Array.isArray(d.decks) ? d.decks.filter(k => k && CARDS) : [];
+    decks = decks.filter(k => k && Array.isArray(k.cards) && FACTION_KEYS.includes(k.race)).map((k, i) => ({
+      id: k.id || ('dk' + Date.now() + '_' + i),
+      name: String(k.name || 'Колода').slice(0, 24),
+      race: k.race,
+      cards: k.cards.filter(cid => CARDS[cid]).slice(0, 64)
+    }));
+    activeDeck = (d.activeDeck && typeof d.activeDeck === 'object') ? d.activeDeck : {};
+    gachaRace = FACTION_KEYS.includes(d.gachaRace) ? d.gachaRace : 'undead';
+    relicStash = Array.isArray(d.relicStash) ? d.relicStash.filter(id => relicById(id)) : [];
+    pity4 = d.pity4 ?? 0; pity5 = d.pity5 ?? 0; relicPity = d.relicPity ?? 0;
+    freeRolls = d.freeRolls ?? 0;
     /* Реликвии больше НЕ хранятся в мета (v1.2.5: расходник забега) */
     soundOn = d.sfx ?? true; musicOn = d.music ?? true;
     fxOn = d.fx ?? true; speedMult = d.speedMult ?? 1;

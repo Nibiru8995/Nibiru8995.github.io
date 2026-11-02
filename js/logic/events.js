@@ -60,7 +60,7 @@ function collectOmen(o) {
     const gain = Math.max(400, Math.round(calculateIncome() * 45));
     crystals += gain; incomeExempt += gain;
     fxAtCell(o.r, o.c, colors, 0);
-    fxFloatFromCell(o.r, o.c, '+' + fmtShort(gain) + ' 💎', '#80e0ff');
+    fxFloatFromCell(o.r, o.c, '+' + fmtShort(gain) + ' ТЭ', '#c9a0ff');
     sfx('win');
   } else {
     /* Ребаланс (пункт 6 ТЗ): множитель и длительность растут с Эпохой: ×3..×6, 30..60 сек. */

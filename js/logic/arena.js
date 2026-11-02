@@ -309,8 +309,8 @@ function endBattle(win) {
     }
     arenaState.cleared[arenaState.room - 1] = true;
     stats.roomsWon = (stats.roomsWon || 0) + 1; /* v1.2.9: счётчик для контрактов */
-    arenaState.status = (enemy && enemy.isBoss ? '🏆 БОСС ПОВЕРЖЕН! +' + fmt(reward) + ' 💎' :
-      (enemy && enemy.isElite ? 'Элита разбита! +' : 'Победа! +') + fmt(reward) + ' 💎') +
+    arenaState.status = (enemy && enemy.isBoss ? '🏆 БОСС ПОВЕРЖЕН! +' + fmt(reward) + ' ТЭ' :
+      (enemy && enemy.isElite ? 'Элита разбита! +' : 'Победа! +') + fmt(reward) + ' ТЭ') +
       (arenaStreak > 1 ? ' · Серия ×' + streakMult.toFixed(2) : '');
     reviveFighters();
     updateArenaUI(); updateHUD(); renderFighters(); renderCollection(); checkAchievements();
@@ -335,7 +335,7 @@ function endBattle(win) {
 }
 
 /* v1.2: ВЫБОР ТРОФЕЯ БОССА — три пути силы:
-   добыча (кристаллы ×2 сверху) / реликвия / призыв (15 бесплатных круток) */
+   добыча (Тёмная энергия ×2 сверху) / реликвия / призыв (15 бесплатных круток) */
 function showBossTrophy(reward) {
   const bonus = reward * 2;
   const avail = RELICS.filter(r => !hasRelic(r.id) && r.faction === faction);
@@ -344,8 +344,8 @@ function showBossTrophy(reward) {
     '<h2>👑 ТРОФЕЙ БОССА</h2>' +
     '<div class="res">Побеждённый владыка предлагает выбор. Возьмите ОДНУ награду:</div>' +
     '<div class="trophy-list">' +
-    '<div class="trophy-opt" data-t="gold"><b>💰 Добыча</b><small>+' + fmt(bonus) + ' 💎 сверх награды</small></div>' +
-    '<div class="trophy-opt" data-t="relic"><b>⚒ Реликвия</b><small>' + (relicName ? 'Случайная неполученная реликвия фракции' : 'Все реликвии фракции собраны → +' + fmt(reward) + ' 💎') + '</small></div>' +
+    '<div class="trophy-opt" data-t="gold"><b>💰 Добыча</b><small>+' + fmt(bonus) + ' ' + DE_IMG + ' сверх награды</small></div>' +
+    '<div class="trophy-opt" data-t="relic"><b>⚒ Реликвия</b><small>' + (relicName ? 'Случайная неполученная реликвия фракции' : 'Все реликвии фракции собраны → +' + fmt(reward) + ' ' + DE_IMG) + '</small></div>' +
     '<div class="trophy-opt" data-t="rolls"><b>✦ Призыв</b><small>15 бесплатных круток гачи</small></div>' +
     '</div>', 560);
   document.querySelectorAll('#trophyModal .trophy-opt').forEach(el => {
@@ -354,13 +354,13 @@ function showBossTrophy(reward) {
       close_('trophyModal');
       if (t === 'gold') {
         crystals += bonus; incomeExempt += bonus; /* v1.2.6: трофеи босса — не в порог Эпохи */
-        toast('💰 Добыча босса: +' + fmt(bonus) + ' 💎!');
+        toast('💰 Добыча босса: +' + fmt(bonus) + ' ' + DE_IMG + '!');
       } else if (t === 'relic') {
         if (avail.length) { grantRelic(pick(avail).id, false); fxConfetti(50); }
-        else { crystals += reward; incomeExempt += reward; toast('💰 Компенсация: +' + fmt(reward) + ' 💎'); }
+        else { crystals += reward; incomeExempt += reward; toast('💰 Компенсация: +' + fmt(reward) + ' ' + DE_IMG); }
       } else {
-        freeRolls += 15; stats.freeRolls = (stats.freeRolls || 0) + 15;
-        toast('✦ Призыв: +15 БЕСПЛАТНЫХ круток! Кнопка «КРУТКА» — без денег');
+        freeRolls += 15; stats.freeRolls = (stats.freeRolls || 0) + 15; saveMeta();
+        toast('✦ Призыв: +15 БЕСПЛАТНЫХ круток! Тратьте их в ГРИМУАРЕ (Меню → Гримуар)');
       }
       updateHUD(); saveRun(); checkAchievements();
     };
@@ -391,6 +391,13 @@ function advanceArenaRoom() {
     arenaState.room = 1;
     arenaState.cleared = Array(ARENA.roomsPerFloor).fill(false);
     arenaState.status = 'Этаж ' + arenaState.floor + '. Новые волны!';
+    /* v1.6.0: ДУШИ — за каждые 5 этажей Арены (+1 Душа за этаж 5, 10, 15…) */
+    if (arenaState.floor % 5 === 0) {
+      souls += 1; saveMeta();
+      const dk = $('arenaDock');
+      if (dk && dk.getBoundingClientRect) fxFxAt(dk, ['#8fe8f0', '#fff', '#58c8d8'], 24);
+      toast(SOUL_IMG + ' <b>Этаж ' + arenaState.floor + '!</b> Тьма платит Душой: +1 (всего: ' + fmt(souls) + ')', 'soulfloor', 8);
+    }
   }
   arenaState.enemy = generateWave(arenaState.floor, arenaState.room);
   updateArenaUI();

@@ -9,13 +9,15 @@
 
 const MIL_FRACS = [0.25, 0.5, 0.75, 0.9];
 const MIL_REWARDS = ['roll', 'boost', 'roll', 'boost'];
-const MIL_ROLLS = 10; /* круток за веху «roll» */
+/* v1.6.0: Печать Жадности перепрофилирована (цены круток больше нет —
+   Призыв идёт за Души): «+2 бесплатные крутки с вех за уровень». */
+const MIL_ROLLS = () => 10 + 2 * sealLv.greed; /* круток за веху «roll» */
 
 function milNext() {
   return milestoneIdx < MIL_FRACS.length ? { pct: MIL_FRACS[milestoneIdx], kind: MIL_REWARDS[milestoneIdx] } : null;
 }
 function milLabel(kind) {
-  if (kind === 'roll') return '+' + MIL_ROLLS + ' бесплатных круток';
+  if (kind === 'roll') return '+' + MIL_ROLLS() + ' бесплатных круток (тратятся в Гримуаре)';
   return 'доход ×2 на 2 минуты';
 }
 
@@ -26,9 +28,9 @@ function checkMilestones() {
   while (milestoneIdx < MIL_FRACS.length && runEarned >= thr * MIL_FRACS[milestoneIdx]) {
     const kind = MIL_REWARDS[milestoneIdx], pct = MIL_FRACS[milestoneIdx];
     if (kind === 'roll') {
-      freeRolls += MIL_ROLLS;
-      stats.freeRolls = (stats.freeRolls || 0) + MIL_ROLLS;
-      toast('🏅 <b>Веха ' + (pct * 100) + '%:</b> +' + MIL_ROLLS + ' БЕСПЛАТНЫХ круток! Кнопка «КРУТКА» — без денег');
+      freeRolls += MIL_ROLLS();
+      stats.freeRolls = (stats.freeRolls || 0) + MIL_ROLLS(); saveMeta();
+      toast('🏅 <b>Веха ' + (pct * 100) + '%:</b> +' + MIL_ROLLS() + ' БЕСПЛАТНЫХ круток! Тратьте в Гримуаре (Меню → Гримуар)', 'milestone', 4);
     } else {
       altBuff = { mult: 2, until: gameTime + 120, label: '🏅 ВЕХА ×2' }; /* 120 игровых секунд */
       toast('🏅 <b>Веха ' + (pct * 100) + '%:</b> весь доход ×2 на две минуты!');

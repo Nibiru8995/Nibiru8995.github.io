@@ -15,10 +15,11 @@ function canEpochUp() { return runEarned >= epochThreshold(epoch); }
 /* Что сбросится, а что останется (для окна-предупреждения) */
 function epochResetSummary() {
   return {
-    reset: ['Грид (Алтарь) и карты', 'Инвентарь карт', 'Бойцы и этажи Арены',
-      'Кристаллы 💎', 'Pity-счётчики круток', 'РЕЛИКВИИ (собранные и расставленные)'],
+    reset: ['Грид (Алтарь) и расставленные карты', 'Инвентарь забега', 'Бойцы и этажи Арены',
+      'Тёмная энергия', 'РЕЛИКВИИ (собранные и расставленные)'],
     keep: ['Достижения 🏅', 'Печати 🔱 и магазин печатей', 'Открытые фишки карт',
-      'Доступные фракции и разблокировки Эпох']
+      'Доступные фракции и разблокировки Эпох',
+      'ДУШИ, коллекция и колоды Гримуара']
   };
 }
 
@@ -28,19 +29,23 @@ function epochResetSummary() {
    Единая правда для Вознесения (doEpochUp) и Рестарта Эпохи (doEpochRestart).
    ВАЖНО: вызывать ПОСЛЕ epoch++/назначения эпохи и уже с НОВОЙ фракцией —
    playableSize считается как epochMaxSize(epoch) по АКТУАЛЬНОЙ эпохе.
-   Возвращает время завершённого забега (для Таблички Тьмы). */
+   Возвращает время завершённого забега (для Таблички Тьмы).
+
+   v1.6.0 «Гримуар»: на старте забега игроку выдаётся ВСЯ активная колода
+   его расы (пункт 6 итерации: механика выдачи будет усложнена позже).
+   Нет колоды/она пуста — фолбэк на классический старт-кит.
+   pity4/pity5/relicPity/freeRolls больше НЕ сбрасываются (мета). */
 function resetRunCommon(newFaction) {
   const _runSecsAtEnd = runTime;
   faction = newFaction;
   applyFactionTheme(); /* v1.5.0: новая фракция — новая тема (фон/палитра) */
   /* Сброс забега. Поле растёт АВТОМАТИЧЕСКИ (бесплатно) до размера Эпохи.
-     v1.2.5: РЕЛИКВИИ — расходник забега: сбрасывается и коллекция,
-     и расстановка (эффекты реликвий мощные именно поэтому).
-     v1.4.3: blessed-реликвии и счётчики забега (ритуалы/оффлайн) чистятся тоже. */
+     РЕЛИКВИИ — расходник забега: коллекция и расстановка сбрасываются,
+     но из СХРОНА Призыва выдаются накопленные реликвии (relicStash). */
   const baseCr = 2500;
   crystals = baseCr + (sealLv.impulse > 0 ? 2500 * Math.pow(2, sealLv.impulse) : 0);
-  RELICS_OWNED = new Set(); relicSlots = {}; relicPity = 0;
-  blessedRelics = new Set(); runRituals = 0; runOffline = 0;
+  RELICS_OWNED = new Set(relicStash.filter(id => relicById(id))); relicStash = [];
+  relicSlots = {}; blessedRelics = new Set(); runRituals = 0; runOffline = 0;
   grid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
   playableSize = epochMaxSize(epoch);
   rebuildPlayableMask();
@@ -49,19 +54,28 @@ function resetRunCommon(newFaction) {
   arenaState = { floor: 1, room: 1, enemy: null, fighting: false, status: '', cleared: Array(ARENA.roomsPerFloor).fill(false), fallen: {} };
   arenaAuto = false; const chk = $('arenaAutoChk'); if (chk) chk.checked = false;
   arenaStreak = 0;
-  pity4 = 0; pity5 = 0; runRolls = 0; runEarned = 0; runTime = 0;
+  runRolls = 0; runEarned = 0; runTime = 0;
   altBuff = { mult: 1, until: 0, label: '' };
   ritualResonance = 0; surgeUntil = 0;
-  milestoneIdx = 0; freeRolls = 0;
+  milestoneIdx = 0;
   contractsInit(); /* v1.2.9: Тёмный Пакт начинается заново с каждой Эпохой */
   omens = []; omenTimer = 60; renderOmens();
 
-  /* Стартовый набор фракции: пара случайных карт + ключ механики + ЗДАНИЕ:
-     нежить — Некромант + Кладбище, культисты — Ритуальный Алтарь,
-     звери — готовая цепь + Вольер, демоны — Кровавый Жрец + Яма */
-  const startR1 = POOL_3.filter(id => CARDS[id].faction === faction);
-  const gift = drawDistinct(startR1, 2).concat(startKitFor(faction));
-  gift.forEach(id => { inventory[id] = (inventory[id] || 0) + 1; discovered.add(id); });
+  /* ВЫДАЁМ КОЛОДУ (v1.6.0): вся активная колода расы забега — в инвентарь сразу.
+     Пусто → старт-кит фракции, как раньше. */
+  let deckTitle = '';
+  const deck = ensureStarterDeck(faction);
+  const src = (deck && deck.cards.length) ? deck : null;
+  if (src) {
+    src.cards.forEach(id => { inventory[id] = (inventory[id] || 0) + 1; discovered.add(id); });
+    deckTitle = src.name;
+  } else {
+    const startR1 = POOL_3.filter(id => CARDS[id].faction === faction);
+    const gift = drawDistinct(startR1, 2).concat(startKitFor(faction));
+    gift.forEach(id => { inventory[id] = (inventory[id] || 0) + 1; discovered.add(id); });
+  }
+  /* Заголовок коллекции = колода, с которой начат забег (v1.6.0, пункт 2) */
+  const ct = $('collectionTitle'); if (ct) ct.textContent = deckTitle ? 'Колода: ' + deckTitle : 'Колода';
 
   computeIncome();
   saveMeta(); saveRun();
@@ -77,12 +91,14 @@ function doEpochUp(newFaction) {
   seals += gain; sealsTotal += gain;
   epoch++;
   maxEpoch = Math.max(maxEpoch, epoch);
+  /* v1.6.0: СМЕНА ЭПОХИ ПЛАТИТ ДУШОЙ — источник Призыва №1 */
+  souls += 1;
   /* Шоу Эпохи */
   sfx('epoch');
   fxConfetti(130);
   fxShockwave(window.innerWidth / 2, window.innerHeight / 2, '#e8c060');
   const _runSecsAtEnd = resetRunCommon(newFaction);
-  toast('⚜ ЭПОХА ' + epoch + ' «' + epochName(epoch) + '» · ' + FACTION_INFO[faction].epochTitle + ': +' + gain + ' 🔱');
+  toast('⚜ ЭПОХА ' + epoch + ' «' + epochName(epoch) + '» · ' + FACTION_INFO[faction].epochTitle + ': +' + gain + ' 🔱 · ' + SOUL_IMG + ' +1 Душа');
   supaSubmit(_runSecsAtEnd, true); /* v1.2.9.2: Вознесение — гарантированная запись (Эпоха выросла) */
   checkAchievements();
   queueFeatureGuides(); /* онбординг: новая фракция/фичи этой Эпохи */

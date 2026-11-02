@@ -23,7 +23,7 @@ function renderEpochMenu() {
     const unlockedNow = epoch >= e;
     const icon = unlockedNow ? '✅' : '🔒';
     const txt = epochUnlockText(e);
-    const thr = e === 1 ? 'доступно сразу' : 'порог: ' + fmtShort(epochThreshold(e - 1)) + ' 💎 за забег';
+    const thr = e === 1 ? 'доступно сразу' : 'порог: ' + fmtShort(epochThreshold(e - 1)) + ' ТЭ за забег';
     list += '<div class="epoch-row ' + (unlockedNow ? 'on' : 'off') + (e === epoch ? ' cur' : '') + '">' +
       '<span class="er-icon">' + icon + '</span><span class="er-txt"><b>Эпоха ' + e + ' «' + epochName(e) + '»:</b> ' + txt +
       '<br><small>' + thr + (unlockedNow ? '' : ' · впереди') + '</small></span></div>';
@@ -32,7 +32,7 @@ function renderEpochMenu() {
     : 'Размер поля сейчас ' + playableSize + '×' + playableSize + ' · вырастет до ' + epochMaxSize(epoch + 1) + '×' + epochMaxSize(epoch + 1) + ' при переходе в Эпоху ' + (epoch + 1) + ' (бесплатно).';
   $('epochBody').innerHTML =
     '<div class="res">Текущая Эпоха: <b>' + epoch + ' «' + epochName(epoch) + '»</b> · ' + FACTION_INFO[faction].epochTitle + ' · фракция: <b>' + FACTION_INFO[faction].name + '</b></div>' +
-    '<div class="goal"><span>Прогресс: ' + fmtShort(p.earned) + ' / ' + fmtShort(p.threshold) + ' 💎</span><i style="width:' + Math.floor(p.pct * 100) + '%"></i><em>' + Math.floor(p.pct * 100) + '%</em></div>' +
+    '<div class="goal"><span>Прогресс: ' + fmtShort(p.earned) + ' / ' + fmtShort(p.threshold) + ' ' + DE_IMG + '</span><i style="width:' + Math.floor(p.pct * 100) + '%"></i><em>' + Math.floor(p.pct * 100) + '%</em></div>' +
     '<div class="up"><b>🧱 Поле Алтаря: ' + playableSize + '×' + playableSize + '</b><br><small>' + sizeNote + '</small></div>' +
     milHtml() +
     '<h3>Разблокировки</h3>' + list +
@@ -43,7 +43,7 @@ function renderEpochMenu() {
       return '<div class="up"><b>' + s.icon + ' ' + s.name + '</b> ур.' + l + '/' + s.max + '<br><small>' + s.desc + '</small>' +
         '<button class="mini" data-seal="' + s.id + '" ' + (maxed || seals < cost ? 'disabled' : '') + '>' + (maxed ? 'МАКС' : cost + ' 🔱') + '</button></div>';
     }).join('') + '</div>' +
-    '<div class="flavor">Печати остаются навсегда и ускоряют следующие Эпохи. Кристаллы, грид и карты сбрасываются при переходе.</div>' +
+    '<div class="flavor">Печати остаются навсегда и ускоряют следующие Эпохи. Тёмная энергия, грид и карты сбрасываются при переходе. Души, коллекция и колоды Гримуара — вечные.</div>' +
     '<div class="btn-row"><button class="btn btn-take" id="epochGoBtn" style="max-width:none" ' + (canEpochUp() ? '' : 'disabled') + '>' +
     (canEpochUp() ? '⚔ НАЧАТЬ ЭПОХУ ' + (epoch + 1) + ' «' + epochName(epoch + 1) + '» → +' + epochSealsGain(epoch) + ' 🔱' : 'Порог не достигнут (' + Math.floor(p.pct * 100) + '%)') + '</button></div>';
 
@@ -211,7 +211,7 @@ function renderStats() {
   box.innerHTML = '<h3>📊 Статистика</h3><div class="stt">' +
     Object.keys(GAME_NAMES).map(k => {
       const o = stats.g[k] || { w: 0, l: 0, net: 0 };
-      return '<div>' + GAME_NAMES[k] + '</div><div>✔' + o.w + ' ✖' + o.l + '</div><div style="color:' + (o.net >= 0 ? '#8f8' : '#f88') + '">' + fmtN(o.net) + ' 💎</div>';
+      return '<div>' + GAME_NAMES[k] + '</div><div>✔' + o.w + ' ✖' + o.l + '</div><div style="color:' + (o.net >= 0 ? '#8f8' : '#f88') + '">' + fmtN(o.net) + ' ТЭ</div>';
     }).join('') + '</div>' +
     '<div>⭐ Любимая карта: <b>' + (top ? cardArtHTML(CARDS[top[0]], 'inline-art', '') + ' ' + CARDS[top[0]].name + ' (×' + top[1] + ')' : '—') + '</b></div>' +
     '<div>📈 Рекорд дохода: <b>' + stats.maxInc.toFixed(1) + '/сек</b></div>' +

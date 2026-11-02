@@ -54,45 +54,13 @@ function updateHUD(now) {
   }
   hudSet('cr', $('crystals'), 'text', fmt(crystals));
   hudSet('se', $('sealsTop'), 'text', fmt(seals));
+  /* v1.6.0: Души — мета-валюта Призыва, копятся в забеге (контракты, Арена) */
+  const soulsEl = $('soulsTop');
+  if (soulsEl) hudSet('souls', soulsEl, 'text', fmt(souls));
   hudSet('rate', $('rate'), 'text', '+' + calculateIncome().toFixed(2) + '/сек');
 
-  /* Pity — гарантия до старшей ДОСТУПНОЙ редкости (показ у кнопок круток).
-     «Череп Владыки» (реликвия) приближает ★4-гарантию.
-     v1.3.1 ТЗ: три строки — «Гаранты:», затем до ★4, затем до ★5 */
-  const unlocked = unlockedRarities();
-  const p4m = pity4Max();
-  let pity = 'Гаранты:<br>';
-  if (unlocked.includes(5)) pity += 'до ★4: ' + Math.max(0, p4m - pity4) + '<br>до ★5: ' + Math.max(0, 80 - pity5);
-  else if (unlocked.includes(4)) pity += 'до ★4: ' + Math.max(0, p4m - pity4);
-  else pity += 'до ★3: ' + Math.max(0, p4m - pity4);
-  hudSet('pity', $('pity'), 'innerHTML', pity);
-
-  const rc = rollCost();
-  /* v1.2.9.1: бесплатная часть пачки списывается сперва, поэтому
-     платной цены хватает «не на все N» — кнопка остаётся живой. */
-  [1, 10, 100, 1000].forEach(n => {
-    const el = $('roll' + n);
-    const freeN = Math.min(freeRolls, n);
-    const paidN = n - freeN;
-    const free = paidN === 0;
-    if (el.disabled !== false) el.disabled = false;
-    const cost = el.querySelector('.cost');
-    if (free) {
-      hudSet('rollc' + n, cost, 'text', n === 1 ? 'Бесплатно ×' + freeRolls : 'Бесплатно');
-      if (!el.classList.contains('free-roll')) el.classList.add('free-roll');
-      return;
-    }
-    if (el.classList.contains('free-roll')) el.classList.remove('free-roll');
-    const dis = crystals < paidN * rc;
-    if (el.disabled !== dis) el.disabled = dis;
-    if (cost) hudSet('rollc' + n, cost, 'text', fmt(paidN * rc) + (freeN ? ' (×' + freeN + ' бесплатные)' : ''));
-  });
-  /* v1.2.9.1: «ВСЕ ДЕНЬГИ» — честный счётчик: платные по текущей цене + бесплатные */
-  const allN = Math.floor(Math.max(0, crystals) / rc) + freeRolls;
-  const rollAllEl = $('rollAll');
-  const allDis = allN <= 0;
-  if (rollAllEl.disabled !== allDis) rollAllEl.disabled = allDis;
-  hudSet('rollAllC', rollAllEl.querySelector('.cost'), 'text', '×' + fmtShort(allN) + ' круток');
+  /* v1.6.0 «Гримуар»: кнопки круток и pity сняты с экрана забега.
+     Призыв живёт в Гримуаре за Души; гаранты показываются там же. */
 
   /* Большая кнопка ЭПОХИ над Алтарём: всегда кликабельна —
      порог достигнут → Вознесение, нет → открыть Меню Эпохи.

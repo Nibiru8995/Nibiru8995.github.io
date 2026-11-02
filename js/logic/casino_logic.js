@@ -2,7 +2,7 @@
 /* ============================================================
    ЛОГИКА: КАЗИНО (logic/casino_logic.js)
    Математика игр: слоты, рулетка, блэкджек. Минимальная ставка
-   MIN_BET = 1000 💎 (пункт 9 ТЗ). DOM-отрисовка в render/casino_render.js.
+   MIN_BET = 1000 ТЭ (пункт 9 ТЗ). DOM-отрисовка в render/casino_render.js.
    ============================================================ */
 
 let casinoBet = 0, casinoSpinning = false;
@@ -57,8 +57,8 @@ function rec(game, net) {
 
 /* Проверка ставки (все игры казино) */
 function validateBet(v) {
-  if (!(v >= MIN_BET)) { toast('Минимальная ставка ' + fmt(MIN_BET) + ' 💎'); return 0; }
-  if (v > crystals) { toast('Не хватает 💎'); return 0; }
+  if (!(v >= MIN_BET)) { toast('Минимальная ставка ' + fmt(MIN_BET) + ' ' + DE_IMG); return 0; }
+  if (v > crystals) { toast('Не хватает Тёмной энергии'); return 0; }
   return Math.floor(v);
 }
 

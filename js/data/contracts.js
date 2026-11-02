@@ -72,10 +72,13 @@ const CONTRACT_TPL = [
     ok: () => true
   },
   {
-    id: 'sell', icon: '💰', kind: 'delta', stat: 'soldGold',
-    text: n => 'Продайте дубликатов на ' + fmtShort(n) + ' 💎',
-    val: () => stats.soldGold || 0,
-    target: e => Math.round(rollCost() * (30 + 5 * Math.min(8, e))),
+    /* v1.6.0: прежний контракт «Продайте дубликатов» умер вместе с продажей
+       (коллекция вечная, дубликаты копятся на будущие Улучшения).
+       Замена — живая метрика новой системы: размер колоды расы забега. */
+    id: 'deck', icon: '🃏', kind: 'live',
+    text: n => 'Соберите колоду расы из ' + n + ' карт(ы) в Гримуаре',
+    val: () => { const d = activeDeckFor(faction); return d ? d.cards.length : 0; },
+    target: e => Math.min(64, 16 + 4 * e),
     ok: () => true
   },
   {
