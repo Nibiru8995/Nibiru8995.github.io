@@ -65,7 +65,7 @@ function confirmEpochUp() {
    Расы доступны по покупкам в «Улучшениях» (availFactions). */
 function pickFactionAndAscend() {
   const avail = availFactions();
-  if (avail.length <= 1) { openDeckPick(avail[0], f => doEpochUp(f)); return; }
+  if (avail.length <= 1) { openDeckPick(avail[0], d => doEpochUp(avail[0], d)); return; }
   mkFresh('factionModal',
     '<h2>Выберите фракцию Эпохи ' + (epoch + 1) + '</h2>' +
     '<div class="faction-list">' + avail.map(f => {
