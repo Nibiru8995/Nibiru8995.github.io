@@ -740,6 +740,12 @@ img.rico { width: 18px; height: 18px; vertical-align: -4px; image-rendering: pix
   background: linear-gradient(160deg, #17171aee, #121214f2 55%, #0f0f11ee);
   border: 2px solid #3a3a3e; box-shadow: 0 0 40px #000000cc, inset 0 0 30px #00000066;
 }
+/* Меню: группы кнопок не слеплены, всё — одной ширины */
+#menu .modal-card > .btn-row { margin-bottom: 14px; }
+#menu .btn-take { min-height: 39px; }
+#menu #lbBox, #menu #wallBox { align-self: stretch; }
+#menu #lbRows { height: 139px; }
+#menu #wallRows { height: 163px; }
 #menu h2 {
   font-family: 'Ruslan Display', 'Georgia', serif;
   background: none; color: var(--gold);
