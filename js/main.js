@@ -336,7 +336,10 @@ function wireEvents() {
 
   /* Меню */
   $('menuBtn').onclick = () => { saveRun(); saveMeta(); showMenu(); };
-  $('menuFlavor').addEventListener('click', debugSecretClick); /* пасхалка: 3 клика по подзаголовку — только курсор выдаёт */
+  /* Пасхалка: цифра 2 при открытом меню — только курсор и клавиатура выдают */
+  window.addEventListener('keydown', e => {
+    if (e.key === '2' && $('menu').classList.contains('show') && !(e.target && e.target.closest && e.target.closest('input'))) openDebugModal();
+  });
   $('menuContinue').onclick = () => {
     if (!gameStarted) { const ok = loadRun(); gameStarted = true; if (ok) toast('Забег загружен'); refreshAll(); }
     hideMenu();
