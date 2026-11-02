@@ -567,14 +567,14 @@ img.rico { width: 18px; height: 18px; vertical-align: -4px; image-rendering: pix
 #epochModal .modal-card, #epochWarn .modal-card, #factionModal .modal-card, #relicsModal .modal-card,
 #relicPick .modal-card, #achvModal .modal-card, #dbgModal .modal-card, #dlg .modal-card, #dropModal .modal-card, #multiModal .modal-card {
   box-shadow: 0 0 50px #000000cc, inset 0 0 0 1px #b3a15f30, inset 0 0 40px #000000aa; }
-#tutPanel { display: none; position: fixed; left: 50%; top: 8px; width: min(360px, 94vw); z-index: 1500; background: linear-gradient(#26262a,#0f0f11); border: 2px solid #60ff90; border-radius: 10px; padding: 10px 12px 9px; font-size: 13px; line-height: 1.45; box-shadow: 0 0 24px #000; }
+#tutPanel { display: none; position: fixed; left: 50%; top: 8px; width: min(400px, 94vw); z-index: 1500; background: linear-gradient(#26262a,#0f0f11); border: 2px solid #60ff90; border-radius: 10px; padding: 12px 14px 10px; font-size: 15px; line-height: 1.5; box-shadow: 0 0 24px #000; }
 #tutPanel.show { display: flex; flex-direction: column; }
-#tutBody { display: flex; gap: 10px; align-items: flex-end; }
-#tutFace { width: 82px; flex: 0 0 auto; margin: 0 0 -4px -2px; cursor: default; user-select: none; -webkit-user-drag: none; /* наставник: приглушённый, почти ч/б (не полностью) */ filter: grayscale(.82) contrast(.8) brightness(1.04); opacity: .93; animation: tutBreath 4s ease-in-out infinite; }
+#tutBody { display: flex; gap: 12px; align-items: flex-end; }
+#tutFace { width: 88px; flex: 0 0 auto; margin: 0 0 -2px -2px; /* рамка-икона наставника */ padding: 4px; background: linear-gradient(#1d1d21,#121214); border: 2px solid #8a7d5a; border-radius: 10px; box-shadow: 0 0 10px #000, inset 0 0 10px #00000088; cursor: default; user-select: none; -webkit-user-drag: none; /* приглушённый, почти ч/б (не полностью) */ filter: grayscale(.82) contrast(.8) brightness(1.04); opacity: .93; animation: tutBreath 4s ease-in-out infinite; }
 @keyframes tutBreath { 50% { filter: grayscale(.82) contrast(.8) brightness(1.12); } }
 #tutText { flex: 1; min-width: 0; }
-#tutBtns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; align-items: center; }
-#tutStep { flex: 1; font-size: 11px; color: #a39e92; }
+#tutBtns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 9px; align-items: center; }
+#tutStep { flex: 1; font-size: 12px; color: #a39e92; }
 .tut-hl { outline: 3px solid #60ff90 !important; outline-offset: 3px; animation: tutP 1s infinite; border-radius: 6px; }
 @keyframes tutP { 50% { outline-color: #fff; } }
 /* заблокированные вне-цели элементы (обучение разрешает жать ТОЛЬКО цель) */

@@ -74,30 +74,30 @@ function pairLinkCount(a, b) {
   return n;
 }
 const TUT = [
-  { t: '📖 <b>Обучение.</b> Цикл игры: <b>колода</b> (Гримуар) → <b>Алтарь</b> → доход ТЭ → <b>Вознесение</b>. Учебный забег НЕ пишется в ваш прогресс — пробовать можно смело. Начнём с Гримуара: там коллекция, колоды и Призыв.', n: 1 },
+  { t: '<b>Обучение.</b> Цикл: колода → Алтарь → Вознесение. Прогресс не сохраняется.', n: 1 },
 
   /* --- АКТ 1: ГРИМУАР (колода: создать, наполнить, стак, крутка) --- */
-  { t: '<b>Гримуар.</b> Жмите «Гримуар» в меню.', hl: '#menuGrim', ok: () => tutOpen('grimModal') },
-  { t: '<b>Своя колода.</b> В правой панели — форма новой колоды: раса (нежить), имя «Учебная», кнопка «＋ Создать».', hl: '.grim-newdeck', pre: () => { tutB.decks = decks.length; const cd = deckById(grimSelDeckId); tutDeckId = (cd && cd.race === 'undead') ? cd.id : (((activeDeckFor('undead') || decks[0]) || {}).id || null); }, ok: () => decks.length > tutB.decks },
-  { t: '<b>Наполнение.</b> Клик по карте коллекции добавляет её копию в выбранную колоду (новый блок; дубликаты разрешены). Добавьте хотя бы одну карту.', pre: () => { const d = tutActiveDeck(); tutB.t = d ? deckTotal(d) : 0; }, hl: '#grimCards', ok: () => { const d = tutActiveDeck(); return !!(d && deckTotal(d) > tutB.t); } },
-  { t: '<b>Стак блока.</b> Фиолетовая стрелка ▲ у блока колоды поднимает ЕГО на +1 копию из коллекции (до ×5) — на старте забега такая карта встанет сразу стопкой ×N. Мы добавили Скелетов в коллекцию: жмите ▲.', pre: () => { if (collectionFree('u0') - (deckUsedCount(tutActiveDeck() || { cards: [] }, 'u0') || 0) < 1) collectionAdd('u0', 2); const d = tutActiveDeck(); if (d && !deckUsedCount(d, 'u0')) addToDeck(d, 'u0'); tutB.st = tutStackCount(); renderGrimuar(); }, hl: '.deck-up', ok: () => tutStackCount() > tutB.st },
-  { t: '<b>Призыв.</b> Крутки стоят Души (1 Душа = 1 крутка) — тут, внизу. Мы добавили вам учебных Душ: сделайте крутку ×1 — карты падают в вечную коллекцию.', pre: () => { souls += 12; tutB.rolls = stats.rolls || 0; renderGrimuar(); }, hl: '#grimRoll1', ok: () => (stats.rolls || 0) > tutB.rolls },
+  { t: '<b>Гримуар.</b> Жмите в меню.', hl: '#menuGrim', ok: () => tutOpen('grimModal') },
+  { t: '<b>Своя колода.</b> Жмите «＋ Создать».', hl: '.grim-newdeck', pre: () => { tutB.decks = decks.length; const cd = deckById(grimSelDeckId); tutDeckId = (cd && cd.race === 'undead') ? cd.id : (((activeDeckFor('undead') || decks[0]) || {}).id || null); }, ok: () => decks.length > tutB.decks },
+  { t: '<b>Наполнение.</b> Кликните карту — добавится в колоду.', pre: () => { const d = tutActiveDeck(); tutB.t = d ? deckTotal(d) : 0; }, hl: '#grimCards', ok: () => { const d = tutActiveDeck(); return !!(d && deckTotal(d) > tutB.t); } },
+  { t: '<b>Стак.</b> Жмите ▲ у блока — в забеге встанет стопкой ×N.', pre: () => { if (collectionFree('u0') - (deckUsedCount(tutActiveDeck() || { cards: [] }, 'u0') || 0) < 1) collectionAdd('u0', 2); const d = tutActiveDeck(); if (d && !deckUsedCount(d, 'u0')) addToDeck(d, 'u0'); tutB.st = tutStackCount(); renderGrimuar(); }, hl: '.deck-up', ok: () => tutStackCount() > tutB.st },
+  { t: '<b>Призыв.</b> Жмите «Крутка ×1».', pre: () => { souls += 12; tutB.rolls = stats.rolls || 0; renderGrimuar(); }, hl: '#grimRoll1', ok: () => (stats.rolls || 0) > tutB.rolls },
 
   /* --- АКТ 2: УЛУЧШЕНИЯ (один бонус за счёт обучения) --- */
-  { t: '<b>Улучшения.</b> Откройте «Улучшения» в меню — Гримуар закроется сам. Мастерская мета-прогресса: всё за Души.', hl: '#menuUpgrades', ok: () => tutOpen('upgModal') },
-  { t: '<b>Бесплатный бонус.</b> Учебный капитал уже на счету: выберите ОДИН бонус в разделе «Бонусы» — «Импульс» (стартовый капитал) или «Изобилие» (доход) — любой по вкусу.', pre: () => { souls = Math.max(souls, 9); tutB.upg = Object.values(upgLv).reduce((a, b) => a + (b | 0), 0); if (tutOpen('upgModal')) renderUpgrades(); }, hl: '.ups', ok: () => Object.values(upgLv).reduce((a, b) => a + (b | 0), 0) > tutB.upg },
-  { t: '<b>Старт забега.</b> Жмите «Продолжить» — окно Улучшений закроется само, учебный забег получит вашу колоду целиком (со стаками).', hl: '#menuContinue', ok: () => !tutOpen('menu') },
+  { t: '<b>Улучшения.</b> Жмите в меню — Гримуар закроется сам.', hl: '#menuUpgrades', ok: () => tutOpen('upgModal') },
+  { t: '<b>Бонус.</b> Возьмите один в разделе «Бонусы».', pre: () => { souls = Math.max(souls, 9); tutB.upg = Object.values(upgLv).reduce((a, b) => a + (b | 0), 0); if (tutOpen('upgModal')) renderUpgrades(); }, hl: '.ups', ok: () => Object.values(upgLv).reduce((a, b) => a + (b | 0), 0) > tutB.upg },
+  { t: '<b>Старт забега.</b> Жмите «Продолжить».', hl: '#menuContinue', ok: () => !tutOpen('menu') },
 
   /* --- АКТ 3: АЛТАРЬ (карта, здание, стак, звено) --- */
-  { t: '<b>Алтарь.</b> Кликните карту в коллекции слева — она «в руке», затем по свободной клетке Алтаря — поставить. Каждая карта приносит ТЭ/сек.', pre: () => { tutStartRun(); renderCollection(); }, hl: () => placingMode ? '#grid' : collSel(Object.keys(inventory)[0]), ok: () => cardsOnGrid() > 0 },
-  { t: '<b>Здание!</b> «Кладбище» — постройка: сама раз в 12с поднимает бесплатную нежить и усиливает соседей. Выберите и поставьте рядом с картами.', pre: () => { if (!inventory.bl_grave) TUT_GIVE([['bl_grave', 1]]); }, hl: () => (placingMode && pendingCard === 'bl_grave') ? '#grid' : collSel('bl_grave'), ok: () => gridHas('bl_grave') },
-  { t: '<b>Стопка ×3.</b> Выберите Скелета ▲ (стак из Гримуара) и поставьте на свободную клетку: на грид встанет стопка ×N — кратно больше доход клетки.', pre: () => { if (!inventory.u0) { inventory.u0 = 3; discovered.add('u0'); } deckStacks['u0'] = deckStacks['u0'] || [3]; renderCollection(); }, hl: () => (placingMode && pendingCard === 'u0') ? '#grid' : collSel('u0'), ok: () => { const it = grid.flat().find(x => x && x.cardId === 'u0'); return !!(it && it.stacks >= 2); } },
-  { t: '<b>Синергия!</b> Выберите «Костяного Рыцаря» и поставьте РЯДОМ со Скелетом: вспыхнет линия — доход обоих вырастет. Правило: повтор одной и той же пары слабее (×0.7, ×0.45…) — стройте РАЗНЫЕ связки.', pre: () => TUT_GIVE([['u4', 2]]), hl: () => (placingMode && pendingCard === 'u4') ? '#grid' : collSel('u4'), ok: () => pairLinkCount('u0', 'u4') > 0 },
+  { t: '<b>Алтарь.</b> Кликните карту, затем свободную клетку.', pre: () => { tutStartRun(); renderCollection(); }, hl: () => placingMode ? '#grid' : collSel(Object.keys(inventory)[0]), ok: () => cardsOnGrid() > 0 },
+  { t: '<b>Здание.</b> Поставьте «Кладбище» к картам.', pre: () => { if (!inventory.bl_grave) TUT_GIVE([['bl_grave', 1]]); }, hl: () => (placingMode && pendingCard === 'bl_grave') ? '#grid' : collSel('bl_grave'), ok: () => gridHas('bl_grave') },
+  { t: '<b>Стак.</b> Поставьте Скелета — встанет стопкой ×N.', pre: () => { if (!inventory.u0) { inventory.u0 = 3; discovered.add('u0'); } deckStacks['u0'] = deckStacks['u0'] || [3]; renderCollection(); }, hl: () => (placingMode && pendingCard === 'u0') ? '#grid' : collSel('u0'), ok: () => { const it = grid.flat().find(x => x && x.cardId === 'u0'); return !!(it && it.stacks >= 2); } },
+  { t: '<b>Синергия.</b> Рыцаря — рядом со Скелетом (линия = буст). Повторы пар слабее.', pre: () => TUT_GIVE([['u4', 2]]), hl: () => (placingMode && pendingCard === 'u4') ? '#grid' : collSel('u4'), ok: () => pairLinkCount('u0', 'u4') > 0 },
 
   /* --- АКТ 4: ЭПОХИ (порог, дар, Вознесение) --- */
-  { t: '<b>Эпоха.</b> Большая кнопка над Алтарём показывает % порога. Учебный дар: +60 тыс ТЭ — порог перекрыт.', pre: () => { crystals += 60000; }, n: 1 },
-  { t: '<b>Вознесение!</b> Жмите кнопку ЭПОХИ над Алтарём — откроется сводка смены Эпохи (забег сгорает, коллекция и Души остаются, +1 Душа). Жмите «ДАЛЬШЕ», выберите фракцию и колоду — новая Эпоха начнётся на ВАШИХ условиях.', pre: () => { tutB.epoch = epoch; }, hl: () => tutOpen('epochWarn') ? '#ewYes' : tutOpen('factionModal') ? '#factionModal' : tutOpen('deckPickModal') ? '#deckPickModal' : '#epochUpBtn', ok: () => epoch > tutB.epoch },
-  { t: '✅ <b>Цикл пройден!</b> Гримуар (колоды + крутки за Души) → Улучшения → забег → Вознесение (+1 Душа, порог растёт ×4). Повторы пар слабее — разные связки сильнее. Учебный забег не сохранён: жмите «В меню» и играйте по-настоящему.', n: 1, last: 1 }
+  { t: '<b>Эпоха.</b> Дар: +60 тыс ТЭ — жмите «Далее».', pre: () => { crystals += 60000; }, n: 1 },
+  { t: '<b>Вознесение.</b> ЭПОХА → «ДАЛЬШЕ» → фракция → колода.', pre: () => { tutB.epoch = epoch; }, hl: () => tutOpen('epochWarn') ? '#ewYes' : tutOpen('factionModal') ? '#factionModal' : tutOpen('deckPickModal') ? '#deckPickModal' : '#epochUpBtn', ok: () => epoch > tutB.epoch },
+  { t: '✅ <b>Готово.</b> Цикл пройден: Гримуар → Улучшения → забег → Вознесение. Учебный забег не сохранён.', n: 1, last: 1 }
 ];
 let tutI = -1, tutTimer = null;
 /* --- Механика обучения v2.1 ---
