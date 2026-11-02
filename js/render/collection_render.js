@@ -1,19 +1,19 @@
 'use strict';
-/*
-РЕНДЕР: КОЛЛЕКЦИЯ (render/collection_render.js)
-Вкладки: открытые фракции + РЕЛИКВИИ (жизнь в коллекции,
-слоты столбов — ряд над гридом). Фильтр редкостей.
-ПРОДАЖА ДУБЛИКАТОВ — сток для сотен лишних карт
-(к середине забега инвентарь раздувался до 300-400 копий).
-Кнопки «в бой» видны только с открытой Ареной.
- ============================================================*/
+/* ============================================================
+   РЕНДЕР: КОЛЛЕКЦИЯ (render/collection_render.js) — v1.7.0
+   Вкладки: открытые фракции + РЕЛИКВИИ (жизнь в коллекции,
+   слоты столбов — ряд над гридом). Фильтр редкостей.
+   В забеге коллекция = ВЫДАННАЯ КОЛОДА (v1.6.0): продавать нельзя.
+   v1.7.0: застакованные карты помечены ▲ (первая постановка
+   ставит на грид стопку ×N), кнопка «Стак» снята.
+   ============================================================ */
 
 let relicTabActive = false;
 
-/* ---- СТОК КАРТ: продажа дубликатов ВЫКЛЮЧЕНА ----
-Инвентарь забега — это выданная колода, продавать её нельзя.
-Функции оставлены: sellPriceOf может пригодиться Улучшениям.
- Дубликаты вечной коллекции копятся под будущие апгрейды.*/
+/* ---- СТОК КАРТ: v1.6.0 продажа дубликатов ВЫКЛЮЧЕНА ----
+   Инвентарь забега — это выданная колода, продавать её нельзя.
+   Функции оставлены: sellPriceOf может пригодиться Улучшениям.
+   Дубликаты вечной коллекции копятся под будущие апгрейды. */
 function sellPriceOf(card) {
   const base = { B: 200, 3: 600, 4: 3000, 5: 12000 }[rarityRank(card.rarity)] || 200;
   return Math.round(base * (1 + 0.4 * (epoch - 1)));
@@ -25,7 +25,7 @@ function sellDupesOf(id, silent) {
   const gold = n * sellPriceOf(CARDS[id]);
   inventory[id] = keep;
   crystals += gold; incomeExempt += gold;
-  stats.soldGold = (stats.soldGold || 0) + gold; /* счётчик для контрактов */
+  stats.soldGold = (stats.soldGold || 0) + gold; /* v1.2.9: счётчик для контрактов */
   if (!silent) toast('💰 Продано «' + CARDS[id].name + '» ×' + n + ' → +' + fmtShort(gold) + ' 💎 (осталось ' + keep + ')');
   return gold;
 }
@@ -51,7 +51,8 @@ function renderCollection() {
   renderRarityFilter();
 
   /* Вкладки: заблокированные фракции не отображаем вовсе.
- Первая вкладка «Фракция» показывает карты текущей Эпохи.*/
+     Резец Тьмы: сквозной фильтр «Все» убран — первая вкладка «Фракция»
+     показывает карты текущей Эпохи. */
   const tabsEl = $('collectionTabs');
   tabsEl.innerHTML = '';
   const invFactions = [...new Set(Object.keys(inventory).map(id => CARDS[id].faction))];
@@ -99,7 +100,9 @@ function renderCollection() {
     if (sel && sel.id === id) el.classList.add('selected');
     el.innerHTML = cardArtHTML(card, 'coll-art', 'coll-glyph') +
       '<span class="faction-dot" style="background:' + FACTION_INFO[card.faction].color + '"></span>' +
-      '<span class="count">' + count + '</span>';
+      '<span class="count' + (deckStacks[id] > 1 ? ' count-stacked' : '') + '"' +
+      (deckStacks[id] > 1 ? ' title="Застаковано в колоде: первая постановка встанет на грид стопкой ×' + deckStacks[id] + '"' : '') +
+      '>' + count + (deckStacks[id] > 1 ? ' ▲' : '') + '</span>';
     el.addEventListener('mouseenter', e => showCardTooltip(e, card, card.baseRate));
     el.addEventListener('mousemove', moveTooltip);
     el.addEventListener('mouseleave', hideTooltip);
@@ -172,7 +175,7 @@ function placeRelicCol(id, c) {
   toast(r.icon + ' «' + r.name + '» встала в столб ' + (c + 1));
   sfx('place');
   computeIncome(); updateHUD(); saveRun();
-  enforceRelicBans(false); /* кара-запрет немедленно изгоняет чужие карты */
+  enforceRelicBans(false); /* v1.4.0: кара-запрет немедленно изгоняет чужие карты */
   renderGrid(); renderCollection();
 }
 
@@ -187,24 +190,22 @@ function renderRarityFilter() {
 
 function renderActions() {
   const el = $('cardActions');
-  /* Масс-кнопки «Продать дубликаты» на экране НЕТ
- (sellAllDupes/sellDupesOf в коде не привязаны к интерфейсу).*/
+  /* v1.7.0: кнопка «Стак» снята вместе с ручными стаками на гриде —
+     стопки собираются в колоде Гримуара (стрелка ▲). */
   if (relicTabActive) {
-    el.innerHTML = '<span class="act-hint">Реликвии — усиливают один столб Алтаря (у культистов — весь ритуал). Живут до конца Эпохи.</span>' +
-      '<button id="autoBtn2">Стак</button>';
+    el.innerHTML = '<span class="act-hint">Реликвии — усиливают один столб Алтаря (у культистов — весь ритуал). Живут до конца Эпохи.</span>';
   } else if (!placingMode || !pendingCard || !inventory[pendingCard]) {
-    el.innerHTML = '<span class="act-hint">Выберите карту: <b style="color:#8fbf72">зелёная рамка</b> — партнёры по синергии подсветят лучшие клетки. ПКМ / Shift+клик — в бой.</span>' +
-      '<button id="autoBtn2">Стак</button>';
+    el.innerHTML = '<span class="act-hint">Выберите карту: <b style="color:#8fbf72">зелёная рамка</b> — партнёры по синергии подсветят лучшие клетки. ПКМ / Shift+клик — в бой. Застакованная карта (▲) встанет стопкой ×N.</span>';
   } else {
     const c = CARDS[pendingCard], n = inventory[pendingCard];
-    /* Продажи дубликатов НЕТ: инвентарь забега = колода,
- дубликаты коллекции копятся под будущие Улучшения*/
+    const stk = deckStacks[pendingCard] || 1;
+    /* v1.6.0: продажа дубликатов снята — инвентарь забега = колода,
+       дубликаты коллекции копятся под будущие Улучшения */
     el.innerHTML = '<b>' + cardArtHTML(c, 'inline-art', '') + ' ' + c.name + '</b> ×' + n +
+      (stk > 1 ? ' <span class="count-stacked" title="Застаковано в колоде: встанет стопкой ×' + stk + '">▲ стак ×' + stk + '</span>' : '') +
       ' <button data-n="1">В бой ×1</button>' + (n > 5 ? '<button data-n="5">В бой ×5</button>' : '') +
       (n > 1 ? '<button data-n="' + n + '">В бой все (' + n + ')</button>' : '') +
-      '<span class="act-hint">или кликните по Алтарю</span>' + '<button id="autoBtn2">Стак</button>';
+      '<span class="act-hint">или кликните по Алтарю' + (stk > 1 ? ' — встанет стопкой ×' + stk : '') + '</span>';
   }
-  $('autoBtn2').onclick = autoStack;
-  $('autoBtn2').title = 'Уложить карты из инвентаря в существующие стопки на поле';
   el.querySelectorAll('[data-n]').forEach(b => b.onclick = () => addFighter(pendingCard, +b.dataset.n));
 }

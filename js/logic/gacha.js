@@ -1,17 +1,20 @@
 'use strict';
-/*
-ЛОГИКА: ГАЧА / ГРИМУАР (logic/gacha.js)
-Пити-система 20/80 — теперь ВЕЧНАЯ (мета). Крутки (Призыв)
-происходят в Гримуаре МЕЖДУ забегами за ДУШИ (1 душа = 1 крутка),
-бесплатные крутки списываются первыми. Выпавшие карты ложатся
-в ВЕЧНУЮ коллекцию (collection), а не в инвентарь забега.
-Расу Призыва выбирает игрок (среди открытых в Эпохе).
-РЕЛИКВИИ: шанс 2%/пити 30 остался — выпавшие реликвии идут в
-СХРОН (relicStash) и выдаются на старте следующего забега.
-КОЛОДЫ: decks [{id, name, race, cards[]}], лимит 64 карты,
-дубликаты разрешены (копия списывается из коллекции при добавлении).
-Улучшения за дубликаты — в следующей итерации (окно «Улучшения»).
- ============================================================*/
+/* ============================================================
+   ЛОГИКА: ГАЧА / ГРИМУАР (logic/gacha.js) — v1.7.0 «Плата Душами»
+   Пити-система 20/80 — ВЕЧНАЯ (мета). Крутки (Призыв) происходят
+   в Гримуаре МЕЖДУ забегами и ВСЕГДА стоят ДУШИ (v1.7.0: бесплатные
+   крутки убраны СОВСЕМ — 1 Душа = 1 крутка). Выпавшие карты ложатся
+   в ВЕЧНУЮ коллекцию (collection), а не в инвентарь забега.
+   Расу Призыва выбирает игрок (среди открытых в Эпохе).
+   РЕЛИКВИИ: шанс 2%/пити 30 остался — выпавшие реликвии идут в
+   СХРОН (relicStash) и выдаются на старте следующего забега.
+   КОЛОДЫ: decks [{id, name, race, cards[]}], лимит 64 карты,
+   дубликаты разрешены (копия списывается из коллекции при добавлении).
+   v1.7.0: СТАКИ КОЛОДЫ — до DECK_STACK_MAX копий одной карты (по умолчанию 5);
+   в UI колоды у стакуемой карты — фиолетовая стрелка ▲. Застакованная
+   карта ставится на грид сразу юнитом ×N (logic/grid.js, deckStacks).
+   Улучшения за дубликаты — в следующей итерации (окно «Улучшения»).
+   ============================================================ */
 
 /* Шансы: 32% ЗДАНИЕ, 63% ★3, 4% ★4, 1% ★5 (если открыто). */
 function unlockedRarities() { return epochRarities(epoch); }
@@ -29,7 +32,7 @@ function rollRarity() {
   const r = Math.random() * 100;
   if (has5 && (hitBigPity || r >= 99)) t = 5;
   else if (has4 && (hitSmallPity || r >= 95)) t = 4;
-  else if (hitBigPity) t = best; /* большой pity: лучшая доступная */
+  else if (hitBigPity) t = best;  /* большой pity: лучшая доступная */
   else if (hitSmallPity) t = best; /* малый pity на ранних Эпохах даёт ★3 */
   else t = r < 32 ? 'B' : 3;
 
@@ -39,8 +42,8 @@ function rollRarity() {
   return t;
 }
 
-/* Пул редкости t из карт ЗАДАННОЙ расы (: расу Призыва выбирает игрок;
- по умолчанию — фракция текущего забега,)*/
+/* Пул редкости t из карт ЗАДАННОЙ расы (v1.6.0: расу Призыва выбирает игрок;
+   по умолчанию — фракция текущего забега, как раньше) */
 function factionPool(t, race) {
   const f = race || faction;
   const base = POOLS[t] || POOL_3;
@@ -56,18 +59,15 @@ function rollOne(race) {
 }
 
 /* ---------------- ПРИЗЫВ (Гримуар): крутки за ДУШИ ----------------
-Сначала списываются бесплатные (freeRolls — вехи/контракты/Арена/
-Знамение), остаток — по 1 Душе за крутку. Карты — в вечную коллекцию,
- реликвии — в схрон. Возвращает {cards, relics, free, paid} или null.*/
+   v1.7.0: бесплатные крутки УБРАНЫ СОВСЕМ — каждая крутка стоит
+   GRIM_ROLL_COST Душ. Карты — в вечную коллекцию, реликвии — в схрон.
+   Возвращает {cards, relics, paid} или null. */
 const GRIM_ROLL_COST = 1; /* Душ за крутку */
 
 function performGrimRolls(count) {
   count = Math.max(1, Math.min(count | 0, 1000));
-  const freeN = Math.max(0, Math.min(freeRolls, count));
-  const paidN = count - freeN;
-  if (paidN > 0 && souls < paidN * GRIM_ROLL_COST) return null;
-  souls -= paidN * GRIM_ROLL_COST;
-  freeRolls -= freeN;
+  if (souls < count * GRIM_ROLL_COST) return null;
+  souls -= count * GRIM_ROLL_COST;
   const cards = [], relics = [];
   for (let i = 0; i < count; i++) {
     if (relicRollDue()) relics.push(rollRelicId(gachaRace));
@@ -77,7 +77,7 @@ function performGrimRolls(count) {
   cards.forEach(id => collectionAdd(id, 1));
   relics.forEach(id => relicStash.push(id));
   saveMeta(); saveRun();
-  return { cards, relics, free: freeN, paid: paidN, newTypes };
+  return { cards, relics, paid: count, newTypes };
 }
 
 /* ---------------- ВЕЧНАЯ КОЛЛЕКЦИЯ ---------------- */
@@ -92,6 +92,9 @@ function collectionFree(id) {
 
 /* ---------------- КОЛОДЫ ---------------- */
 const DECK_SIZE = 64;
+/* v1.7.0: максимальный стак одной карты в колоде («дефолтные стаки до 5x»).
+   Улучшения могут поднять этот потолок в будущих итерациях. */
+const DECK_STACK_MAX = 5;
 function deckById(id) { return decks.find(k => k.id === id) || null; }
 function activeDeckFor(race) {
   const d = deckById(activeDeck[race]);
@@ -100,10 +103,16 @@ function activeDeckFor(race) {
 function deckUsedCount(deck, cardId) {
   return deck.cards.filter(cid => cid === cardId).length;
 }
+/* v1.7.0: можно ли поднять стак этой карты в колоде (есть копия в коллекции) */
+function canStackInDeck(deck, cardId) {
+  return !!deck && deckUsedCount(deck, cardId) < DECK_STACK_MAX &&
+    collectionFree(cardId) > deckUsedCount(deck, cardId);
+}
 function addToDeck(deck, cardId) {
   if (!deck || !CARDS[cardId]) return false;
-  if (CARDS[cardId].faction !== deck.race) return false; /* колода принадлежит расе */
-  if (deck.cards.length >= DECK_SIZE) return false; /* лимит 64 */
+  if (CARDS[cardId].faction !== deck.race) return false;      /* колода принадлежит расе */
+  if (deck.cards.length >= DECK_SIZE) return false;           /* лимит 64 */
+  if (deckUsedCount(deck, cardId) >= DECK_STACK_MAX) return false; /* v1.7.0: стак до 5x */
   if (deckUsedCount(deck, cardId) >= collectionFree(cardId)) return false; /* копий нет */
   deck.cards.push(cardId);
   saveMeta();
@@ -134,7 +143,7 @@ function deleteDeck(id) {
   return true;
 }
 /* Стартовая колода расы: старт-кит (механика + здание + пара ★3).
- Создаётся, если у расы ещё нет ни одной колоды.*/
+   Создаётся, если у расы ещё нет ни одной колоды. */
 function ensureStarterDeck(race) {
   if (!FACTION_KEYS.includes(race)) return null;
   if (decks.some(k => k.race === race)) return deckById(activeDeck[race]) || decks.find(k => k.race === race);

@@ -1,18 +1,24 @@
 'use strict';
-/*
-ЛОГИКА: КОНТРАКТЫ ЭПОХИ + ЗНАМЕНИЕ СУДЬБЫ (logic/contracts.js)
-«Тёмный Пакт»: серия из 6 заданий на забег, 3 активных сразу.
-- Награда: крутки + Тёмная энергия (СТРОГО мимо порога Эпохи — incomeExempt) + Душа за каждый контракт.
-- За все 6 — «ПАКТ ИСПОЛНЕН»: +1 печать 🔱 и шоу.
-- Прогресс — дельты от stats/живых значений; в сохранении забега
-лежит только плоский массив (валидация при загрузке).
-- ЗНАМЕНИЕ СУДЬБЫ: первый вход за календарный день — +5 круток
-и ×2 доход на 5 минут (только в реальном забеге).
-- ХРОНИКИ ТЬМЫ: разовые печати за полное открытие наборов фракций.
- ============================================================*/
+/* ============================================================
+   ЛОГИКА: КОНТРАКТЫ ЭПОХИ + ЗНАМЕНИЕ СУДЬБЫ (logic/contracts.js)
+   «Тёмный Пакт»: серия из 6 заданий на забег, 3 активных сразу.
+   v1.7.0 «Плата Душами»:
+   - НАГРАДА КОНТРАКТА — 1 ДУША (крутки и ТЭ сверх награды сняты;
+     бесплатные крутки убраны из игры совсем);
+   - в игре активные контракты выводятся СПИСКОМ БЛОКОВ ПОД ГРИДОМ
+     (#contractsPanel): сверху название, под ним задача, справа —
+     награда в душах. Кнопка «Контракты» открывает те же блоки окном;
+   - за все 6 — «ПАКТ ИСПОЛНЕН»: +1 печать 🔱 и шоу;
+   - прогресс — дельты от stats/живых значений; в сохранении забега
+     лежит только плоский массив (валидация при загрузке).
+   - ЗНАМЕНИЕ СУДЬБЫ: первый вход за календарный день — ×2 доход
+     на 5 минут (только в реальном забеге). Крутки даром больше
+     не даёт.
+   - ХРОНИКИ ТЬМЫ: разовые печати за полное открытие наборов фракций.
+   ============================================================ */
 
-/* contracts объявлена в state.js : { list, used, done, nextAt, pact }
- здесь только логика работы с ней.*/
+/* contracts объявлена в state.js (v1.2.9): { list, used, done, nextAt, pact } —
+   здесь только логика работы с ней. */
 
 /* ---------------- Движок ---------------- */
 function tplById(id) { return CONTRACT_TPL.find(t => t.id === id) || null; }
@@ -26,7 +32,7 @@ function contractProgress(c) {
 }
 
 /* Доступные шаблоны: не использованы в этом забеге, фильтр фичи пройден,
- «live»-цель ещё не выполнена самим фактом (иначе награда за ничего)*/
+   «live»-цель ещё не выполнена самим фактом (иначе награда за ничего) */
 function contractsAvailable() {
   return CONTRACT_TPL.filter(t => {
     if (contracts.used.indexOf(t.id) >= 0) return false;
@@ -44,13 +50,10 @@ function spawnContract() {
   const avail = contractsAvailable();
   if (!avail.length || contracts.list.length >= CONTRACTS_ACTIVE) return;
   const tpl = pick(avail);
-  const rw = contractReward(epoch);
   contracts.list.push({
     id: tpl.id,
     target: Math.max(1, tpl.target(epoch)),
-    base: tpl.kind === 'delta' ? (tpl.val() || 0) : 0,
-    rolls: rw.rolls,
-    gold: Math.max(500, Math.round(rollCost() * rw.goldMult))
+    base: tpl.kind === 'delta' ? (tpl.val() || 0) : 0
   });
   contracts.used.push(tpl.id);
 }
@@ -59,7 +62,7 @@ function spawnContract() {
 function contractsInit() {
   contracts = { list: [], used: [], done: 0, nextAt: 0, pact: false };
   for (let i = 0; i < CONTRACTS_ACTIVE; i++) spawnContract();
-  renderContractsBtn();
+  renderContractsBtn(); renderContractsPanel();
 }
 
 /* Восстановление из сохранения: битые элементы выбрасываются (Тимка спал спокойно) */
@@ -73,7 +76,7 @@ function contractsRestore(d) {
     if (Array.isArray(d.list)) d.list.forEach(c => {
       const tpl = c && tplById(c.id);
       if (!tpl || typeof c.target !== 'number' || c.target < 1) return;
-      contracts.list.push({ id: c.id, target: c.target, base: +c.base || 0, rolls: +c.rolls || 4, gold: +c.gold || 500 });
+      contracts.list.push({ id: c.id, target: c.target, base: +c.base || 0 });
     });
     contracts.list = contracts.list.slice(0, CONTRACTS_ACTIVE);
     /* добираем до 3 активных, если сохранение было неполным */
@@ -81,13 +84,13 @@ function contractsRestore(d) {
       spawnContract();
     }
   }
-  renderContractsBtn();
+  renderContractsBtn(); renderContractsPanel();
 }
 
 /* Проверка выполнения — вызывается раз в секунду и после значимых действий */
 function checkContracts() {
   if (!gameStarted || gamePaused || noSave) return;
-  if (contracts.nextAt && gameTime >= contracts.nextAt) { contracts.nextAt = 0; spawnContract(); renderContractsBtn(); }
+  if (contracts.nextAt && gameTime >= contracts.nextAt) { contracts.nextAt = 0; spawnContract(); renderContractsBtn(); renderContractsPanel(); }
   if (!contracts.list.length) return;
   let changed = false;
   for (let i = contracts.list.length - 1; i >= 0; i--) {
@@ -96,19 +99,16 @@ function checkContracts() {
     const tpl = tplById(c.id);
     contracts.list.splice(i, 1);
     contracts.done++;
-    freeRolls += c.rolls;
-    stats.freeRolls = (stats.freeRolls || 0) + c.rolls;
-    crystals += c.gold; incomeExempt += c.gold; /* мимо порога Эпохи — честный прогресс */
-    /* КАЖДЫЙ ИСПОЛНЕННЫЙ КОНТРАКТ ПЛАТИТ ДУШОЙ — источник Призыва №3 */
-    souls += 1; saveMeta();
-    /* Шоу: волна по кнопке контрактов + всплывающий текст */
-    const btn = $('contractsBtn');
-    if (btn && btn.getBoundingClientRect) {
-      const b = btn.getBoundingClientRect();
-      fxFxAt(btn, ['#e8c060', '#fff8d0', '#c9a227'], 22);
-      fxFloat(b.left + b.width / 2, b.top, '📜 +' + c.rolls + ' 🎲 · +' + fmtShort(c.gold) + ' ТЭ · +1 Душа', '#ffe080', 18);
+    /* v1.7.0: контракт платит ДУШОЙ — единственная награда Тёмного Пакта */
+    souls += CONTRACT_SOUL_REWARD; saveMeta();
+    /* Шоу: волна по панели контрактов + всплывающий текст */
+    const anchor = $('contractsPanel') || $('contractsBtn');
+    if (anchor && anchor.getBoundingClientRect) {
+      const b = anchor.getBoundingClientRect();
+      fxFxAt(anchor, ['#e8c060', '#fff8d0', '#c9a227'], 22);
+      fxFloat(b.left + b.width / 2, b.top, '📜 КОНТРАКТ ИСПОЛНЕН · +1 ДУША', '#ffe080', 18);
     }
-    toast('📜 <b>Контракт исполнен:</b> ' + (tpl ? tpl.icon : '') + ' +' + c.rolls + ' круток · +' + fmtShort(c.gold) + ' ' + DE_IMG + ' · ' + SOUL_IMG + ' +1 Душа <small>(энергия — вне порога Эпохи)</small>', 'contract', 10);
+    toast('📜 <b>Контракт исполнен:</b> ' + (tpl ? tpl.icon : '') + ' ' + (tpl ? tpl.name : '') + ' → ' + SOUL_IMG + ' <b>+' + CONTRACT_SOUL_REWARD + ' Душа</b> <small>(валюта Призыва в Гримуаре)</small>', 'contract', 8);
     sfx('relic');
     if (contracts.done >= CONTRACTS_PER_RUN && !contracts.pact) {
       contracts.pact = true;
@@ -122,34 +122,58 @@ function checkContracts() {
     }
     changed = true;
   }
-  if (changed) { renderContractsBtn(); updateHUD(); saveRun(); checkAchievements(); }
+  if (changed) { renderContractsBtn(); renderContractsPanel(); updateHUD(); saveRun(); checkAchievements(); }
 }
 
-/* ---------------- Кнопка + модалка ---------------- */
+/* ---------------- Кнопка + бейдж ---------------- */
 function renderContractsBtn() {
   const b = $('contractsBadge'); if (!b) return;
   const txt = contracts.done + '/' + CONTRACTS_PER_RUN;
   if (b.textContent !== txt) b.textContent = txt;
 }
 
-function contractRowHTML(c, idx) {
+/* ---------------- БЛОК КОНТРАКТА (v1.7.0) ----------------
+   Сверху — название, справа — награда в душах, под ними — задача,
+   внизу — прогресс. Один и тот же блок живёт в панели под гридом
+   и в модалке «Контракты». */
+function contractBlockHTML(c) {
   const tpl = tplById(c.id); if (!tpl) return '';
   const prog = contractProgress(c);
   const pct = Math.floor((prog / c.target) * 100);
-  return '<div class="contract-row">' +
-    '<div class="contract-top"><span class="cr-icon">' + tpl.icon + '</span>' +
-    '<span class="cr-text">' + tpl.text(c.target) + '</span>' +
-    '<span class="cr-count">' + fmt(prog) + ' / ' + fmt(c.target) + '</span></div>' +
-    '<div class="cr-track"><div class="cr-fill" style="width:' + pct + '%"></div></div>' +
-    '<div class="cr-reward">Награда: +' + c.rolls + ' круток · +' + fmtShort(c.gold) + ' ' + DE_IMG + ' · ' + SOUL_IMG + ' +1 (энергия — вне порога Эпохи)</div>' +
+  return '<div class="ctr-block">' +
+    '<div class="ctr-head">' +
+    '<span class="ctr-name">' + tpl.icon + ' ' + tpl.name + '</span>' +
+    '<span class="ctr-reward" title="Награда: душа на Тёмный Пакт">' + SOUL_IMG + '<b>+' + CONTRACT_SOUL_REWARD + '</b></span>' +
+    '</div>' +
+    '<div class="ctr-task">' + tpl.text(c.target) + '</div>' +
+    '<div class="ctr-track"><div class="cr-fill" style="width:' + pct + '%"></div><span class="ctr-count">' + fmt(prog) + ' / ' + fmt(c.target) + '</span></div>' +
     '</div>';
 }
 
+/* ---------------- ПАНЕЛЬ ПОД ГРИДОМ (v1.7.0) ----------------
+   Список блоков активных контрактов. Прячется в обучении/чит-режиме
+   и пока меню/Гримуар важнее — просто пустует при отсутствии списка. */
+const _hudPanel = { hidden: null };
+function renderContractsPanel() {
+  const el = $('contractsPanel'); if (!el) return;
+  const show = gameStarted && !noSave;
+  if (_hudPanel.hidden !== !show) { _hudPanel.hidden = !show; el.style.display = show ? '' : 'none'; }
+  if (!show) return;
+  let html = contracts.list.map(contractBlockHTML).join('');
+  if (!html) html = contracts.pact
+    ? '<div class="ctr-empty">🕯 Пакт исполнен — все шесть подписей собраны.</div>'
+    : '<div class="ctr-empty">Все активные контракты исполнены — Тьма готовит новый…</div>';
+  if (el.dataset.sig === html) return;
+  el.dataset.sig = html;
+  el.innerHTML = html;
+}
+
+/* ---------------- Модалка «Контракты» (кнопка) ---------------- */
 function openContracts() {
   mk('contractModal',
     '<h2>📜 КОНТРАКТЫ ЭПОХИ ' + epoch + '</h2>' +
     '<div class="desc">Тёмный Пакт: <b>' + CONTRACTS_PER_RUN + '</b> заданий за забег, <b>' + CONTRACTS_ACTIVE + '</b> активных. ' +
-    'Награды идут МИМО порога Эпохи. Исполните все шесть — Тьма заплатит печатью 🔱.</div>' +
+    'Награда каждого — <b>' + CONTRACT_SOUL_REWARD + ' Душа</b> (валюта Призыва в Гримуаре). Исполните все шесть — Тьма заплатит печатью 🔱.</div>' +
     '<div id="contractList"></div>' +
     '<div class="btn-row"><button class="btn btn-take" id="contractX">ЗАКРЫТЬ</button></div>', 560);
   $('contractX').onclick = () => close_('contractModal');
@@ -160,7 +184,7 @@ function openContracts() {
 function renderContractList() {
   const el = $('contractList'); if (!el) return;
   let html = '';
-  if (contracts.list.length) html = contracts.list.map(contractRowHTML).join('');
+  if (contracts.list.length) html = contracts.list.map(contractBlockHTML).join('');
   else html = '<div class="res" style="text-align:center">Активных контрактов нет.</div>';
   if (contracts.pact) html += '<div class="res" style="text-align:center;color:#ffe080">🕯 Пакт исполнен — все шесть подписей собраны. +1 🔱 уплачено Тьмой.</div>';
   else if (contracts.done > 0) html += '<div class="cr-progress-line">Исполнено: <b>' + contracts.done + '</b> / ' + CONTRACTS_PER_RUN +
@@ -177,19 +201,17 @@ function checkDailyGift() {
   if (noSave || !gameStarted) return;
   if (lastDaily === dailyKey()) return;
   lastDaily = dailyKey();
-  freeRolls += 5;
-  stats.freeRolls = (stats.freeRolls || 0) + 5;
-  saveMeta(); /* freeRolls — мета, сохраняем сразу */
+  /* v1.7.0: круток даром больше НЕТ — только бафф дохода */
   altBuff = { mult: 2, until: gameTime + 300, label: '✨ ЗНАМЕНИЕ СУДЬБЫ ×2' };
   fxShockwave(window.innerWidth / 2, 120, '#80e0ff');
   sfx('relic');
-  setTimeout(() => toast('✨ <b>Знамение Судьбы:</b> Тьма ждёт тебя снова — <b>+5 бесплатных круток</b> и доход <b>×2 на 5 минут</b>!', 'daily', 5), 800);
+  setTimeout(() => toast('✨ <b>Знамение Судьбы:</b> Тьма ждёт тебя снова — доход <b>×2 на 5 минут</b>!', 'daily', 5), 800);
   updateHUD(); saveRun();
 }
 
 /* ---------------- ХРОНИКИ ТЬМЫ (коллекционные вершины) ----------------
-За ПОЛНОЕ открытие набора фракции — разовые печати. Ключи вида
- 'undead3' / 'undeadB' / 'undead4' / 'undead5' живут в мета-сохранении.*/
+   За ПОЛНОЕ открытие набора фракции — разовые печати. Ключи вида
+   'undead3' / 'undeadB' / 'undead4' / 'undead5' живут в мета-сохранении. */
 const CHRON_TIERS = [
   { r: '3', name: 'стандарт', reward: 2 },
   { r: 'B', name: 'постройки', reward: 2 },

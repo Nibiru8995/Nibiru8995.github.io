@@ -1,6 +1,6 @@
-/*
-ГАЧА-ГРИНДЕР 2: Тёмное Наследие — стили
- ============================================================*/
+/* ============================================================
+   ГАЧА-ГРИНДЕР 2: Тёмное Наследие — стили
+   ============================================================ */
 * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
 :root {
   --bg: #0f0f11; --bg2: #0c0c0e;
@@ -9,32 +9,33 @@
   --ink: #d5d1c7;
   --cell-size: min(6vh, 58px, calc((100vw - 70px) / 9.6));
   --f-undead: #9a9a9a; --f-beast: #3aa03a; --f-demon: #c03030; --f-cultist: #b3a15f;
-  /* настоящие темируемые переменные */
+  /* v1.5.0: раньше --ink-dim/--gold-hi/--steel использовались без определения
+     (браузер подставлял наследование) — теперь они настоящие и темируемые */
   --ink-dim: #a39e92; --gold-hi: #e4d6a4; --steel: #9fb0c4;
   --sp-live: #d3bd7a; /* цвет АКТИВНОЙ способности (✦) — темируется фракцией */
 }
 html, body { height: 100%; overflow: hidden; width: 100%; }
 body {
-  /* пиксельный дарк-склеп за игрой — в тон главному меню */
+  /* v1.3.1 «Склеп»: пиксельный дарк-склеп за игрой — в тон главному меню */
   background: linear-gradient(rgba(13,13,15,.84), rgba(10,10,12,.92)), url('../assets/game_bg.jpg') center / cover no-repeat fixed #0d0d0f;
   color: var(--ink); font-family: 'Georgia', 'Times New Roman', serif;
   display: flex; flex-direction: column; align-items: center;
   padding: 4px; height: 100%;
 }
 body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0; background: radial-gradient(ellipse at 50% 45%, transparent 40%, #00000088 100%); }
-/* фон — ровный серый мрак */
+/* Резец Тьмы: дрейфующий цветной туман убран — фон стал ровным серым мраком */
 
-/* заголовок вжат в топбар — отдельная строка H1 съедала экран */
+/* v1.2.7: заголовок вжат в топбар — отдельная строка H1 съедала экран */
 #brand { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; line-height: 1.05; }
 #brand b { font-family: 'Ruslan Display', 'Georgia', serif; font-size: 14px; letter-spacing: 1px; color: var(--gold); text-shadow: none; }
 #brand small { font-size: 8.5px; letter-spacing: .8px; color: var(--ink-dim); }
 #hudCenter { display: flex; gap: 22px; align-items: center; font-variant-numeric: tabular-nums; }
 #topBar { display: flex; gap: 12px; align-items: center; justify-content: center; padding: 5px 14px; margin-bottom: 4px; background: #0d0d0f; border: 1px solid var(--border); border-radius: 2px; box-shadow: none; font-size: 13px; font-weight: normal; flex-shrink: 0; position: relative; z-index: 2; flex-wrap: wrap; width: 100%; }
-/* «Меню» живёт в правой панели — топбар чисто HUD-овый */
+/* v1.3.1: «Меню» живёт в правой панели — топбар чисто HUD-овый */
 #crystals, #sealsTop, #soulsTop { color: var(--gold-hi); font-weight: bold; }
-/* ТЁМНАЯ ЭНЕРГИЯ — спрайт вместо золотого ромба; ДУШИ — свой спрайт */
-.crystal-icon { display: inline-block; width: 15px; height: 15px; background: url('../assets/dark_energy.png?v=1.6.0') center / contain no-repeat; margin-right: 4px; vertical-align: middle; filter: drop-shadow(0 0 4px #7a3fb8aa); }
-.soul-icon { display: inline-block; width: 14px; height: 14px; background: url('../assets/soul.png?v=1.6.0') center / contain no-repeat; margin-right: 4px; vertical-align: middle; filter: drop-shadow(0 0 4px #58c8d8aa); }
+/* v1.6.0: ТЁМНАЯ ЭНЕРГИЯ — спрайт вместо золотого ромба; ДУШИ — свой спрайт */
+.crystal-icon { display: inline-block; width: 15px; height: 15px; background: url('../assets/dark_energy.png?v=1.7.0') center / contain no-repeat; margin-right: 4px; vertical-align: middle; filter: drop-shadow(0 0 4px #7a3fb8aa); }
+.soul-icon { display: inline-block; width: 14px; height: 14px; background: url('../assets/soul.png?v=1.7.0') center / contain no-repeat; margin-right: 4px; vertical-align: middle; filter: drop-shadow(0 0 4px #58c8d8aa); }
 .de-ic { display: inline-block; width: 14px; height: 14px; vertical-align: -2px; margin: 0 1px; }
 .soul-ic { filter: drop-shadow(0 0 3px #58c8d8aa); }
 #soulsChip { color: #a8dfe8; }
@@ -46,11 +47,12 @@ body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-i
 #main { display: flex; gap: 10px; flex: 1; min-height: 0; width: 100%; max-width: 1620px; justify-content: center; align-items: stretch; margin-top: 4px; padding: 0 10px; position: relative; z-index: 2; }
 #verFoot { flex-shrink: 0; padding: 3px 0 5px; font-size: 10px; letter-spacing: .5px; color: #55555a; text-align: center; width: 100%; position: relative; z-index: 2; font-family: inherit; user-select: none; }
 
-/* ===== ЛЕВАЯ ЗОНА: только КОЛЛЕКЦИЯ; слоты столбов — ряд НАД Алтарём ===== */
+/* ===== ЛЕВАЯ ЗОНА v1.2.6: только КОЛЛЕКЦИЯ (панель реликвий убрана —
+   перегружала интерфейс; слоты столбов теперь — ряд НАД Алтарём) ===== */
 #leftCol { display: flex; gap: 8px; flex-shrink: 0; max-height: 100%; min-height: 0; }
-/* Слоты реликвий над Алтарём (Резец Тьмы): собственная строка, клетки
-строго квадратные того же размера, что клетки грида, выравнивание 1:1.
- Ряд строится из подписи.rsr-cap и сетки.rsr-grid (колонки ставит JS).*/
+/* Слоты реликвий над Алтарём (Резец Тьмы): собственная строка, клетки —
+   строго квадратные того же размера, что клетки грида, выравнивание 1:1.
+   Ряд строится из подписи .rsr-cap и сетки .rsr-grid (колонки ставит JS). */
 #relicSlotRow { width: fit-content; margin: 0 auto; max-width: 100%; }
 .rsr-cap { display: flex; align-items: center; gap: 6px; font-size: 10.5px; letter-spacing: .3px; color: #b5b1a7; margin-bottom: 4px; white-space: nowrap; }
 .rsr-cap svg { width: 11px; height: 11px; fill: none; stroke: var(--gold); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
@@ -74,7 +76,7 @@ body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-i
 #ritualBar.almost { border-color: var(--gold-hi); }
 #ritualBar .rb-info { font-size: 11px; color: #d5d1c7; flex-shrink: 0; max-width: 62%; text-align: right; line-height: 1.2; }
 
-/* ===== АРЕНА : ПОД ГРИДОМ, ГОРИЗОНТАЛЬНАЯ КОМПОНОВКА ===== */
+/* ===== АРЕНА v1.2.5: ПОД ГРИДОМ, ГОРИЗОНТАЛЬНАЯ КОМПОНОВКА ===== */
 #arenaPanel { background: linear-gradient(#17171a, #121214); border: 2px solid var(--border2); border-radius: 8px; padding: 8px 10px; box-shadow: inset 0 0 12px #00000088; display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; align-self: stretch; width: auto; position: relative; filter: brightness(0.96); }
 .arena-head { display: flex; align-items: center; gap: 10px; }
 .arena-title { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: #cbbd8d; text-align: center; font-weight: bold; text-shadow: 0 0 10px #b3a15f55; white-space: nowrap; }
@@ -108,10 +110,10 @@ body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-i
 #arenaFightBtn { width: 100%; padding: 10px; font-size: 14px; font-weight: bold; background: #221715; border: 1px solid #5a3434; border-radius: 2px; color: #cf8a80; cursor: pointer; text-transform: none; letter-spacing: .3px; font-family: inherit; transition: background .12s, border-color .12s; box-shadow: none; }
 #arenaFightBtn:hover:not(:disabled) { background: #2c1a18; border-color: #6e3a30; color: #d99a90; }
 #arenaFightBtn:disabled { opacity: .4; cursor: not-allowed; filter: grayscale(1); }
-#arenaRetreatBtn { width: 100%; padding: 8px; font-size: 12px; font-weight: 600; background: #111113; border: 1px solid var(--border); border-radius: 2px; color: #b5b1a7; cursor: pointer; font-family: inherit; box-shadow: none; text-transform: none; /* ФИКС «прыжка» арены : место кнопки зарезервировано всегда, показывается через visibility */ visibility: hidden; pointer-events: none; }
+#arenaRetreatBtn { width: 100%; padding: 8px; font-size: 12px; font-weight: 600; background: #111113; border: 1px solid var(--border); border-radius: 2px; color: #b5b1a7; cursor: pointer; font-family: inherit; box-shadow: none; text-transform: none; /* ФИКС «прыжка» арены (фидбек 9): место кнопки зарезервировано всегда, показывается через visibility */ visibility: hidden; pointer-events: none; }
 #arenaRetreatBtn.visible { visibility: visible; pointer-events: auto; }
 #arenaRetreatBtn:hover { background: #161618; border-color: var(--border2); color: var(--ink); }
-.arena-status { font-size: 10px; text-align: center; color: #a39e92; /* ФИКС «прыжка» : высота строки статуса зафиксирована на 2 строки */ height: 26px; line-height: 1.3; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.arena-status { font-size: 10px; text-align: center; color: #a39e92; /* ФИКС «прыжка» (фидбек 9): высота строки статуса зафиксирована на 2 строки */ height: 26px; line-height: 1.3; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .arena-status.win { color: #94c77c; }
 .arena-status.lose { color: #cf8a80; }
 .arena-fight-row { display: flex; gap: 6px; align-items: center; }
@@ -136,15 +138,15 @@ body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-i
 #fightersList::-webkit-scrollbar-thumb { background: linear-gradient(#3a3a3e, #26262a); border-radius: 4px; border: 1px solid #46464c; }
 
 /* ===== ПРАВАЯ КОЛОНКА (Резец Тьмы): две колонки плоских кнопок + под ними
- панель «Колыбель Войны» с живым визуалом боя. Высота ограничена полем. =====*/
+   панель «Колыбель Войны» с живым визуалом боя. Высота ограничена полем. ===== */
 #rightCol { width: 324px; min-width: 270px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; height: 100%; min-height: 0; filter: none; overflow: hidden; }
 #rightBtns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; flex-shrink: 0; }
 #rightBtns button { display: flex; align-items: center; justify-content: center; gap: 7px; width: auto; min-height: 0; height: 35px; padding: 6px 4px; background: #111113; border: 1px solid var(--border); border-radius: 2px; color: var(--ink); font-size: 11.5px; font-weight: 600; font-family: inherit; letter-spacing: .2px; text-transform: none; white-space: nowrap; cursor: pointer; box-shadow: none; transition: background .12s, border-color .12s; }
-/* «Меню» — под двумя столбиками кнопок, на всю ширину панели */
+/* v1.3.1: «Меню» — под двумя столбиками кнопок, на всю ширину панели */
 #rightBtns #menuBtn { grid-column: 1 / -1; width: 100%; height: 32px; color: var(--gold); font-weight: 700; letter-spacing: 1.2px; }
 #rightBtns #menuBtn:hover { border-color: var(--gold); background: #161618; }
-/* «Рестарт Эпохи» — НАД «Меню», на всю ширину.
- Мрачно-красная тонировка: действие необратимое, печати не даёт.*/
+/* v1.4.3 «Второй Круг»: «Рестарт Эпохи» — НАД «Меню», на всю ширину.
+   Мрачно-красная тонировка: действие необратимое, печати не даёт. */
 #rightBtns #epochRestartBtn { grid-column: 1 / -1; width: 100%; height: 32px; color: #c98f8f; font-weight: 700; letter-spacing: 1px; }
 #rightBtns #epochRestartBtn svg.ic { stroke: #b06a6a; }
 #rightBtns #epochRestartBtn:hover { border-color: #8a4444; background: #181114; color: #e0a8a8; }
@@ -187,7 +189,7 @@ body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-i
 .grid-title::before, .grid-title::after { content: ''; width: 46px; height: 1px; background: var(--border2); }
 .grid-stats { font-size: 10.5px; color: var(--ink-dim); margin: 0 0 4px; text-align: center; background: none; border: none; border-radius: 0; padding: 2px 8px; position: relative; z-index: 3; box-shadow: none; max-width: min(100%, 640px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .grid-stats b { color: var(--gold-hi); }
-#gridAltar { position: relative; padding: 0; background: none; border-radius: 2px; box-shadow: none; /* грид жмёт крутки к самому низу — низ всех колонок совпадает */ flex: 1 1 auto; display: flex; align-items: center; justify-content: center; min-height: 0; }
+#gridAltar { position: relative; padding: 0; background: none; border-radius: 2px; box-shadow: none; /* v1.3.1: грид жмёт крутки к самому низу — низ всех колонок совпадает */ flex: 1 1 auto; display: flex; align-items: center; justify-content: center; min-height: 0; }
 #gridAltar::before { content: none; }
 #gridWrap { position: relative; padding: 8px; background: #141416; border: 2px solid #6e6238; border-radius: 0; box-shadow: 0 0 0 1px #000, 0 4px 10px #00000088; clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px)); }
 #gridWrap::before, #gridWrap::after { content: ''; position: absolute; width: 16px; height: 16px; border: 2px solid var(--gold); pointer-events: none; z-index: 3; }
@@ -229,9 +231,9 @@ body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-i
 .card .card-name { font-size: 8px; color: #d5d1c7; text-align: center; line-height: 1; margin-top: 1px; text-shadow: 0 0 3px #000; }
 .card .income-badge { position: absolute; bottom: 4px; left: 1px; font-size: 8px; font-weight: bold; color: #94c77c; background: #0c0c0edd; border-radius: 2px; padding: 0 2px; line-height: 1; border: 1px solid #33421f; }
 .card .anchor-badge { position: absolute; top: 1px; right: 2px; font-size: 9px; filter: drop-shadow(0 0 3px #d3bd7a); }
-/* ✦-индикатор особенности : тусклый — не задействована, золотой — активна */
+/* ✦-индикатор особенности (v1.2.6): тусклый — не задействована, золотой — активна */
 .card .sp-badge { color: #5a5a5e; filter: none; text-shadow: none; }
-/* активный ✦ красится в цвет фракции и подсвечивает себя сам */
+/* v1.5.0: активный ✦ красится в цвет фракции и подсвечивает себя сам */
 .card .sp-badge.on { color: var(--sp-live, #d3bd7a); filter: drop-shadow(0 0 4px currentColor); }
 .card .mut-badge { position: absolute; bottom: 4px; right: 1px; font-size: 8px; font-weight: bold; color: #d08a70; background: #2a0a0add; border-radius: 2px; padding: 0 2px; line-height: 1; border: 1px solid #6e3a30; }
 .card .stack-badge { position: absolute; top: -1px; left: 1px; font-size: 9px; color: #e4d6a4; text-shadow: 0 0 4px #000; }
@@ -242,50 +244,52 @@ body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-i
 #synergySvg line.base-good { stroke: #8fbf72; stroke-width: 2.5; opacity: 0.85; filter: drop-shadow(0 0 4px #8fbf7288); }
 #synergySvg line.base-mult { stroke: #d3bd7a; stroke-width: 3; opacity: 0.9; filter: drop-shadow(0 0 5px #d3bd7aaa); }
 #synergySvg line.chain-line { stroke: #8a9ab0; stroke-width: 1.5; stroke-dasharray: 3 4; opacity: 0.55; }
-/* ЗНАМЕНИЕ ВЛАДЫКИ — золотые звенья усиленной цепи */
+/* v1.4.0: ЗНАМЕНИЕ ВЛАДЫКИ — золотые звенья усиленной цепи */
 #synergySvg line.base-royal { stroke: #d4b050; stroke-width: 3; opacity: 0.95; filter: drop-shadow(0 0 6px #ffd34dcc); }
-/* ⛓ ЦЕПЬ — связь Скованного Цепью со зданиями (тяжёлое стальное звено) */
+/* v1.4.0: ⛓ ЦЕПЬ — связь Скованного Цепью со зданиями (тяжёлое стальное звено) */
 #synergySvg line.base-chain { stroke: #9fb0c4; stroke-width: 4; stroke-dasharray: 9 6; stroke-linecap: round; opacity: 0.95; filter: drop-shadow(0 0 5px #8a9ab0aa); }
 #synergySvg line.faded { opacity: 0.35; }
 .syn-flow { stroke: #cfe0c0; stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 5 18; opacity: 1; filter: drop-shadow(0 0 5px #a3c982); animation: synFlow 1.4s linear infinite; }
 .syn-flow.mult { stroke: #e4d6a4; filter: drop-shadow(0 0 6px #d3bd7a); animation-duration: 1.1s; }
 .syn-flow.faded { opacity: .3; }
 .syn-flow.warded { stroke: #d3bd7a; filter: drop-shadow(0 0 6px #d3bd7a); opacity: 1; animation-duration: 1s; }
-/* золотой поток Знамения Владыки */
+/* v1.4.0: золотой поток Знамения Владыки */
 .syn-flow.royal { stroke: #ffd34d; stroke-width: 3; filter: drop-shadow(0 0 7px #ffd34d); opacity: 1; animation-duration: .8s; }
-/* бегущее звено по цепи Скованного */
+/* v1.4.0: бегущее звено по цепи Скованного */
 .syn-flow.chainflow { stroke: #e8f0ff; stroke-width: 2.5; stroke-dasharray: 4 11; filter: drop-shadow(0 0 6px #b8c4d4); animation-duration: 1.2s; }
-/* ЗЕЛЕНО-ЗОЛОТОЙ поток Пакта Тишины Лича */
+/* v1.4.0: ЗЕЛЕНО-ЗОЛОТОЙ поток Пакта Тишины Лича */
 .syn-flow.lich { stroke: #c8e87a; stroke-width: 3; filter: drop-shadow(0 0 7px #a0d040) drop-shadow(0 0 3px #ffd34d); opacity: 1; animation-duration: .9s; }
-/* ===== АУРЫ — ПОДСВЕТКА ОБЛАСТЕЙ =====
-Аура — свечение КАЖДОЙ клетки, на которую распространяется механика.
-Зона светит ровно и постоянно, БЕЗ пульсации; границы и сила
- свечения прежние.*/
+/* ===== АУРЫ — ПОДСВЕТКА ОБЛАСТЕЙ (фидбек 1) =====
+   Кольца вокруг карт удалены: аура теперь проявляется как свечение
+   КАЖДОЙ клетки, на которую распространяется механика.
+   v1.5.10 «ТИХИЕ ЗОНЫ»: пульсация аур снята — зона светит ровно и
+   постоянно (мигающие зоны читались как случайный туман на чужих
+   картах). Границы и сила свечения прежние. */
 .cell.aura-zone { border-color: color-mix(in srgb, var(--auraC, #d3bd7a) 55%, #26262a); }
 .cell.aura-zone::after { content: ''; position: absolute; inset: 1px; border-radius: 4px; pointer-events: none;
   box-shadow: inset 0 0 14px var(--auraC, #d3bd7a), inset 0 0 3px var(--auraC, #d3bd7a); opacity: .38; }
 .cell.aura-zone.r2::after { inset: 0; box-shadow: inset 0 0 22px var(--auraC, #d3bd7a), inset 0 0 4px var(--auraC, #d3bd7a); opacity: .5; }
 /* Подсветка зоны Ауры Власти (Лич) — поверх аур */
 .cell.aura-warded { box-shadow: inset 0 0 12px #d3bd7a4d, inset 0 0 3px #d3bd7a77; }
-/* ЗЕЛЕНО-ЗОЛОТАЯ зона Пакта Тишины Лича (: без пульсации) */
+/* v1.4.0: ЗЕЛЕНО-ЗОЛОТАЯ зона Пакта Тишины Лича (v1.5.10: без пульсации) */
 .cell.aura-lich { border-color: #b8d06a !important; box-shadow: inset 0 0 12px #a0d04055, inset 0 0 3px #ffd34d88; }
-/* ===== РИТУАЛ КУЛЬТИСТОВ ===== */
+/* ===== РИТУАЛ КУЛЬТИСТОВ (фидбек 3) ===== */
 .cell.ritual-cell { box-shadow: inset 0 0 12px #b3a15f33, inset 0 0 2px #b3a15f55; border-color: #6a5220; }
 .cell.ritual-part { box-shadow: inset 0 0 16px #b3a15f66, inset 0 0 4px #d3bd7a; border-color: #b3a15f; animation: ritualPulse 2s ease-in-out infinite; }
 @keyframes ritualPulse { 0%, 100% { box-shadow: inset 0 0 10px #b3a15f55; } 50% { box-shadow: inset 0 0 20px #d3bd7a88; } }
 .cell.dead-spot { outline: 2px dashed #6e3a3a; cursor: not-allowed; }
 .syn-flow.dead { stroke: #5a3434; stroke-dasharray: 2 8; opacity: .45; filter: none; animation: none; }
 
-/* ===== : ГЛАВНОЕ МЕНЮ — заставка подземного собора ===== */
+/* ===== v1.2: ГЛАВНОЕ МЕНЮ — заставка подземного собора ===== */
 #menu { background:
-  /* серая кладбищенская пелена поверх склепа */
+  /* v1.3.1: серая кладбищенская пелена поверх склепа */
   linear-gradient(rgba(10,10,13,.62), rgba(8,8,10,.88)),
   url('../assets/menu_bg.jpg') center 30% / cover no-repeat #0c0c0e; }
 #menu .modal-card { box-shadow: 0 0 80px #000000ee, 0 0 40px #b3a15f33, inset 0 0 30px #000000aa; }
 /* Чит-режим: секрет остаётся секретом — только курсор выдаёт строку */
 #menuFlavor { cursor: pointer; }
 
-/* ===== : ВЫБОР ТРОФЕЯ БОССА ===== */
+/* ===== v1.2: ВЫБОР ТРОФЕЯ БОССА ===== */
 .trophy-list { display: flex; flex-direction: column; gap: 8px; width: 100%; }
 .trophy-opt { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; cursor: pointer;
   background: linear-gradient(160deg, #26262a, #0f0f11); border: 2px solid #3a3a3e; border-radius: 8px;
@@ -294,11 +298,11 @@ body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-i
 .trophy-opt b { color: #e4d6a4; font-size: 14px; }
 .trophy-opt small { color: #a39e92; font-size: 11px; }
 
-/* ===== : типографика/панели — унаследованы от ===== */
+/* ===== v1.2: типографика/панели — унаследованы от v1.0 ===== */
 
-/*
-— РИТУАЛ ЖИВОЙ + РЕЗОНАНС
- ============================================================*/
+/* ============================================================
+   v1.0 «ШЁПОТ ТЬМЫ» — РИТУАЛ ЖИВОЙ + РЕЗОНАНС
+   ============================================================ */
 /* Шкала резонанса в строке статистики Алтаря */
 .res-bar { display: inline-block; width: 64px; height: 7px; vertical-align: middle; background: #0c0c0e; border: 1px solid #6a5220; border-radius: 3px; overflow: hidden; box-shadow: inset 0 0 4px #000; }
 .res-bar i { display: block; height: 100%; background: linear-gradient(90deg, #6a5c34, #b3a15f, #e4d6a4); box-shadow: 0 0 6px #b3a15f; transition: width .3s; }
@@ -320,20 +324,20 @@ body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-i
   animation: runeSpin 6s linear infinite; }
 @keyframes runeSpin { to { transform: rotate(360deg); } }
 
-/* ===== : ТИПОГРАФИКА — кириллический дарк-фэнтези заголовок =====
-Philosopher (Google Fonts, кириллица) + Alegreya для текста,
- фолбэк — Georgia: игра не ломается без сети.*/
-/* Ruslan Display — только подписи-заголовки, текст остаётся Alegreya */
+/* ===== v1.0: ТИПОГРАФИКА — кириллический дарк-фэнтези заголовок =====
+   Philosopher (Google Fonts, кириллица) + Alegreya для текста,
+   фолбэк — Georgia: игра не ломается без сети. */
+/* v1.2.9.3: Ruslan Display — только подписи-заголовки, текст остаётся Alegreya */
 .arena-title, #fightersHeader, .achv-pop-name { font-family: 'Philosopher', 'Georgia', serif; }
 body { font-family: 'Alegreya', 'Georgia', 'Times New Roman', serif; }
 @keyframes synFlow { from { stroke-dashoffset: 46; } to { stroke-dashoffset: 0; } }
-/* ===== ЭФФЕКТ ПЕРЕЛЁТА КАРТЫ ===== */
+/* ===== ЭФФЕКТ ПЕРЕЛЁТА КАРТЫ (пункт 12 ТЗ) ===== */
 .fly-card { position: fixed; z-index: 3000; border-radius: 8px; border: 2px solid var(--glow); background: radial-gradient(circle, var(--cardBg, #17171a), #0c0c0e); display: flex; align-items: center; justify-content: center; font-size: 26px; pointer-events: none; box-shadow: 0 0 24px var(--glow); transition: transform .65s cubic-bezier(.3,.7,.3,1), opacity .65s; will-change: transform, opacity; }
 .land-pulse { animation: landPulse .5s ease-out; }
 @keyframes landPulse { 0% { box-shadow: 0 0 0 #b3a15f00; } 40% { box-shadow: 0 0 26px #d3bd7acc; } 100% { box-shadow: 0 0 0 #b3a15f00; } }
 
 /* ===== КОЛЛЕКЦИЯ (Резец Тьмы): заголовок по центру, вкладки — сегменты,
- плоская панель, строгие квадратные карточки =====*/
+   плоская панель, строгие квадратные карточки ===== */
 #collection { width: 312px; flex-shrink: 0; min-height: 0; display: flex; flex-direction: column; gap: 6px; background: #121214; border: 1px solid var(--border); border-radius: 2px; padding: 6px; box-shadow: none; position: relative; z-index: 2; max-height: 100%; filter: none; }
 #collectionTitle { font-family: 'Ruslan Display', 'Georgia', serif; font-size: 13px; letter-spacing: 1.5px; text-transform: none; color: var(--gold); text-align: center; padding: 3px 0 5px; border-bottom: 1px solid var(--border); text-shadow: none; display: flex; align-items: center; justify-content: center; gap: 10px; }
 #collectionTitle::before, #collectionTitle::after { content: ''; width: 40px; height: 1px; background: var(--border2); }
@@ -482,7 +486,7 @@ body { font-family: 'Alegreya', 'Georgia', 'Times New Roman', serif; }
 .hist { text-align: center; font-size: 12px; margin: 4px; }
 #avC { width: 100%; max-width: 520px; background: #0a0f1a; border: 2px solid #b3a15f; border-radius: 8px; }
 #avM { font-size: 34px; text-align: center; color: #e4d6a4; font-weight: bold; }
-/* колесо рулетки — канва с цифрами; метка СТАТИЧНА */
+/* v1.5.15 «Таверна Тьмы»: колесо рулетки — канва с цифрами; метка СТАТИЧНА */
 .rw-wrap { position: relative; width: 280px; height: 280px; margin: 4px auto 0; }
 #rwC { width: 100%; height: 100%; display: block; transition: transform 4.2s cubic-bezier(.1,.7,.1,1); will-change: transform; filter: drop-shadow(0 6px 14px #000c); }
 .rw-ptr { position: absolute; top: -3px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-top: 22px solid #d8cba8; filter: drop-shadow(0 2px 2px #000e); z-index: 3; pointer-events: none; }
@@ -490,9 +494,9 @@ body { font-family: 'Alegreya', 'Georgia', 'Times New Roman', serif; }
 #cgBody.g-roulette { background: linear-gradient(rgba(12,11,16,.88), rgba(12,11,16,.94)), url('../assets/casino/tavern.jpg') center/cover no-repeat; border-radius: 10px; padding: 10px 12px; }
 #cgBody.g-bj, #cgBody.g-av { background: radial-gradient(ellipse at 50% 0%, rgba(30,26,38,.55), rgba(10,10,14,.92)), url('../assets/casino/tavern.jpg') center/cover no-repeat; background-color: #0d0c11; border-radius: 10px; padding: 10px 12px; }
 img.rico { width: 18px; height: 18px; vertical-align: -4px; image-rendering: pixelated; }
-/* карты блэкджека — колода «Кровь и Кости» (, 150×210 → 64×90):
-гладкий скейл (pixelated убит — мылил AI-арт), веер на руках,
- pop-анимация сдачи последней карты, подъём под курсором*/
+/* карты блэкджека — колода «Кровь и Кости» (v1.5.16, 150×210 → 64×90):
+   гладкий скейл (pixelated убит — мылил AI-арт), веер на руках,
+   pop-анимация сдачи последней карты, подъём под курсором */
 .pcw { display: inline-block; }
 #bjT img.bjc { width: 64px; height: 90px; border-radius: 7px; margin: 4px 2px; vertical-align: middle; box-shadow: 0 4px 10px #000c, 0 0 0 1px #4a4232; transition: transform .15s ease; -webkit-user-drag: none; }
 #bjT img.bjc:hover { transform: translateY(-4px); }
@@ -536,7 +540,7 @@ img.rico { width: 18px; height: 18px; vertical-align: -4px; image-rendering: pix
 .achv-row:not(.done) { opacity: .65; }
 .achv-row .achv-icon { font-size: 16px; }
 .achv-row small { color: #a39e92; }
-/* ===== АНИМАЦИЯ ПОЛУЧЕНИЯ ДОСТИЖЕНИЯ ===== */
+/* ===== АНИМАЦИЯ ПОЛУЧЕНИЯ ДОСТИЖЕНИЯ (пункт 7 ТЗ) ===== */
 .achv-pop { position: fixed; top: 90px; left: 50%; transform: translateX(-50%); z-index: 4000; min-width: 320px; max-width: 470px; padding: 14px 24px; text-align: center; background: linear-gradient(160deg, #17171a, #443c28 55%, #17171a); border: 2px solid #d3bd7a; border-radius: 10px; box-shadow: 0 0 30px #b3a15faa, inset 0 0 24px #b3a15f44; animation: achvIn .55s cubic-bezier(.2,.9,.3,1.2); overflow: hidden; pointer-events: none; }
 .achv-pop.out { opacity: 0; transform: translateX(-50%) translateY(-24px) scale(.92); transition: all .45s ease-in; }
 .achv-pop-shine { position: absolute; top: -50%; left: -80%; width: 60%; height: 200%; background: linear-gradient(100deg, transparent, #ffffff55, transparent); transform: rotate(18deg); animation: achvShine 1.6s ease-in-out .2s 2; }
@@ -604,13 +608,13 @@ img.rico { width: 18px; height: 18px; vertical-align: -4px; image-rendering: pix
   #topBar { padding-top: 6px; padding-bottom: 6px; }
 }
 #main { align-items: stretch; }
-/* панель бойцов теперь живёт в оверлее «Поле боя» */
+/* v1.2.7: панель бойцов теперь живёт в оверлее «Поле боя» */
 #fightersPanel { flex: 1 1 auto; min-height: 180px; max-height: 340px; }
 #fightersList { height: auto; flex: 1 1 auto; }
 
 /* ==================== СПРАЙТЫ КАРТ (assets/cards) ====================
-Пиксель-арт 64×64, масштабирование без размытия (pixelated).
- Если PNG нет — onerror подставляет эмодзи-фолбэк.*/
+   Пиксель-арт 64×64, масштабирование без размытия (pixelated).
+   Если PNG нет — onerror подставляет эмодзи-фолбэк (старые классы). */
 .card .card-art { width: 100%; flex: 1 1 auto; min-height: 0; object-fit: cover; border-radius: 3px; image-rendering: crisp-edges; image-rendering: pixelated; }
 .card .card-art + .card-name { margin-bottom: 2px; }
 .coll-card .coll-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 3px; image-rendering: crisp-edges; image-rendering: pixelated; }
@@ -626,9 +630,9 @@ img.rico { width: 18px; height: 18px; vertical-align: -4px; image-rendering: pix
 #tooltip .tt-art { width: 34px; height: 34px; border-radius: 5px; object-fit: cover; image-rendering: crisp-edges; image-rendering: pixelated; border: 1px solid #2c2c30; flex: 0 0 auto; }
 .inline-art { width: 18px; height: 18px; border-radius: 3px; object-fit: cover; vertical-align: -4px; image-rendering: crisp-edges; image-rendering: pixelated; }
 
-/*
-ПАТЧ 5 «НАСЛЕДИЕ БЕЗДНЫ»: FX, Знамения, Реликвии, настройки
- ============================================================*/
+/* ============================================================
+   ПАТЧ 5 «НАСЛЕДИЕ БЕЗДНЫ»: FX, Знамения, Реликвии, настройки
+   ============================================================ */
 
 /* --- Canvas-слой эффектов: поверх всего, не мешает кликам --- */
 #fxCanvas { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 9990; }
@@ -654,13 +658,51 @@ img.rico { width: 18px; height: 18px; vertical-align: -4px; image-rendering: pix
 }
 .omen:hover { filter: brightness(1.6); }
 
-/* --- Бесплатные крутки по вехам --- */
-.roll-btn.free-roll {
-  border-color: #8fbf72 !important; color: #b6d4a8;
-  box-shadow: 0 0 12px #6f9f5f88, inset 0 0 8px #6f9f5f55 !important;
-  animation: freePulse 1.2s ease-in-out infinite;
+/* --- v1.7.0: ПАНЕЛЬ КОНТРАКТОВ ПОД ГРИДОМ (блоки Тёмного Пакта) --- */
+#contractsPanel { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 10px; width: 100%; }
+.ctr-block {
+  position: relative; min-width: 240px; max-width: 330px; flex: 0 1 300px;
+  background: linear-gradient(#141416, #121214); border: 1px solid #2c2c30; border-left: 3px solid #b3a15f;
+  border-radius: 6px; padding: 7px 10px 8px; display: flex; flex-direction: column; gap: 4px;
+  box-shadow: 0 2px 8px #00000066;
 }
-@keyframes freePulse { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.35); } }
+.ctr-head { display: flex; align-items: center; gap: 8px; }
+.ctr-name { font-size: 12.5px; font-weight: bold; letter-spacing: .4px; color: #e4d6a4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ctr-reward { margin-left: auto; display: inline-flex; align-items: center; gap: 3px; font-size: 12px; color: #9fe8f0; white-space: nowrap; text-shadow: 0 0 6px #58c8d866; }
+.ctr-reward b { font-size: 13px; }
+.ctr-task { font-size: 11.5px; color: #b5b1a7; line-height: 1.25; }
+.ctr-track { position: relative; height: 12px; background: #0c0c0e; border: 1px solid #26262a; border-radius: 6px; overflow: hidden; margin-top: 2px; }
+.ctr-count { position: absolute; right: 6px; top: -1px; font-size: 9.5px; line-height: 12px; color: #e4d6a4; text-shadow: 0 1px 2px #000; }
+.ctr-empty { flex: 1 1 100%; text-align: center; font-size: 11.5px; color: #6a655c; padding: 4px 0 2px; }
+
+/* --- v1.7.0: КОЛОДА В ГРИМУАРЕ — СПИСОК ПРЯМОУГОЛЬНЫХ БЛОКОВ --- */
+.deck-list { display: flex; flex-direction: column; gap: 5px; overflow-y: auto; flex: 1 1 auto; min-height: 80px; padding: 2px; }
+.deck-row {
+  display: flex; align-items: center; gap: 9px; padding: 5px 9px 5px 6px; cursor: pointer;
+  background: linear-gradient(160deg, #17151b, #101013); border: 1px solid #2e2a36; border-left: 3px solid var(--glow, #444);
+  border-radius: 6px; min-height: 44px; box-shadow: inset 0 0 12px #ffffff06;
+}
+.deck-row:hover { background: linear-gradient(160deg, #1e1a24, #141318); border-color: #4a4358; }
+.deck-art { width: 36px; height: 36px; flex-shrink: 0; border-radius: 4px; background: var(--cardBg, #16161a); border: 1px solid #00000088; image-rendering: pixelated; object-fit: contain; }
+.deck-glyph { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+.deck-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1 1 auto; }
+.deck-name { font-size: 12.5px; color: #e2dcc8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.deck-name i { color: #8a7a5a; font-style: normal; font-size: 10.5px; }
+.deck-sub { font-size: 10px; color: #7a7266; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.deck-count { font-size: 12.5px; font-weight: bold; color: #e4d6a4; flex-shrink: 0; text-shadow: 0 0 5px #b3a15f44; }
+.deck-count.dim { color: #6a655c; font-weight: normal; }
+.deck-up {
+  flex-shrink: 0; width: 26px; height: 26px; margin-left: 2px; padding: 0; cursor: pointer;
+  background: linear-gradient(160deg, #2a1638, #1a0e24); color: #c87fff; font-size: 13px; line-height: 1;
+  border: 1px solid #7c3fc0; border-radius: 6px; text-shadow: 0 0 6px #b060ffcc;
+  box-shadow: 0 0 8px #b060ff44, inset 0 0 5px #b060ff33;
+  animation: deckUpPulse 1.6s ease-in-out infinite;
+}
+.deck-up:hover { background: linear-gradient(160deg, #3c2150, #241336); color: #e2b7ff; box-shadow: 0 0 12px #b060ff88, inset 0 0 6px #b060ff55; }
+@keyframes deckUpPulse { 0%,100% { box-shadow: 0 0 6px #b060ff33, inset 0 0 4px #b060ff22; } 50% { box-shadow: 0 0 12px #b060ff77, inset 0 0 7px #b060ff55; } }
+
+/* --- v1.7.0: метка застакованной карты в коллекции забега --- */
+.count-stacked { color: #c87fff !important; text-shadow: 0 0 6px #b060ff88; }
 
 /* --- Реликвии --- */
 #relicGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; max-height: 55vh; overflow-y: auto; padding: 2px; }
@@ -716,7 +758,7 @@ img.rico { width: 18px; height: 18px; vertical-align: -4px; image-rendering: pix
   .omen-ic { font-size: 15px; }
 }
 
-/* ===== РЕЛИКВИИ 2.0: СЛОТЫ СТОЛБЦОВ ===== */
+/* ===== РЕЛИКВИИ 2.0: СЛОТЫ СТОЛБЦОВ (фидбек 7-8) ===== */
 #colSlots { display: grid; gap: 3px; padding: 4px; margin-top: 5px; background: #0c0c0e; border-radius: 6px; box-shadow: inset 0 0 12px #000000aa; }
 .col-slot { height: 30px; border: 1px dashed #2c2c30; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: linear-gradient(145deg, #141416, #121214); transition: all .15s; position: relative; }
 .col-slot:hover { border-color: #b3a15f; box-shadow: 0 0 8px #b3a15f44; }
@@ -733,7 +775,7 @@ img.rico { width: 18px; height: 18px; vertical-align: -4px; image-rendering: pix
 .relic-pick b { color: #e4d6a4; font-size: 13px; }
 .relic-pick small { font-size: 11px; line-height: 1.35; }
 
-/* ===== ФОРМАЦИИ РИТУАЛА В ТУЛТИПЕ ===== */
+/* ===== ФОРМАЦИИ РИТУАЛА В ТУЛТИПЕ (фидбек 6) ===== */
 .rt-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin: 4px 0; }
 .rt-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .rt-item small { font-size: 9px; color: #cfcabf; white-space: nowrap; }
@@ -745,7 +787,7 @@ img.rico { width: 18px; height: 18px; vertical-align: -4px; image-rendering: pix
 .rt-c.rt-empty { background: #121214; border: 1px solid #2a1a10; }
 .tt-bad { color: #cf8a80; }
 
-/* ===== DEBUG-режим ===== */
+/* ===== DEBUG-режим (фидбек 4) ===== */
 #dbgEpochs { margin: 4px 0; }
 #dbgEpochs .dbg-e { min-width: 34px; }
 #dbgFactions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
@@ -754,11 +796,11 @@ img.rico { width: 18px; height: 18px; vertical-align: -4px; image-rendering: pix
 #dbgFactions .faction-card small { color: #a39e92; }
 #dbgFactions .dbg-f { transition: box-shadow .15s; }
 
-/*
-ауры, угли, реликвии-спрайты, автобатлер
- ============================================================*/
-/* ЯРКАЯ зона Ауры Власти (Лич) — видно на любых клетках,
- включая пустые: золотая подсветка + ромб-щит (: без пульсации)*/
+/* ============================================================
+   ФИДБЕК-РАУНД 3: ауры, угли, реликвии-спрайты, автобатлер
+   ============================================================ */
+/* ФИДБЕК 1: ЯРКАЯ зона Ауры Власти (Лич) — видно на любых клетках,
+   включая пустые: золотая подсветка + ромб-щит (v1.5.10: без пульсации) */
 .cell.aura-warded { border-color: #d3bd7a; }
 .cell.aura-warded::before { content: ''; position: absolute; inset: 2px; border-radius: 4px; pointer-events: none;
   background: radial-gradient(circle, #d3bd7a22 0%, transparent 70%), repeating-linear-gradient(45deg, #d3bd7a11 0 6px, transparent 6px 12px); }
@@ -787,15 +829,15 @@ img.rico { width: 18px; height: 18px; vertical-align: -4px; image-rendering: pix
 /* Знамения: спрайты вместо эмодзи */
 .omen .omen-img { width: 26px; height: 26px; object-fit: cover; border-radius: 4px; image-rendering: pixelated; filter: drop-shadow(0 0 4px #fff8); }
 
-/*
-ПАТЧ 1.2.7 «ПЕПЕЛ И ПОРЯДОК»: КОМПАКТНЫЙ ИНТЕРФЕЙС
-Всё умещается в экран: без прокрутки страницы, без мёртвых зон.
- ============================================================*/
+/* ============================================================
+   ПАТЧ 1.2.7 «ПЕПЕЛ И ПОРЯДОК»: КОМПАКТНЫЙ ИНТЕРФЕЙС
+   Всё умещается в экран: без прокрутки страницы, без мёртвых зон.
+   ============================================================ */
 
 /* --- Центральная колонна: слитые строки --- */
 #centerCol { min-height: 0; }
 #gridTitleRow { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px 10px; width: 100%; position: relative; }
-/* «Алтарь Синергий» строго по центру; статы — вторым рядом под ним */
+/* v1.3.1: «Алтарь Синергий» строго по центру; статы — вторым рядом под ним */
 #gridTitleRow .grid-title { order: 1; margin: 0 auto; font-size: 13px; letter-spacing: 1.5px; white-space: nowrap; }
 #gridTitleRow .grid-stats { order: 2; position: static; flex-basis: 100%; margin: 0; padding: 0 4px; font-size: 10.5px; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; }
 #ritualRow { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 26px; }
@@ -814,16 +856,16 @@ img.rico { width: 18px; height: 18px; vertical-align: -4px; image-rendering: pix
 .epoch-big-btn .cost { font-size: 11px; }
 
 /* --- ДОК АРЕНЫ (Резец Тьмы): вертикальная панель «Колыбель Войны»
-в правой колонке под кнопками; высота — как у панели Коллекции,
- живой визуал боя сжимается при нехватке места ---*/
-#arenaDock { display: flex; flex-direction: column; gap: 6px; padding: 7px 8px; background: #121214; border: 1px solid var(--border); border-radius: 2px; box-shadow: none; font-size: 11px; color: var(--ink-dim); width: 100%; /* панель растягивается на всю свободную высоту колонки */ flex: 1 1 auto; min-height: 0; overflow: hidden; }
+   в правой колонке под кнопками; высота — как у панели Коллекции,
+   живой визуал боя сжимается при нехватке места --- */
+#arenaDock { display: flex; flex-direction: column; gap: 6px; padding: 7px 8px; background: #121214; border: 1px solid var(--border); border-radius: 2px; box-shadow: none; font-size: 11px; color: var(--ink-dim); width: 100%; /* v1.3.1: панель растягивается на всю свободную высоту колонки */ flex: 1 1 auto; min-height: 0; overflow: hidden; }
 .ad-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 5px; flex-shrink: 0; }
 #arenaDock .ad-title { font-family: 'Ruslan Display', 'Georgia', serif; font-size: 12px; letter-spacing: 1px; color: var(--gold); white-space: nowrap; font-weight: normal; text-transform: none; text-shadow: none; display: flex; align-items: center; gap: 8px; }
 #arenaDock .ad-title::after { content: ''; width: 34px; height: 1px; background: var(--border2); }
 #arenaDock .ad-item { white-space: nowrap; color: var(--ink-dim); }
 #arenaDock .ad-item b { color: var(--gold-hi); }
 .ad-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-shrink: 0; }
-.ad-visual { border: 1px solid #1c1c1e; background: #0e0e10; border-radius: 2px; padding: 6px 7px; display: flex; flex-direction: column; gap: 5px; /* визуал забирает свободную высоту дока */ flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.ad-visual { border: 1px solid #1c1c1e; background: #0e0e10; border-radius: 2px; padding: 6px 7px; display: flex; flex-direction: column; gap: 5px; /* v1.3.1: визуал забирает свободную высоту дока */ flex: 1 1 auto; min-height: 0; overflow: hidden; }
 .ad-bar-row { display: flex; align-items: center; gap: 7px; font-size: 10px; color: var(--ink-dim); flex-shrink: 0; min-height: 0; }
 .ad-bar-row > span { flex: 0 0 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
 .ad-bar-row em { font-style: normal; color: var(--gold-hi); font-variant-numeric: tabular-nums; margin-left: 2px; }
@@ -841,7 +883,7 @@ img.rico { width: 18px; height: 18px; vertical-align: -4px; image-rendering: pix
 .ad-squad > span { font-size: 9.5px; color: #55555a; letter-spacing: 1px; }
 #arenaDockStatus { color: var(--ink-dim); font-size: 10.5px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
 
-/* ЖИВОЙ ВИЗУАЛ автобатлера — мини-поле под панелью дока */
+/* v1.3.1: ЖИВОЙ ВИЗУАЛ автобатлера — мини-поле под панелью дока */
 #arenaMini { display: flex; width: 100%; padding: 5px; background: #0e0e10; border: 1px solid var(--border); border-radius: 2px; cursor: pointer; flex-shrink: 0; }
 #arenaMini:hover { border-color: var(--gold); }
 #adCanvas { width: 100%; height: auto; display: block; border-radius: 2px; image-rendering: auto; }
@@ -889,9 +931,9 @@ img.rico { width: 18px; height: 18px; vertical-align: -4px; image-rendering: pix
   .roll-btn { min-height: 34px; }
 }
 
-/*
-— контракты, Хроники, Знамение Судьбы
- ============================================================*/
+/* ============================================================
+   v1.2.9 «ТЁМНЫЙ ПАКТ» — контракты, Хроники, Знамение Судьбы
+   ============================================================ */
 
 /* --- Кнопка КОНТРАКТЫ: пактовый акцент (пергамент/золото) --- */
 #contractsBtn { border-color: #4a4436; box-shadow: inset 0 2px 0 #46464c, 0 0 8px #b3a15f33; }
@@ -924,8 +966,8 @@ img.rico { width: 18px; height: 18px; vertical-align: -4px; image-rendering: pix
 .chron-tier.done .chron-rw { color: #8fc87f; }
 @media (max-width: 640px) { .chron-fac { grid-template-columns: 60px 1fr 1fr; } .chron-tier:nth-child(n+4) { display: none; } }
 
-/* ================= СТЕНА ТЬМЫ (чат в главном меню) =================
- Серый мрак, плоский чекан — в стиле «Резца Тьмы». До 15 сообщений.*/
+/* ================= v1.3.0 СТЕНА ТЬМЫ (чат в главном меню) =================
+   Серый мрак, плоский чекан — в стиле «Резца Тьмы». До 15 сообщений. */
 #wallBox { margin-top: 10px; background: #121014; border: 1px solid #2e2a33; border-radius: 2px; display: flex; flex-direction: column; overflow: hidden; }
 #wallHead { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; font-family: 'Ruslan Display', Georgia, serif; font-size: 11px; letter-spacing: 1.2px; color: var(--gold); border-bottom: 1px solid #2e2a33; user-select: none; }
 #wallRefresh { cursor: pointer; color: var(--ink-dim); font-size: 13px; padding: 0 2px; }
@@ -945,9 +987,9 @@ img.rico { width: 18px; height: 18px; vertical-align: -4px; image-rendering: pix
 #wallGo:hover { background: var(--gold); color: #121014; }
 #wallGo:disabled { opacity: .4; cursor: default; }
 
-/* ================= ТАБЛИЦА ТЬМЫ (рейтинг в главном меню) =================
-Блок НАД чатом, тот же серый чекан. 10 вкладок по Эпохам (последняя «10+»),
- строка рейтинга чёткая: ИГРОК — МАКСИМАЛЬНЫЙ ДОХОД.*/
+/* ================= v1.4.1 ТАБЛИЦА ТЬМЫ (рейтинг в главном меню) =================
+   Блок НАД чатом, тот же серый чекан. 10 вкладок по Эпохам (последняя «10+»),
+   строка рейтинга чёткая: ИГРОК — МАКСИМАЛЬНЫЙ ДОХОД. */
 #lbBox { margin-top: 10px; background: #121014; border: 1px solid #2e2a33; border-radius: 2px; display: flex; flex-direction: column; overflow: hidden; }
 #lbHead { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; font-family: 'Ruslan Display', Georgia, serif; font-size: 11px; letter-spacing: 1.2px; color: var(--gold); border-bottom: 1px solid #2e2a33; user-select: none; }
 #lbRefresh { cursor: pointer; color: var(--ink-dim); font-size: 13px; padding: 0 2px; }
@@ -967,16 +1009,16 @@ img.rico { width: 18px; height: 18px; vertical-align: -4px; image-rendering: pix
 .lb-ep { color: var(--ink-dim); font-size: 9.5px; font-style: italic; }
 #lbFoot { padding: 4px 8px 5px; border-top: 1px solid #2e2a33; font-size: 9px; color: var(--ink-dim); text-align: center; letter-spacing: .3px; }
 
-/* «Активных игроков за день» — скромная строка ПОД чатом */
+/* v1.4.1: «Активных игроков за день» — скромная строка ПОД чатом */
 #wallDaily { margin-top: 6px; text-align: center; font-size: 10px; color: var(--ink-dim); opacity: .8; letter-spacing: .5px; user-select: none; }
 
 
-/*
-— ТЕМЫ ФРАКЦИЙ
-Тему включает applyFactionTheme: body[data-faction].
-Меняются: фон, панели, границы, шрифты, подсветка способностей.
- ============================================================*/
-/* — НЕЖИТЬ: холодный склеп, кость, ржавая цепь */
+/* ============================================================
+   v1.5.0 «ЧЕТЫРЕ ЛИКА ТЬМЫ» — ТЕМЫ ФРАКЦИЙ
+   Тему включает applyFactionTheme(): body[data-faction].
+   Меняются: фон, панели, границы, шрифты, подсветка способностей.
+   ============================================================ */
+/* — НЕЖИТЬ: холодный склеп, кость, ржавая цепь — */
 body[data-faction="undead"] {
   --bg:#0e100e; --bg2:#0b0d0b;
   --border:#262c26; --border2:#363e36;
@@ -991,7 +1033,7 @@ body[data-faction="undead"] #gridWrap { border-color:#5b6353; }
 body[data-faction="undead"] #grid { background:#0c0e0c; }
 body[data-faction="undead"] .cell, body[data-faction="undead"] .cell.playable { background:#0e100e; border-color:#222822; }
 body[data-faction="undead"] .cell.playable:hover { background:#121512; }
-/* — КУЛЬТИСТЫ: багровый ритуал */
+/* — КУЛЬТИСТЫ: багровый ритуал — */
 body[data-faction="cultist"] {
   --bg:#100d0d; --bg2:#0d0a0a;
   --border:#33211f; --border2:#452c29;
@@ -1006,7 +1048,7 @@ body[data-faction="cultist"] #gridWrap { border-color:#6b463c; }
 body[data-faction="cultist"] #grid { background:#0e0b0b; }
 body[data-faction="cultist"] .cell, body[data-faction="cultist"] .cell.playable { background:#100d0d; border-color:#2e1f1e; }
 body[data-faction="cultist"] .cell.playable:hover { background:#151010; }
-/* — ЗВЕРИ: дикая чаща */
+/* — ЗВЕРИ: дикая чаща — */
 body[data-faction="beast"] {
   --bg:#0d100c; --bg2:#0a0d09;
   --border:#24301f; --border2:#324028;
@@ -1021,7 +1063,7 @@ body[data-faction="beast"] #gridWrap { border-color:#5a6640; }
 body[data-faction="beast"] #grid { background:#0b0e0a; }
 body[data-faction="beast"] .cell, body[data-faction="beast"] .cell.playable { background:#0d100c; border-color:#202a1c; }
 body[data-faction="beast"] .cell.playable:hover { background:#111510; }
-/* — ДЕМОНЫ: раскалённый уголь */
+/* — ДЕМОНЫ: раскалённый уголь — */
 body[data-faction="demon"] {
   --bg:#110d0b; --bg2:#0e0a09;
   --border:#33221c; --border2:#452c22;
@@ -1037,41 +1079,44 @@ body[data-faction="demon"] #grid { background:#0f0b0a; }
 body[data-faction="demon"] .cell, body[data-faction="demon"] .cell.playable { background:#110d0b; border-color:#2c1e18; }
 body[data-faction="demon"] .cell.playable:hover { background:#161110; }
 
-/*
-— ЦЕПИ СКРЕПЛЯЮТ КАРТЫ НАКРЕСТ
-Связь — столб/ряд звеньев-колец (спрайт chains_x/chains_y, толщина
-14px = только шов, по 7px на карту), лежит на ОБЩЕМ крае карт во
-всю его высоту/ширину; звенья идут ПОПЕРЁК шва, от карты к карте
-(цепь, которая держит, не может идти вдоль). ГЛУХОЙ металл: ни
-банды, ни тени-подложки с прозрачностью — полупрозрачен только
-СВЕТ по металлу: холодный проблеск (glint_pale) у обычных звеньев
-и яркий фиолетовый отблеск (glint_royal) у особых связей — оба
-внутри клипа банды, бегут вдоль цепи, поперёк шва. Состояние звена
-(faded/dead) гасит всю банду.
- ============================================================*/
+/* ============================================================
+   v1.5.8.1 «ГЛУХИЕ ОКОВЫ» — ЦЕПИ СКРЕПЛЯЮТ КАРТЫ НАКРЕСТ
+   Связь — столб/ряд звеньев-колец (спрайт chains_x/chains_y, толщина
+   14px = только шов, по 7px на карту), лежит на ОБЩЕМ крае карт во
+   всю его высоту/ширину; звенья идут ПОПЕРЁК шва, от карты к карте
+   (цепь, которая держит, не может идти вдоль). ГЛУХОЙ металл: ни
+   банды, ни тени-подложки с прозрачностью — полупрозрачен только
+   СВЕТ по металлу: холодный проблеск (glint_pale) у обычных звеньев
+   и яркий фиолетовый отблеск (glint_royal) у особых связей — оба
+   внутри клипа банды, бегут вдоль цепи, поперёк шва. Состояние звена
+   (faded/dead) гасит всю банду.
+   ============================================================ */
 /* состояние звена читается с самой банды цепей (туман на звеньях нет) */
 #synergySvg g.ug-band { transition: opacity .3s; }
 #synergySvg g.ug-band.faded { opacity:.55; }
 #synergySvg g.ug-band.dead { opacity:.22; }
-/* соседство без пары — НЕ синергия: одна тусклая
-нить по середине шва (полная банда и проблеск — только у связи-синергии,
- фиолетовое свечение — у связей под Пактом Лича / Знамением Владыки)*/
+/* v1.5.12 «Ясные Оковы»: соседство без пары — НЕ синергия: одна тусклая
+   нить по середине шва (полная банда и проблеск — только у связи-синергии,
+   фиолетовое свечение — у связей под Пактом Лича / Знамением Владыки) */
 #synergySvg g.ug-band.adj { opacity:.42; }
 
-/* АУРЫ НЕЖИТИ — ТУМАН: спокойная СТАТИЧНАЯ дымка без дыхания;
- зона просто обозначена.*/
+/* АУРЫ НЕЖИТИ — ТУМАН: спокойная СТАТИЧНАЯ дымка (v1.5.10: дыхание
+   fogBreath снято — включаясь и гасая при срабатываниях зданий, туман
+   читался как случайный; теперь зона просто обозначена). */
 body[data-faction="undead"] .cell.aura-zone::after { box-shadow:none; background: radial-gradient(ellipse at 50% 58%, var(--auraC,#9a9a9a) 0%, transparent 70%); opacity:.17; animation:none; filter: blur(2px); }
 body[data-faction="undead"] .cell.aura-zone.r2::after { opacity:.24; }
-/* зона Пакта Лича — призрачное сияние (без пульсации,) */
+/* зона Пакта Лича — призрачное сияние (без пульсации, v1.5.10) */
 body[data-faction="undead"] .cell.aura-lich { border-color:#7fa08c !important; box-shadow: inset 0 0 12px #7fae9066, inset 0 0 3px #a8d8b888; }
 
-/*
-ТИХИЕ КАРТЫ: карта с активной особенностью НЕ мерцает
-(дыхания яркостью нет); активность показывает
-золотой ✦ (класс.on). fx-live — короткая ОДНОКРАТНАЯ вспышка в
-момент срабатывания таймерной способности (призыв Кладбища/Врат,
-ЖАТВА) — не цикл, мигания нет. Всё остальное стоит тихо.
- ============================================================*/
+/* ============================================================
+   v1.5.10 «ТИХИЕ КАРТЫ» — по фидбеку «мигание карт убери».
+   Мерцание карт снято: cardBreath (sp-live — дышать яркостью у
+   каждой карты с активной особенностью) удалён совсем, карта со
+   спокойной особенность больше НЕ мерцает; активность показывает
+   золотой ✦ (класс .on). fx-live — короткая ОДНОКРАТНАЯ вспышка в
+   момент срабатывания таймерной способности (призыв Кладбища/Врат,
+   ЖАТВА) — не цикл, мигания нет. Всё остальное стоит тихо.
+   ============================================================ */
 .card.fx-live { animation: cardCast .9s ease-out 1; }
 @keyframes cardCast {
   0% { filter: brightness(1); }
@@ -1079,10 +1124,10 @@ body[data-faction="undead"] .cell.aura-lich { border-color:#7fa08c !important; b
   100% { filter: brightness(1); }
 }
 
-/*
-мета-экран (Меню → Гримуар)
-Слева — вечная коллекция, справа — колоды, снизу — Призыв за Души.
- ============================================================*/
+/* ============================================================
+   v1.6.0 «ГРИМУАР»: мета-экран (Меню → Гримуар)
+   Слева — вечная коллекция, справа — колоды, снизу — Призыв за Души.
+   ============================================================ */
 #grimModal .modal-card { max-width: 1080px; width: 96%; max-height: 94vh; align-items: stretch; overflow: hidden; padding: 12px 14px; gap: 8px; }
 .grim-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .grim-head h2 { font-size: 20px; color: var(--gold-hi); letter-spacing: 1px; }

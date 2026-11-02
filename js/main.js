@@ -1,15 +1,15 @@
 'use strict';
-/*
-ГЛАВНЫЙ ФАЙЛ (main.js)
-Игровой цикл, связывание событий, обучение, загрузка/меню.
-Подключается ПОСЛЕДНИМ: все модули уже загружены.
- ============================================================*/
+/* ============================================================
+   ГЛАВНЫЙ ФАЙЛ (main.js)
+   Игровой цикл, связывание событий, обучение, загрузка/меню.
+   Подключается ПОСЛЕДНИМ: все модули уже загружены.
+   ============================================================ */
 
 let lastTick = performance.now();
-/* computeIncome — самый тяжёлый проход игры (полный скан
-поля, BFS армии, ауры зданий). Пересчёт раз в 100мс вместо каждого кадра:
-income между пересчётами читается из incomeCache. На цифры, баланс и
- видимость это не влияет — совпадает с прежним result до \$в пределах 0.1с.*/
+/* v1.2.9.1 (perf): computeIncome — самый тяжёлый проход игры (полный скан
+   поля, BFS армии, ауры зданий). Пересчёт раз в 100мс вместо каждого кадра:
+   income между пересчётами читается из incomeCache. На цифры, баланс и
+   видимость это не влияет — совпадает с прежним result до \$в пределах 0.1с. */
 let lastRecalc = 0;
 
 function gameLoop(now) {
@@ -27,18 +27,18 @@ function gameLoop(now) {
   requestAnimationFrame(gameLoop);
 }
 
-/* ---------------- Гача: СТАРЫЙ ВНУТРИ-ЗАБЕГОВОЙ БЛОК СНЯТ ----------------
-Крутки переехали в ГРИМУАР (меню → «Гримуар») и идут за ДУШИ
-(logic/gacha.js: performGrimRolls). В забеге карты выдаются
- колодой целиком на старте.*/
+/* ---------------- Гача: СТАРЫЙ ВНУТРИ-ЗАБЕГОВОЙ БЛОК СНЯТ (v1.6.0) ----------------
+   Крутки переехали в ГРИМУАР (меню → «Гримуар») и идут за ДУШИ
+   (logic/gacha.js: performGrimRolls). В забеге карты выдаются
+   колодой целиком на старте. */
 
-/* ---------------- Обучение ----------------
-Каждый шаг — ОДНО конкретное действие игрока, система проверяет
-его сама (ok-условия). Первую комбинацию игрок собирает РУКАМИ:
-карта за картой, со стаком, звеном и демонстрацией слабых повторов.
-Онбординг новых фич — отдельная система logic/guide.js.
-шаг «Гача» заменён на «Колода» — в забеге круток нет,
- колода выдаётся целиком; крутки — за Души в Гримуаре.*/
+/* ---------------- Обучение (фидбек 5: НАГЛЯДНОЕ) ----------------
+   Каждый шаг — ОДНО конкретное действие игрока, система проверяет
+   его сама (ok-условия). Первую комбинацию игрок собирает РУКАМИ:
+   карта за картой, со стаком, звеном и демонстрацией слабых повторов.
+   Онбординг новых фич — отдельная система logic/guide.js.
+   v1.6.0: шаг «Гача» заменён на «Колода» — в забеге круток нет,
+   колода выдаётся целиком; крутки — за Души в Гримуаре. */
 const TUT_GIVE = l => { l.forEach(([id, n]) => { inventory[id] = (inventory[id] || 0) + n; discovered.add(id); }); renderCollection(); };
 const gridHas = id => grid.some(row => row.some(it => it && it.cardId === id));
 const gridStacked = () => grid.some(row => row.some(it => it && it.stacks >= 2));
@@ -63,8 +63,8 @@ const TUT = [
   { t: '<b>Шаг 1. Колода — уже у вас.</b> С этой итерации забег выдаёт ВСЮ колоду сразу — она лежит в коллекции слева. Кликните по любой карте — она возьмётся «в руку» (крутки и пополнение колоды — в Гримуаре, за Души).', hl: () => collSel(Object.keys(inventory)[0]), ok: () => placingMode },
   { t: '<b>Шаг 2. Поставьте карту.</b> Кликните по любой клетке Алтаря. Карта начнёт приносить ТЭ/сек — счётчик над Алтарём.', hl: '#grid', ok: () => cardsOnGrid() > 0 },
   { t: '<b>Шаг 3. ЗДАНИЕ!</b> Мы выдали <b>«Кладбище»</b> — постройку: она сама раз в 12с поднимает бесплатную нежить и усиливает соседей. Выберите её в коллекции и поставьте рядом с картами.', pre: () => TUT_GIVE([['bl_grave', 1]]), hl: () => collSel('bl_grave'), ok: () => gridHas('bl_grave') },
-  { t: '<b>Шаг 4. СТАК — главный секрет Алтаря!</b> Мы выдали <b>«Скелета» ×3</b>. Кликните по Скелету в коллекции (подсвечен).', pre: () => TUT_GIVE([['u0', 3]]), hl: () => collSel('u0'), ok: () => placingMode && pendingCard === 'u0' },
-  { t: '<b>Шаг 5. Стак.</b> Поставьте Скелета на любую свободную клетку, затем кликните ПО ТОЙ ЖЕ клетке ещё <b>ДВАЖДЫ</b> — получится стопка ×3 с ТРОЙНЫМ доходом клетки. Одна клетка держит до ×5 копий одной карты.', hl: '#grid', ok: () => { const it = grid.flat().find(x => x && x.cardId === 'u0'); return !!(it && it.stacks >= 3); } },
+  { t: '<b>Шаг 4. СТАК — главный секрет Алтаря!</b> В Гримуаре дубликаты застакиваются в карту колоды (фиолетовая стрелка ▲, до ×5). Мы выдали <b>«Скелета» ×3</b> — уже застакованного. Выберите его в коллекции (подсвечен, метка ▲).', pre: () => { TUT_GIVE([['u0', 3]]); deckStacks['u0'] = 3; renderCollection(); }, hl: () => collSel('u0'), ok: () => placingMode && pendingCard === 'u0' },
+  { t: '<b>Шаг 5. Стак.</b> Поставьте Скелета на любую свободную клетку — на грид встанет ГОТОВАЯ стопка ×3 с ТРОЙНЫМ доходом клетки. Ручных стаков на поле больше нет: стопки собираются в колоде Гримуара.', hl: '#grid', ok: () => { const it = grid.flat().find(x => x && x.cardId === 'u0'); return !!(it && it.stacks >= 3); } },
   { t: '<b>Шаг 6. ПЕРВАЯ КОМБИНАЦИЯ!</b> Мы выдали <b>«Костяного Рыцаря»</b> — партнёра Скелета. Выберите его в коллекции (золотая подсветка).', pre: () => TUT_GIVE([['u4', 1]]), hl: () => collSel('u4'), ok: () => placingMode && pendingCard === 'u4' },
   { t: '<b>Шаг 7. Завершите связку.</b> Кликните по подсвеченной ЗЕЛЁНЫМ клетке рядом со Скелетом. Между картами вспыхнет линия — это синергия, доход обоих вырастет.', hl: '#grid', ok: () => pairLinkCount('u0', 'u4') > 0 },
   { t: '🎉 <b>Первая комбинация собрана!</b> Линия на Алтаре = активное звено. Тултип (наведи мышь) показывает звенья и доход карты.', n: 1 },
@@ -93,9 +93,9 @@ function tutGo(i) {
 function startTutorial() {
   noSave = true;
   gameStarted = true; /* доход и HUD работают, но сохранение отключено */
-  rebuildPlayableMask(); /* в учебном режиме маска клеток строится как в игре */
+  rebuildPlayableMask(); /* фикс: в учебном режиме маска клеток не строилась */
   $('menuBtn').style.display = 'none';
-  const rb = $('epochRestartBtn'); if (rb) rb.style.display = 'none'; /* в обучении рестарта нет */
+  const rb = $('epochRestartBtn'); if (rb) rb.style.display = 'none'; /* v1.4.3: в обучении рестарта нет */
   $('tutPanel').classList.add('show');
   $('tutNext').onclick = () => { if (TUT[tutI].last) location.reload(); else tutGo(tutI + 1); };
   $('tutExit').onclick = () => location.reload();
@@ -110,7 +110,7 @@ function startFreshRun() {
   grid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
   playableSize = 3;
   rebuildPlayableMask();
-  inventory = {}; pendingCard = null;
+  inventory = {}; pendingCard = null; deckStacks = {};
   fighters = {}; fighterHpState = {};
   arenaState = { floor: 1, room: 1, enemy: null, fighting: false, status: '', cleared: Array(ARENA.roomsPerFloor).fill(false), fallen: {} };
   arenaAuto = false; arenaStreak = 0;
@@ -120,28 +120,29 @@ function startFreshRun() {
   ritualResonance = 0; surgeUntil = 0;
   milestoneIdx = 0;
   omens = []; omenTimer = 60;
-  /* выдаём активную колоду расы (нет — старт-кит) */
+  /* v1.6.0: выдаём активную колоду расы (нет — старт-кит); v1.7.0: со стаками */
   const deck = ensureStarterDeck(faction);
   if (deck && deck.cards.length) {
-    deck.cards.forEach(id => { inventory[id] = (inventory[id] || 0) + 1; discovered.add(id); });
-    const ct = $('collectionTitle'); if (ct) ct.textContent = 'Колода: ' + deck.name;
+    const dn = handOutDeck(deck);
+    const ct = $('collectionTitle'); if (ct) ct.textContent = 'Колода: ' + dn;
   } else {
+    deckStacks = {};
     const startR1 = POOL_3.filter(id => CARDS[id].faction === faction);
     drawDistinct(startR1, 2).concat(startKitFor(faction)).forEach(id => { inventory[id] = (inventory[id] || 0) + 1; discovered.add(id); });
   }
   computeIncome();
   gameStarted = true; noSave = false;
-  contractsInit(); /* серия контрактов нового забега */
-  checkDailyGift(); /* первый вход за день — Знамение Судьбы */
+  contractsInit(); /* v1.2.9: серия контрактов нового забега */
+  checkDailyGift(); /* v1.2.9: первый вход за день — Знамение Судьбы */
   saveRun(); saveMeta();
   refreshAll();
   toast('⚜ ' + FACTION_INFO[faction].epochTitle);
   queueFeatureGuides(); /* первая Эпоха за фракцию — краткое обучение */
 }
 
-/* ---------------- DEBUG-режим ----------------
-Секрет: 3 клика по строке «Тёмное Наследие» в меню. Позволяет
- начать ЛЮБУЮ эпоху с ЛЮБОЙ фракцией (сохранение выкл. по умолчанию).*/
+/* ---------------- DEBUG-режим (фидбек 4) ----------------
+   Секрет: 3 клика по строке «Тёмное Наследие» в меню. Позволяет
+   начать ЛЮБУЮ эпоху с ЛЮБОЙ фракцией (сохранение выкл. по умолчанию). */
 let dbgFlavorClicks = 0, dbgFlavorTimer = null;
 function debugSecretClick() {
   dbgFlavorClicks++;
@@ -190,7 +191,7 @@ function startDebugRun(ep, f, rich, keepSave) {
   grid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
   playableSize = epochMaxSize(epoch);
   rebuildPlayableMask();
-  inventory = {}; pendingCard = null;
+  inventory = {}; pendingCard = null; deckStacks = {};
   fighters = {}; fighterHpState = {};
   arenaState = { floor: 1, room: 1, enemy: null, fighting: false, status: '', cleared: Array(ARENA.roomsPerFloor).fill(false), fallen: {} };
   arenaAuto = false; arenaStreak = 0;
@@ -208,14 +209,14 @@ function startDebugRun(ep, f, rich, keepSave) {
   POOL_4.filter(id => CARDS[id].faction === faction).forEach(id => { inventory[id] = (inventory[id] || 0) + 1; discovered.add(id); });
   computeIncome();
   gameStarted = true;
-  contractsInit(); /* контракты видны и в чит-режиме (noSave не даёт их исполнить) */
+  contractsInit(); /* v1.2.9: контракты видны и в чит-режиме (noSave не даёт их исполнить) */
   if (keepSave) { saveRun(); saveMeta(); }
   hideMenu();
   refreshAll();
   toast('🛠 ЧИТ: Эпоха ' + ep + ' · ' + FACTION_INFO[f].name + (keepSave ? ' · сохранение ВКЛ' : ' · сохранение ВЫКЛ'));
 }
 function refreshAll() {
-  applyFactionTheme(); /* тема фракции (фон/палитра) */
+  applyFactionTheme(); /* v1.5.0: тема фракции (фон/палитра) */
   buildGrid(); renderCollection(); renderFighters(); initArena(); updateHUD(); updateBanner(); updateEpochUI();
 }
 
@@ -224,10 +225,10 @@ function showMenu() {
   gamePaused = true;
   $('menuContinue').disabled = !hasRunSave() && !gameStarted;
   $('menu').classList.add('show');
-  /* выход в меню — тихая запись рекорда (только рост),
-затем свежак Таблички и счётчика игроков за день.
-Табличка перечитывается ПОСЛЕ завершения записи — иначе гонка:
- блок покажет старьё раньше, чем POST дойдёт до базы.*/
+  /* v1.4.1 ТЗ: выход в меню — тихая запись рекорда (только рост),
+     затем свежак Таблички и счётчика игроков за день.
+     Табличка перечитывается ПОСЛЕ завершения записи — иначе гонка:
+     блок покажет старьё раньше, чем POST дойдёт до базы. */
   if (typeof supaMenuSave === 'function') {
     Promise.resolve(supaMenuSave()).then(() => { if (typeof lbFetch === 'function') setTimeout(lbFetch, 350); });
   }
@@ -250,12 +251,13 @@ function updateSettingsUI() {
 
 /* ---------------- Привязка событий ---------------- */
 function wireEvents() {
-  /* Крутки: СНЯТЫ с экрана забега — Призыв живёт в Гримуаре.
- Элементы #rollBar удалены из index.html.*/
+  /* Крутки: СНЯТЫ с экрана забега (v1.6.0) — Призыв живёт в Гримуаре.
+     Элементы #rollBar удалены из index.html. */
 
   /* Инструменты */
-  /* Табличка Тьмы живёт в главном меню (над Стеной); запись рекорда
- автоматическая: Вознесение / выход в меню / уход со страницы.*/
+  /* v1.4.1: Табличка Тьмы переехала в главное меню (над Стеной) —
+     кнопка «Рейтинг» из игровой панели снята, запись рекорда
+     автоматическая: Вознесение / выход в меню / уход со страницы. */
   $('deleteToolBtn').addEventListener('click', function () {
     deleteMode = !deleteMode; placingMode = false; pendingCard = null; moveMode = false; moveSource = null;
     $('moveToolBtn').classList.remove('active');
@@ -273,16 +275,16 @@ function wireEvents() {
   $('arenaFightBtn').addEventListener('click', arenaFightClick);
   $('arenaRetreatBtn').addEventListener('click', arenaRetreat);
   $('arenaAutoChk').addEventListener('change', function () { arenaAuto = this.checked; if (arenaAuto) tryStartAutoBattle(); });
-  /* оверлей «Поле боя» */
+  /* v1.2.7: оверлей «Поле боя» */
   $('arenaExpandBtn').addEventListener('click', () => { open_('arenaOverlay'); updateArenaUI(); });
   $('arenaCloseBtn').addEventListener('click', () => close_('arenaOverlay'));
-  /* клик по живому мини-визуалу — то же, что «Поле боя ▾» */
+  /* v1.3.1: клик по живому мини-визуалу — то же, что «Поле боя ▾» */
   const am = $('arenaMini');
   if (am) am.addEventListener('click', () => { if (!$('arenaExpandBtn').disabled) $('arenaExpandBtn').click(); });
 
   /* Коллекция */
-  /* Масс-кнопок «в бой» на экране НЕТ (bulk1/bulkAll/bulkDup не создаются;
- bulkFight в logic/arena.js не привязан к интерфейсу).*/
+  /* Резец Тьмы: масс-кнопки «в бой» (bulk1/bulkAll/bulkDup) сняты с экрана.
+     bulkFight() в logic/arena.js остаётся — судьба решается отдельно. */
   $('rarityFilter').addEventListener('change', e => { rarityFilter = e.target.value; renderCollection(); });
 
   /* Эпоха и ачивки: большая кнопка — старт при готовности, иначе Меню Эпохи */
@@ -290,10 +292,10 @@ function wireEvents() {
     if (canEpochUp()) confirmEpochUp();
     else openEpochMenu();
   });
-  /* рестарт ТЕКУЩЕЙ Эпохи — подтверждение + выбор фракции */
+  /* v1.4.3 «Второй Круг»: рестарт ТЕКУЩЕЙ Эпохи — подтверждение + выбор фракции */
   $('epochRestartBtn').addEventListener('click', confirmEpochRestart);
   $('achvBtn').addEventListener('click', openAchv);
-  /* Тёмный Пакт — контракты Эпохи */
+  /* v1.2.9: Тёмный Пакт — контракты Эпохи */
   $('contractsBtn').addEventListener('click', openContracts);
 
   /* Казино */
@@ -305,7 +307,7 @@ function wireEvents() {
     close_('hub');
     if (g.dataset.g === 'slots') return openSlots();
     open_('cgModal');
-    $('cgBody').className = ''; /* фон-класс предыдущей игры сбрасывается */
+    $('cgBody').className = ''; /* v1.5.15: фон-класс предыдущей игры сбрасывается */
     ({ aviator: gAviator, roulette: gRoulette, blackjack: gBlackjack })[g.dataset.g]();
   });
   $('cgClose').onclick = () => { if (busy) return toast('Сначала завершите раунд'); close_('cgModal'); open_('hub'); };
@@ -316,7 +318,7 @@ function wireEvents() {
   $('betReset').addEventListener('click', () => { if (casinoSpinning) return; casinoBet = MIN_BET; updateCasinoUI(); });
   $('slotLeverBtn').addEventListener('click', slotsSpin);
   $('cgBody').addEventListener('click', e => {
-    /* ячейки рулетки содержат спрайты-иконки — ищем [data-k]/[data-chip] через closest */
+    /* v1.5.15: ячейки рулетки содержат спрайты-иконки — ищем [data-k]/[data-chip] через closest */
     if (e.target.closest && e.target.closest('[data-chip],[data-k]')) rouletteBoardClick(e);
     const a = e.target.dataset.p;
     if (a) bjAct(a);
@@ -350,7 +352,7 @@ function wireEvents() {
   $('musicToggle').addEventListener('click', () => { musicOn = !musicOn; saveMeta(); if (musicOn) musicStart(); else musicStop(); updateSettingsUI(); });
   $('fxToggle').addEventListener('click', () => { fxOn = !fxOn; saveMeta(); updateSettingsUI(); });
   /* Реликвии */
-  /* Реликвии : вкладка коллекции «⚒ РЕЛИКВИИ» + ряд слотов над Алтарём */
+  /* Реликвии v1.2.6: вкладка коллекции «⚒ РЕЛИКВИИ» + ряд слотов над Алтарём */
   $('resetBtn').addEventListener('click', () => {
     ask('Стереть ВЕСЬ прогресс (включая печати и ачивки)?', () => {
       noSave = true; wipeAll(); location.reload();
@@ -370,10 +372,11 @@ function wireEvents() {
     else go();
   };
   $('menuTut').onclick = () => restartWith('tutorial');
-  /* Меню Эпохи открывается ПОВЕРХ главного меню (z 550 > 500):
- закрытие окна возвращает в меню, пустого экрана нет.*/
+  /* v1.5.13: Меню Эпохи открывается ПОВЕРХ главного меню (z 550 > 500).
+     Раньше hideMenu() «выбрасывал» игрока из меню: закрытие окна Эпохи
+     оставляло пустой экран игры вместо главного меню. */
   $('menuEpoch').onclick = () => openEpochMenu();
-  /* ГРИМУАР и УЛУЧШЕНИЯ в главном меню */
+  /* v1.6.0: ГРИМУАР и УЛУЧШЕНИЯ в главном меню */
   $('menuGrim').onclick = () => { openGrimuar(); };
   $('menuUpgrades').onclick = () => {
     mk('upgModal',
@@ -412,8 +415,8 @@ function wireEvents() {
   setInterval(() => {
     if (gameStarted && !gamePaused) {
       checkAchievements();
-      checkContracts(); /* Тёмный Пакт — прогресс и выдача */
-      checkChronicles(); /* Хроники Тьмы — вершины коллекции */
+      checkContracts();   /* v1.2.9: Тёмный Пакт — прогресс и выдача */
+      checkChronicles();  /* v1.2.9: Хроники Тьмы — вершины коллекции */
       if ($('contractModal') && $('contractModal').classList.contains('show')) renderContractList();
     }
   }, 1000);
@@ -424,19 +427,19 @@ let lastC = crystals;
 setInterval(() => {
   const d = crystals - lastC;
   lastC = crystals;
-  /* в порог Эпохи идёт ТОЛЬКО доход Алтаря. Всё остальное
-(награды Арены, знамения, компенсации, продажа дубликатов)
- помечается в incomeExempt — Эпохи больше не «натыкаются» сами.*/
+  /* v1.2.6: в порог Эпохи идёт ТОЛЬКО доход Алтаря. Всё остальное
+     (награды Арены, знамения, компенсации, продажа дубликатов)
+     помечается в incomeExempt — Эпохи больше не «натыкаются» сами. */
   if (d > 0 && !document.querySelector('#casinoModal.show,#cgModal.show')) {
     const credited = Math.max(0, d - incomeExempt);
     runEarned += credited;
   }
   incomeExempt = 0;
-  /* САМОВОССТАНОВЛЕНИЕ ОТОБРАЖЕНИЯ — если DOM разошёлся с состоянием
- («ауры пропали», «карты задвоились»), перерисовываем поле в течение 250мс*/
+  /* v1.2.7: САМОВОССТАНОВЛЕНИЕ ОТОБРАЖЕНИЯ — если DOM разошёлся с состоянием
+     («ауры пропали», «карты задвоились»), перерисовываем поле в течение 250мс */
   if (gameStarted && !gamePaused && typeof gridSignature === 'function') {
     if (gridSignature() !== lastRenderSig) renderGrid();
-    else if (typeof updateFxLive === 'function') updateFxLive(); /* вспышки способностей без перерисовки поля */
+    else if (typeof updateFxLive === 'function') updateFxLive(); /* v1.5.1: вспышки способностей без перерисовки поля */
   }
   checkMilestones();
   if (runEarned >= epochThreshold(epoch) && gameStarted && !gamePaused) {
@@ -455,12 +458,13 @@ setInterval(() => {
   let m = null;
   try { m = sessionStorage.getItem('gg_mode'); sessionStorage.removeItem('gg_mode'); } catch (e) { }
   window.BOOT_MODE = m;
+  wipeLegacySaves(); /* v1.7.0: обнуление учеток — старые сейвы v1 и «отправленный рекорд» вычищаются */
   loadMeta();
-  supaPing(); /* уникальный игрок за день */
-  maybeAskNick(); /* имя для Таблички Тьмы — спрашиваем один раз */
-  wallInit(); /* СТЕНА ТЬМЫ — чат в главном меню */
-  lbInit(); /* ТАБЛИЦА ТЬМЫ — рейтинг по Эпохам над чатом */
-  renderDailyCount(); /* «Активных игроков за день» под чатом */
+  supaPing(); /* v1.2.9.2: уникальный игрок за день */
+  maybeAskNick(); /* v1.2.9.2: имя для Таблички Тьмы — спрашиваем один раз */
+  wallInit(); /* v1.3.0: СТЕНА ТЬМЫ — чат в главном меню */
+  lbInit(); /* v1.4.1: ТАБЛИЦА ТЬМЫ — рейтинг по Эпохам над чатом */
+  renderDailyCount(); /* v1.4.1: «Активных игроков за день» под чатом */
   wireEvents();
   fxInit();
   document.addEventListener('pointerdown', soundUnlock, { once: true });
@@ -476,7 +480,7 @@ setInterval(() => {
     loadRun();
     computeIncome();
     refreshAll();
-    checkDailyGift(); /* Знамение Судьбы — только в реальном забеге */
+    checkDailyGift(); /* v1.2.9: Знамение Судьбы — только в реальном забеге */
     initGuidesForSave(); /* открытые фичи не объясняем, незнакомую фракцию — показываем */
     showMenu();
   } else {

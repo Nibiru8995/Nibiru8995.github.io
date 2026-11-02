@@ -90,7 +90,7 @@ function epochFactions(e) {
 */
 const SEALS_SHOP = [
   { id: 'rich',    icon: '📈', name: 'Печать Изобилия',   desc: '+25% дохода за уровень',          max: 5, cost: l => 4 + 3 * l },
-  { id: 'greed',   icon: '🎲', name: 'Печать Жадности',   desc: 'Вехи дают +2 бесплатные крутки за уровень', max: 3, cost: l => 5 + 4 * l },
+  { id: 'greed',   icon: '🎲', name: 'Печать Жадности',   desc: 'Ускорения вех: +30 сек за уровень', max: 3, cost: l => 5 + 4 * l },
   { id: 'impulse', icon: '🎁', name: 'Печать Импульса',   desc: 'Старт забега: +2500×2^ур. Тёмной энергии', max: 4, cost: l => 3 + 3 * l },
   { id: 'arch',    icon: '🧱', name: 'Печать Зодчего',    desc: '+1 к максимальному стеку карт на клетке за уровень', max: 2, cost: l => 5 + 4 * l },
   { id: 'fate',    icon: '🔮', name: 'Печать Судьбы',     desc: 'Pity-счётчики крутятся в +1/ур. быстрее', max: 3, cost: l => 6 + 5 * l }

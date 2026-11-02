@@ -1,32 +1,36 @@
 'use strict';
-/*
-ЛОГИКА: ГРИД / АЛТАРЬ (logic/grid.js)
-Установка, перемещение, удаление, авто-расстановка. Врагов на
-гриде НЕТ — грид это чистая экономика.
-Покупки отдельных клеток НЕТ : размер поля растёт
-АВТОМАТИЧЕСКИ при переходе Эпохи (doEpochUp, logic/epochs.js).
- ============================================================*/
+/* ============================================================
+   ЛОГИКА: ГРИД / АЛТАРЬ (logic/grid.js) — v1.7.0 «Плата Душами»
+   Установка, перемещение, удаление. Врагов на гриде НЕТ — грид это
+   чистая экономика. Покупки клеток нет — поле растёт само при Эпохе.
+   v1.7.0: РУЧНОЙ СТАК НА ГРИДЕ ОТКЛЮЧЁН (клик по занятой клетке больше
+   НЕ докладывает копию) и кнопка «Стак» снята. Стопки собираются В
+   КОЛОДЕ Гримуара (дубликаты, фиолетовая стрелка ▲, до ×5): на старте
+   забега стек копий приходит в deckStacks, и постановка такой карты
+   ставит на грид ГОТОВЫЙ юнит ×N — «как если бы N раз карта была
+   стакнута на гриде».
+   ============================================================ */
 
 function linked(a, b) { return SYNERGY_PAIRS.some(p => pairApplies(a, b, p)); }
 
 /* Подсветка клеток при выборе карты.
-У культистов звено живо только в ритуале — подсвечиваем
-клетки рядом с Алтарём/ритуалом, иначе игрок поставит «в пустоту».
-У зверей синергий нет — подсвечиваем клетки по РАЦИОНУ:
-хищнику — рядом с добычей, травоядному — рядом с флорой и т.д.
- У демонов — клетки в «толпе» (рядом 2+ демона), где копятся угли.*/
+   У культистов (фидбек 3) звено живо только в ритуале — подсвечиваем
+   клетки рядом с Алтарём/ритуалом, иначе игрок поставит «в пустоту».
+   У зверей (фидбек 4) синергий нет — подсвечиваем клетки по РАЦИОНУ:
+   хищнику — рядом с добычей, травоядному — рядом с флорой и т.д.
+   У демонов — клетки в «толпе» (рядом 2+ демона), где копятся угли. */
 function hintClass(r, c) {
   if (!placingMode || !pendingCard) return '';
   const p = CARDS[pendingCard]; const it = grid[r][c];
   const mech = FACTION_INFO[faction].mechanic;
   if (it) {
-    /* ХТОНЬ (c10/c11) может встать НА МЕСТО Ритуального Алтаря */
+    /* ХТОНЬ (c10/c11) может встать НА МЕСТО Ритуального Алтаря.
+       v1.7.0: остальные занятые клетки НЕ подсвечиваем — стаков
+       на гриде больше нет, карта туда не встанет. */
     if ((p.id === 'c10' || p.id === 'c11') && it.cardId === 'bl_altar') return 'syn-hint';
-    if (it.cardId === pendingCard && it.stacks < maxStacks()) return 'stack-hint';
-    if (linked(p, CARDS[it.cardId])) return 'syn-hint';
     return '';
   }
-  /* КАРА СТОЛБА: карту, запрещённую реликвией, ставить нельзя — красная штриховка */
+  /* v1.4.0 КАРА СТОЛБА: карту, запрещённую реликвией, ставить нельзя — красная штриховка */
   if (!cardAllowedInCol(pendingCard, c)) return 'dead-spot';
   const ns = getNeighbors(r, c);
   /* Здание: подсветка — клетки его будущей ауры уже содержат полезное */
@@ -79,7 +83,7 @@ function onCellClick(r, c) {
     if (!playableMask[r][c]) return;
     const src = grid[moveSource.r][moveSource.c];
     if (!src) { moveSource = null; renderGrid(); updateBanner(); return; }
-    /* КАРА СТОЛБА: запрещённую реликвией карту нельзя тащить в её столб */
+    /* v1.4.0 КАРА СТОЛБА: запрещённую реликвией карту нельзя тащить в её столб */
     if (!cardAllowedInCol(src.cardId, c)) {
       const rel = banRelicAtCol(c);
       toast('⛔ ' + (rel ? '«' + rel.name + '»' : 'Кара столба') + ': «' + CARDS[src.cardId].name + '» не примут в столб ' + (c + 1));
@@ -108,7 +112,7 @@ function onCellClick(r, c) {
   if (placingMode && pendingCard) {
     if (!playableMask[r][c] || (inventory[pendingCard] || 0) <= 0) return;
     const card = CARDS[pendingCard];
-    /* КАРА СТОЛБА: реликвия запрещает ставить эту карту в её столб */
+    /* v1.4.0 КАРА СТОЛБА: реликвия запрещает ставить эту карту в её столб */
     if (!cardAllowedInCol(pendingCard, c)) {
       const rel = banRelicAtCol(c);
       toast('⛔ ' + (rel ? '«' + rel.name + '»' : 'Кара столба') + ': «' + card.name + '» запрещена в столбе ' + (c + 1));
@@ -116,98 +120,49 @@ function onCellClick(r, c) {
       return;
     }
     const hp = cardHp(card.rarity);
+    /* v1.7.0: ЗАСТАКАННАЯ КАРТА КОЛОДЫ — ставим готовым юнитом ×N
+       (сколько копий реально есть в инвентаре, но не больше стака).
+       Ставится «как если бы N раз карта была стакнута на гриде»:
+       суммарный HP, суммарный доход клетки, особенности — как у стака. */
+    const stackN = Math.min(deckStacks[pendingCard] || 1, inventory[pendingCard] || 1);
     /* ХТОНЬ (★5) встаёт НА МЕСТО Ритуального Алтаря: Алтарь вернётся в коллекцию */
     if (item && (card.id === 'c10' || card.id === 'c11') && item.cardId === 'bl_altar') {
       if (item.stacks > 1) { inventory.bl_altar = (inventory.bl_altar || 0) + item.stacks; }
       else inventory.bl_altar = (inventory.bl_altar || 0) + 1;
-      grid[r][c] = { cardId: pendingCard, stacks: 1, hp, maxHp: hp,
+      grid[r][c] = { cardId: pendingCard, stacks: stackN, hp: hp * stackN, maxHp: hp * stackN,
         predBuff: 0, mutBuff: 1, embers: 0, hunger: 1, graze: 0, floraBuff: 0, scavBuff: 0, boomUntil: 0, petrCount: 0 };
-      inventory[pendingCard]--;
+      if (pendingCard === 'd3') grid[r][c].embers = 1;
+      inventory[pendingCard] -= stackN;
+      if (stackN > 1) delete deckStacks[pendingCard];
       stats.placed++;
       sfx('epoch');
       fxAtCell(r, c, ['#c030c0', '#ff40ff', '#fff'], 20, 'big');
-      fxFloatFromCell(r, c, 'ХТОНЬ НА МЕСТЕ АЛТАРЯ', '#ff60ff');
+      fxFloatFromCell(r, c, 'ХТОНЬ НА МЕСТЕ АЛТАРЯ' + (stackN > 1 ? ' ×' + stackN : ''), '#ff60ff');
       toast('👁 <b>Хтонь заняла место Алтаря:</b> ритуал от неё сильнее!');
       computeIncome();
       if (inventory[pendingCard] <= 0) { delete inventory[pendingCard]; cancelSelection(); }
       else { renderGrid(); renderCollection(); updateHUD(); }
       return;
     }
-    if (item) {
-      if (item.cardId !== pendingCard || item.stacks >= maxStacks()) return;
-      item.stacks++; item.maxHp += hp; item.hp += hp;
-    } else {
-      grid[r][c] = { cardId: pendingCard, stacks: 1, hp, maxHp: hp,
-        predBuff: 0, mutBuff: 1, embers: 0, hunger: 1, graze: 0, floraBuff: 0, scavBuff: 0, boomUntil: 0, petrCount: 0 };
-      /* «Уголёк» (d3) — вечно тлеет: появляется уже с 1 углём */
-      if (pendingCard === 'd3') grid[r][c].embers = 1;
-    }
+    /* v1.7.0: РУЧНОЙ СТАК НА ГРИДЕ ОТКЛЮЧЁН — занятая клетка не принимает карту.
+       Стопки собираются в колоде Гримуара (стрелка ▲ у карты). */
+    if (item) return;
+    grid[r][c] = { cardId: pendingCard, stacks: stackN, hp: hp * stackN, maxHp: hp * stackN,
+      predBuff: 0, mutBuff: 1, embers: 0, hunger: 1, graze: 0, floraBuff: 0, scavBuff: 0, boomUntil: 0, petrCount: 0 };
+    /* v1.1: «Уголёк» (d3) — вечно тлеет: появляется уже с 1 углём */
+    if (pendingCard === 'd3') grid[r][c].embers = 1;
     stats.placed++;
     sfx('place');
     fxAtCell(r, c, [FACTION_INFO[card.faction].color, '#fff', '#e8c060'], 12);
-    inventory[pendingCard]--;
+    if (stackN > 1) fxFloatFromCell(r, c, 'СТАК ×' + stackN, '#b070ff');
+    inventory[pendingCard] -= stackN;
+    if (stackN > 1) delete deckStacks[pendingCard];
     computeIncome();
     if (inventory[pendingCard] <= 0) { delete inventory[pendingCard]; cancelSelection(); }
     else { renderGrid(); renderCollection(); updateHUD(); }
   }
 }
 
-/* «СТАК» : кнопка НЕ размещает карты на пустые клетки — расстановка
-целиком у игрока. Она только докладывает карты из инвентаря В СУЩЕСТВУЮЩИЕ
- стопки таких же карт на поле, выбирая клетку с максимальным приростом дохода.*/
-function localInc(r, c) {
-  let s = calcCardIncome(r, c);
-  getNeighbors(r, c).forEach(n => { s += calcCardIncome(n.r, n.c); });
-  return s;
-}
-function bestStackFor(id) {
-  const hp = cardHp(CARDS[id].rarity);
-  const cultMech = FACTION_INFO[faction].mechanic === 'formation' && CARDS[id].faction === 'cultist' && !CARDS[id].isBuilding;
-  let best = null, bv = -1e9;
-  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
-    const it = grid[r][c];
-    if (!it || it.cardId !== id || it.stacks >= maxStacks()) continue; /* только уже стоящие такие же карты */
-    /* в столб с карой-запретом авто-стак не кладёт */
-    if (!cardAllowedInCol(id, c)) continue;
-    /* у культистов инкам 0 — приоритет стака = участие в ритуале
-приоритет уточнён — ЦЕПЬ > ВНЕШНИЙ КРУГ (служители тоже
- дают заряд/выплату, а раньше авто-стак их игнорировал)*/
-    if (cultMech) {
-      let v = 0;
-      if (INC_CTX.ritual && INC_CTX.ritual.has(r + ',' + c)) v = 2;
-      else if (INC_CTX.ritualOuter && INC_CTX.ritualOuter.has(r + ',' + c)) v = 1;
-      if (v > bv) { bv = v; best = { r, c, v }; }
-      continue;
-    }
-    const b0 = localInc(r, c);
-    it.stacks++; it.maxHp += hp; it.hp += hp;
-    computeIncome();
-    const v = localInc(r, c) - b0;
-    it.stacks--; it.maxHp -= hp; it.hp -= hp;
-    computeIncome();
-    if (v > bv) { bv = v; best = { r, c, v }; }
-  }
-  return best;
-}
-function autoStack() {
-  const invIds = Object.keys(inventory);
-  if (!invIds.length) { toast('Инвентарь пуст — крутите карты!'); return; }
-  if (!cardsOnGrid()) { toast('На Алтаре нет карт — поставьте первую вручную: клик по карте в коллекции'); return; }
-  let n = 0;
-  invIds.sort((a, b) => rarityRank(CARDS[b].rarity) - rarityRank(CARDS[a].rarity)).forEach(id => {
-    while (inventory[id] > 0) {
-      const b = bestStackFor(id);
-      if (!b) break;
-      const hp = cardHp(CARDS[id].rarity);
-      const it = grid[b.r][b.c];
-      it.stacks++; it.maxHp += hp; it.hp += hp;
-      stats.placed++;
-      sfx('place');
-      inventory[id]--; n++;
-      if (!inventory[id]) delete inventory[id];
-    }
-  });
-  cancelSelection();
-  computeIncome(); renderGrid(); renderCollection(); updateHUD();
-  toast(n ? '🪄 Уложено в стаки карт: ' + n : 'Подходящих стаков нет: на поле должна стоять ТА ЖЕ карта и не достигнут лимит ×' + maxStacks());
-}
+/* v1.7.0: АВТО-СТАК СНЯТ (кнопка «Стак») вместе с ручными стаками на гриде.
+   Стопки теперь собираются в колоде Гримуара и приходят в забег через
+   deckStacks — постановка такой карты сразу даёт юнит ×N. */

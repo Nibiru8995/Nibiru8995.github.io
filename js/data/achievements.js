@@ -35,7 +35,7 @@ const ACHIEVEMENTS = [
   { id: 'omen_10',      name: 'Ловец знамений',           desc: 'Собрать 10 Знамений на Алтаре',         check: () => (stats.omens || 0) >= 10 },
   { id: 'omen_50',      name: 'Око Бездны',               desc: 'Собрать 50 Знамений на Алтаре',         check: () => (stats.omens || 0) >= 50 },
   { id: 'mil_3',        name: 'Веха за вехой',            desc: 'Выполнить 3 вехи за один забег',        check: () => milestoneIdx >= 3 },
-  { id: 'free_10',      name: 'Бесплатный сыр',           desc: 'Получить 50 бесплатных круток с вех',    check: () => (stats.freeRolls || 0) >= 50 },
+  { id: 'roll_50',      name: 'Плати Душой',              desc: 'Сделать 50 круток Призыва за всё время', check: () => stats.rolls >= 50 },
   { id: 'speed_4',      name: 'Скользящее время',         desc: 'Поиграть на ускорении ×4',              check: () => stats.speedUsed >= 1 },
 
   /* --- Пакет «Больше ачивок» --- */
@@ -54,7 +54,7 @@ const ACHIEVEMENTS = [
   { id: 'coll_all',     name: 'Архивариус Бездны',        desc: 'Открыть все карты коллекции',            check: () => discovered.size >= Object.keys(CARDS).length },
   { id: 'omen_100',     name: 'Провидец',                 desc: 'Собрать 100 Знамений на Алтаре',         check: () => (stats.omens || 0) >= 100 },
   { id: 'mil_all',      name: 'Вершитель вех',            desc: 'Выполнить все 4 вехи за один забег',     check: () => milestoneIdx >= 4 },
-  { id: 'free_100',     name: 'Халявщик Бездны',          desc: 'Получить 100 бесплатных круток с вех',   check: () => (stats.freeRolls || 0) >= 100 },
+  { id: 'roll_250',     name: 'Жнец Душ',                 desc: 'Сделать 250 круток Призыва за всё время', check: () => stats.rolls >= 250 },
   { id: 'floor_20',     name: 'Легенда Арены',            desc: 'Достичь 20 этажа Арены',                 check: () => stats.floorMax >= 20 },
   { id: 'boss_10',      name: 'Гроза владык',             desc: 'Победить 10 боссов Арены',               check: () => stats.bossKills >= 10 },
   { id: 'casino_net',   name: 'Дом НЕ всегда в плюсе',    desc: 'Выйти из казино в суммарном плюсе +100 000 ТЭ', check: () => Object.values(stats.g || {}).reduce((s, x) => s + (x.net || 0), 0) >= 100000 },

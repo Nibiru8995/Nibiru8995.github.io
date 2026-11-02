@@ -1,18 +1,22 @@
 'use strict';
-/*
-РЕНДЕР: ГРИМУАР (render/grimuar_render.js)
-Мета-экран между забегами (Меню → «Гримуар»):
-СЛЕВА — ВЕЧНАЯ коллекция карт Призыва (по расам, с количествами);
-СПРАВА — колоды (лимит 64 карты, дубликаты разрешены, у каждой
-расы своя колода, переименование, активная колода);
-СНИЗУ — ПРИЗЫВ: выбор расы, pity-гаранты, крутки за ДУШИ
-(×1 = 1 душа, ×10 = 10 душ; бесплатные списываются первыми).
-Выпавшие карты ложатся в коллекцию (не в инвентарь забега).
-Изменения колоды вступают в силу со следующего забега.
- ============================================================*/
+/* ============================================================
+   РЕНДЕР: ГРИМУАР (render/grimuar_render.js) — v1.7.0 «Плата Душами»
+   Мета-экран между забегами (Меню → «Гримуар»):
+   СЛЕВА  — ВЕЧНАЯ коллекция карт Призыва (по расам, с количествами);
+   СПРАВА — колоды (лимит 64 карты, дубликаты разрешены, у каждой
+            расы своя колода, переименование, активная колода).
+            v1.7.0: карты колоды — СПИСОК ПРЯМОУГОЛЬНЫХ БЛОКОВ;
+            у карты, которую можно застакать дубликатом из коллекции,
+            ФИОЛЕТОВАЯ СТРЕЛКА ▲ (стаки до DECK_STACK_MAX = 5).
+   СНИЗУ  — ПРИЗЫВ: выбор расы, pity-гаранты, крутки ЗА ДУШИ
+            (×1 = 1 душа, ×10 = 10 душ; v1.7.0: бесплатных круток НЕТ).
+   Выпавшие карты ложатся в коллекцию (не в инвентарь забега).
+   Изменения колоды вступают в силу со следующего забега; застакованная
+   карта ставится на грид сразу стопкой ×N (logic/grid.js).
+   ============================================================ */
 
-let grimSelDeckId = null;  // выбранная колода в правой панели
-let grimRaceTab = null;  // раса фильтра коллекции (null = текущая gachaRace)
+let grimSelDeckId = null;   // выбранная колода в правой панели
+let grimRaceTab = null;     // раса фильтра коллекции (null = текущая gachaRace)
 
 function openGrimuar() {
   /* Первая колода — стартовая (создастся, если колод ещё нет) */
@@ -26,7 +30,7 @@ function openGrimuar() {
     '<div class="grim-head">' +
     '<h2 style="margin:0">📖 ГРИМУАР</h2>' +
     '<div class="grim-res">' +
-    '<span class="res-chip grim-souls" title="Души — валюта Призыва. Источники: смена Эпохи, каждые 5 этажей Арены, контракты"><span class="soul-icon"></span><b id="grimSouls">0</b>&nbsp;Души</span>' +
+    '<span class="res-chip grim-souls" title="Души — валюта Призыва. Источники: старт 30, смена Эпохи, каждые 5 этажей Арены, контракты"><span class="soul-icon"></span><b id="grimSouls">0</b>&nbsp;Души</span>' +
     '<span class="grim-free" id="grimFree"></span>' +
     '</div>' +
     '<button class="mini" id="grimX" style="margin-left:auto">✕ Закрыть</button>' +
@@ -40,15 +44,15 @@ function openGrimuar() {
     '<div class="grim-collstats" id="grimCollStats"></div>' +
     '</div>' +
     '<div class="grim-col">' +
-    '<div class="grim-col-title">КОЛОДЫ <small>до ' + DECK_SIZE + ' карт · дубликаты разрешены · своя раса</small></div>' +
+    '<div class="grim-col-title">КОЛОДЫ <small>до ' + DECK_SIZE + ' карт · стаки до ×' + DECK_STACK_MAX + ' · своя раса</small></div>' +
     '<div class="grim-decks" id="grimDecks"></div>' +
     '<div class="grim-deckview" id="grimDeckView"></div>' +
     '</div>' +
     '</div>' +
     '<div class="grim-gacha" id="grimGacha"></div>', 900);
   $('grimX').onclick = () => { close_('grimModal'); if (gameStarted) { updateHUD(); } };
-  /* mk ставит inline max-width — перебиваем для широкого экрана Гримуара,
- открываем ДО рендера (рендер гвардится по.show)*/
+  /* mk() ставит inline max-width — перебиваем для широкого экрана Гримуара,
+     открываем ДО рендера (рендер гвардится по .show) */
   const card = $('grimModal').querySelector('.modal-card');
   card.style.maxWidth = '1080px';
   card.style.maxHeight = '94vh';
@@ -72,7 +76,8 @@ function renderGrimuar() {
 function renderGrimHead() {
   hudSet('gsouls', $('grimSouls'), 'text', fmt(souls));
   const free = $('grimFree');
-  const txt = freeRolls > 0 ? 'Бесплатных круток: ' + freeRolls : 'Бесплатных круток нет — источники: вехи, контракты, Арена, Знамение';
+  /* v1.7.0: бесплатных круток нет — каждая крутка платит Душой */
+  const txt = '1 Душа = 1 крутка · Души: старт, смена Эпохи, каждые 5 этажей Арены, контракты';
   if (free.dataset.sig !== txt) { free.dataset.sig = txt; free.textContent = txt; }
   /* Примечание про применение изменений */
   const note = $('grimNote');
@@ -127,6 +132,7 @@ function renderGrimCollection() {
         if (!d) { toast('Сначала выберите или создайте колоду справа'); return; }
         if (d.race !== CARDS[id].faction) { toast('Эта колода расы «' + FACTION_INFO[d.race].name + '» — карты других рас в неё не входят'); return; }
         if (d.cards.length >= DECK_SIZE) { toast('В колоде уже ' + DECK_SIZE + ' карт — лимит'); return; }
+        if (deckUsedCount(d, id) >= DECK_STACK_MAX) { toast('Стак «' + CARDS[id].name + '» в колоде достиг максимума ×' + DECK_STACK_MAX); return; }
         if (deckUsedCount(d, id) >= collectionFree(id)) { toast('Свободных копий «' + CARDS[id].name + '» больше нет — сделайте Призыв'); return; }
         addToDeck(d, id);
         sfx('click');
@@ -215,23 +221,34 @@ function renderGrimDeckView() {
       (act ? '<span class="gdr-star" title="Выдаётся на старте забега этой расы">★ активная</span>'
            : '<button class="mini" id="grimSetActive">★ Сделать активной</button>') +
       '</div>' +
-      '<div class="grim-deckcards" id="grimDeckCards">';
+      '<div class="deck-list" id="grimDeckCards">';
     if (d.cards.length) {
+      /* v1.7.0: карты колоды — СПИСОК ПРЯМОУГОЛЬНЫХ БЛОКОВ:
+         слева спрайт, имя и редкость, справа стак ×N и
+         ФИОЛЕТОВАЯ СТРЕЛКА ▲ — поднять стак дубликатом из коллекции. */
       const counts = {};
       d.cards.forEach(id => counts[id] = (counts[id] || 0) + 1);
       html += Object.keys(counts).sort((a, b) => rarityRank(CARDS[b].rarity) - rarityRank(CARDS[a].rarity) || a.localeCompare(b)).map(id => {
         const card = CARDS[id];
-        return '<div class="coll-card star' + card.rarity + '" data-rm="' + id + '" style="--glow:' + rarityColor(card.rarity) + ';--cardBg:' + rarityBg(card.rarity) + '" title="' + card.name + ' — клик: убрать копию">' +
-          cardArtHTML(card, 'coll-art', 'coll-glyph') +
-          '<span class="count">×' + counts[id] + '</span></div>';
+        const n = counts[id];
+        const canStack = canStackInDeck(d, id);
+        return '<div class="deck-row star' + card.rarity + '" data-rm="' + id + '" style="--glow:' + rarityColor(card.rarity) + ';--cardBg:' + rarityBg(card.rarity) + '" title="' + card.name + ' — клик: убрать копию из колоды">' +
+          cardArtHTML(card, 'deck-art', 'deck-glyph') +
+          '<div class="deck-info"><span class="deck-name">' + card.name + ' <i>' + starsOf(card.rarity) + (card.isBuilding ? ' · постройка' : '') + '</i></span>' +
+          '<span class="deck-sub">' + FACTION_INFO[card.faction].name + (n >= DECK_STACK_MAX ? ' · стак полон ×' + n : '') + '</span></div>' +
+          (n > 1 ? '<span class="deck-count">×' + n + '</span>' : '<span class="deck-count dim">×1</span>') +
+          (canStack ? '<button class="deck-up" data-up="' + id + '" title="Застакать: +1 копия из коллекции (стак ×' + (n + 1) + ')">▲</button>' : '') +
+          '</div>';
       }).join('');
     } else {
-      html += '<div class="fighter-empty" style="grid-column:1/-1">Пусто. Кликайте карты коллекции слева — они лягут сюда.</div>';
+      html += '<div class="fighter-empty" style="grid-column:1/-1">Пусто. Кликайте карты коллекции слева — они лягут сюда списком.</div>';
     }
     html += '</div>' +
-      '<div class="grim-deckhint">' + (gameStarted
-        ? 'Состав применится со следующего забега этой расы.'
-        : 'На старте забега этой расы вся колода выдаётся в инвентарь целиком.') + '</div>';
+      '<div class="grim-deckhint">' +
+      '▲ — застакать карту дубликатом из коллекции (до ×' + DECK_STACK_MAX + '): на старте забега она встанет на грид ГОТОВОЙ стопкой ×N. ' +
+      'Клик по карте — убрать копию. ' + (gameStarted
+      ? 'Состав применится со следующего забега этой расы.'
+      : 'На старте забега этой расы вся колода выдаётся в инвентарь целиком.') + '</div>';
   } else {
     html += '<div class="fighter-empty">Выберите колоду выше или создайте новую.</div>';
   }
@@ -250,10 +267,23 @@ function renderGrimDeckView() {
   };
   if (d) el.querySelectorAll('[data-rm]').forEach(el2 => {
     const id = el2.dataset.rm;
-    el2.addEventListener('click', () => { removeFromDeck(d, id); renderGrimuar(); });
+    el2.addEventListener('click', e => {
+      if (e.target.closest('.deck-up')) return; /* стрелка — свой обработчик */
+      removeFromDeck(d, id); renderGrimuar();
+    });
     el2.addEventListener('mouseenter', e => showCardTooltip(e, CARDS[id], CARDS[id].baseRate));
     el2.addEventListener('mousemove', moveTooltip);
     el2.addEventListener('mouseleave', hideTooltip);
+  });
+  if (d) el.querySelectorAll('[data-up]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const id = btn.dataset.up;
+      if (!canStackInDeck(d, id)) return;
+      if (!addToDeck(d, id)) { toast('Копий «' + CARDS[id].name + '» больше нет — сделайте Призыв'); return; }
+      sfx('place');
+      renderGrimuar();
+    });
   });
 }
 
@@ -272,11 +302,11 @@ function renderGrimGacha() {
     '<span class="gg-title">ПРИЗЫВ</span>' +
     '<select id="grimRace">' + races.map(f => '<option value="' + f + '"' + (f === gachaRace ? ' selected' : '') + '>' + FACTION_INFO[f].name + '</option>').join('') + '</select>' +
     '<span class="gg-pity" title="Гарантия не сбрасывается никогда (вечная)">' + pity + '</span>' +
-    (freeRolls > 0 ? '<span class="gg-free">бесплатных: ' + freeRolls + '</span>' : '') +
+    '<span class="gg-free">1 Душа = 1 крутка · бесплатных круток нет</span>' +
     '</div>' +
     '<div class="gg-btns">' +
-    '<button class="roll-btn' + (freeRolls > 0 ? ' free-roll' : '') + '" id="grimRoll1">Крутка ×1<span class="cost">' + (freeRolls > 0 ? 'бесплатно' : '1 Душа') + '</span></button>' +
-    '<button class="roll-btn" id="grimRoll10">Крутка ×10<span class="cost">' + Math.max(0, 10 - freeRolls) + ' Душ</span></button>' +
+    '<button class="roll-btn" id="grimRoll1">Крутка ×1<span class="cost">1 Душа</span></button>' +
+    '<button class="roll-btn" id="grimRoll10">Крутка ×10<span class="cost">10 Душ</span></button>' +
     '</div>';
   $('grimRace').onchange = e => { gachaRace = e.target.value; saveMeta(); renderGrimGacha(); };
   $('grimRoll1').onclick = () => grimDoRolls(1);
@@ -287,23 +317,15 @@ function renderGrimGacha() {
 function refreshGrimRollButtons() {
   const b1 = $('grimRoll1'), b10 = $('grimRoll10');
   if (!b1 || !b10) return;
-  const cost10 = Math.max(0, 10 - freeRolls);
-  b1.disabled = freeRolls <= 0 && souls < GRIM_ROLL_COST;
-  b10.disabled = freeRolls <= 0 && souls < cost10;
-  const c10 = b10.querySelector('.cost');
-  c10.textContent = freeRolls >= 10 ? 'бесплатно' : cost10 + ' Душ';
-  b10.classList.toggle('free-roll', freeRolls >= 10);
-  b1.classList.toggle('free-roll', freeRolls > 0);
-  if (b1.disabled !== undefined) {
-    b1.querySelector('.cost').textContent = freeRolls > 0 ? 'бесплатно' : '1 Душа';
-  }
+  /* v1.7.0: бесплатных круток нет — только Души */
+  b1.disabled = souls < GRIM_ROLL_COST;
+  b10.disabled = souls < 10 * GRIM_ROLL_COST;
 }
 
 function grimDoRolls(count) {
   const res = performGrimRolls(count);
-  if (!res) { toast(SOUL_IMG + ' Не хватает Душ: 1 Душа = 1 крутка. Источники: смена Эпохи, каждые 5 этажей Арены, контракты'); return; }
+  if (!res) { toast(SOUL_IMG + ' Не хватает Душ: 1 Душа = 1 крутка. Источники: старт 30, смена Эпохи, каждые 5 этажей Арены, контракты'); return; }
   sfx('roll');
-  if (res.free > 0) toast('🏅 Бесплатные крутки: ×' + res.free + (res.paid ? ' + за Души: ×' + res.paid : ''));
   grimShowResults(res);
   renderGrimuar();
   if (gameStarted && typeof checkContracts === 'function') checkContracts();
@@ -311,7 +333,7 @@ function grimDoRolls(count) {
 }
 
 /* ---------------- Окно результатов Призыва ----------------
- Карты уже в коллекции, реликвии — в схроне. Группировка + шоу редкостей.*/
+   Карты уже в коллекции, реликвии — в схроне. Группировка + шоу редкостей. */
 function grimShowResults(res) {
   const cards = res.cards || [], relics = res.relics || [];
   mk('grimRollModal',
@@ -343,8 +365,7 @@ function grimShowResults(res) {
       '<span class="mr-name">' + r.name + ' <i>' + '★'.repeat(r.rarity) + ' РЕЛИКВИЯ → схрон</i></span><span class="mr-count">×1</span></div>';
   }).join('');
   $('grReveal').innerHTML = (rows || '') + relRows;
-  $('grTitle').textContent = 'Призыв: ' + (cards.length + relics.length) + ' карт' +
-    (res.free ? ' · бесплатных ×' + res.free : '') + (res.paid ? ' · за Души ×' + res.paid : '');
+  $('grTitle').textContent = 'Призыв: ' + (cards.length + relics.length) + ' карт · за Души ×' + res.paid;
   if (cards.length + relics.length === 1 && cards.length === 1) {
     const c = CARDS[cards[0]];
     $('grTitle').textContent = c.name + ' · ' + starsOf(c.rarity) + ' · ' + FACTION_INFO[c.faction].name;

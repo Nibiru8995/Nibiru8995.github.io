@@ -1,24 +1,25 @@
 'use strict';
-/*
-ЛОГИКА: ВЕХИ ЗАБЕГА (logic/milestones.js)
-Долгий фарм разбит на микрошаги: 25% / 50% / 75% / 90% порога
-Эпохи дают награду — пачку бесплатных круток или временный ×2.
-Счётчик вех (milestoneIdx) и бесплатные крутки (freeRolls)
-живут в сохранении забега и сбрасываются при переходе Эпохи.
- ============================================================*/
+/* ============================================================
+   ЛОГИКА: ВЕХИ ЗАБЕГА (logic/milestones.js) — v1.7.0 «Плата Душами»
+   Долгий фарм разбит на микрошаги: 25% / 50% / 75% / 90% порога
+   Эпохи дают ВРЕМЕННОЕ УСКОРЕНИЕ дохода.
+   v1.7.0: бесплатные крутки убраны СОВСЕМ — награды «roll» сняты,
+   все четыре вехи платят ускорением. Печать Жадности перепрофилирована:
+   «+30 сек к ускорениям вех за уровень» (MIL_BOOST_DUR).
+   Счётчик вех (milestoneIdx) живёт в сохранении забега и сбрасывается
+   при переходе Эпохи.
+   ============================================================ */
 
 const MIL_FRACS = [0.25, 0.5, 0.75, 0.9];
-const MIL_REWARDS = ['roll', 'boost', 'roll', 'boost'];
-/* Печать Жадности перепрофилирована (цены круток больше нет
- Призыв идёт за Души): «+2 бесплатные крутки с вех за уровень».*/
-const MIL_ROLLS = () => 10 + 2 * sealLv.greed; /* круток за веху «roll» */
+const MIL_REWARDS = ['boost', 'boost', 'boost', 'boost'];
+/* Длительность ускорения вехи: базово 120с, Печать Жадности +30с/ур */
+const MIL_BOOST_DUR = () => 120 + 30 * sealLv.greed;
 
 function milNext() {
   return milestoneIdx < MIL_FRACS.length ? { pct: MIL_FRACS[milestoneIdx], kind: MIL_REWARDS[milestoneIdx] } : null;
 }
 function milLabel(kind) {
-  if (kind === 'roll') return '+' + MIL_ROLLS() + ' бесплатных круток (тратятся в Гримуаре)';
-  return 'доход ×2 на 2 минуты';
+  return 'доход ×2 на ' + Math.round(MIL_BOOST_DUR() / 60 * 10) / 10 + ' мин';
 }
 
 function checkMilestones() {
@@ -27,14 +28,12 @@ function checkMilestones() {
   let got = false;
   while (milestoneIdx < MIL_FRACS.length && runEarned >= thr * MIL_FRACS[milestoneIdx]) {
     const kind = MIL_REWARDS[milestoneIdx], pct = MIL_FRACS[milestoneIdx];
-    if (kind === 'roll') {
-      freeRolls += MIL_ROLLS();
-      stats.freeRolls = (stats.freeRolls || 0) + MIL_ROLLS(); saveMeta();
-      toast('🏅 <b>Веха ' + (pct * 100) + '%:</b> +' + MIL_ROLLS() + ' БЕСПЛАТНЫХ круток! Тратьте в Гримуаре (Меню → Гримуар)', 'milestone', 4);
-    } else {
-      altBuff = { mult: 2, until: gameTime + 120, label: '🏅 ВЕХА ×2' }; /* 120 игровых секунд */
-      toast('🏅 <b>Веха ' + (pct * 100) + '%:</b> весь доход ×2 на две минуты!');
+    const dur = MIL_BOOST_DUR();
+    /* Веха — ускорение: перекрываем только если новый бафф сильнее/дольше */
+    if (!altBuff.label || altBuff.until <= gameTime || altBuff.mult <= 2) {
+      altBuff = { mult: 2, until: gameTime + dur, label: '🏅 ВЕХА ×2' };
     }
+    toast('🏅 <b>Веха ' + (pct * 100) + '%:</b> весь доход ×2 на ' + Math.round(dur / 60 * 10) / 10 + ' мин!');
     sfx('milestone');
     const btn = $('epochUpBtn');
     if (btn && btn.getBoundingClientRect) {
