@@ -7,7 +7,7 @@
    ============================================================ */
 
 /* ---------------- Хаб ---------------- */
-mk('hub', '<h2>🎰 Казино</h2><div class="hubg"><button data-g="slots">🎰<br>Слоты</button><button data-g="aviator">✈<br>Авиатор</button><button data-g="roulette">🎡<br>Рулетка</button><button data-g="blackjack">🂡<br>Блэкджек</button></div><button class="btn btn-take" style="align-self:center" id="hubX">Закрыть</button>');
+mk('hub', '<h2>🎰 Казино</h2><div class="hubg"><button data-g="slots">🎰<br>Слоты</button><button data-g="aviator">🦅<br>Авиатор</button><button data-g="roulette">🎡<br>Рулетка</button><button data-g="blackjack">🂡<br>Блэкджек</button></div><button class="btn btn-take" style="align-self:center" id="hubX">Закрыть</button>');
 mk('cgModal', '<div id="cgBody"></div><button class="btn btn-take" id="cgClose" style="align-self:center">Назад</button>');
 
 function openCasino() {
@@ -129,14 +129,20 @@ function slotsSpin() {
   requestAnimationFrame(spinFrame);
 }
 
-/* ---------------- Авиатор ---------------- */
+/* ---------------- Авиатор (v1.5.15 — ПАДАЛЬЩИК вместо самолёта) ---------------- */
 let av = null, avH = [];
+let scavImg = null;
+function avSprite() {
+  if (!scavImg) { scavImg = new Image(); scavImg.src = 'assets/casino/scav_silhouette.png' + ASSET_VER_Q; }
+  return (scavImg.complete && scavImg.naturalWidth) ? scavImg : null;
+}
 function gAviator() {
-  $('cgBody').innerHTML = '<h2>✈ Авиатор</h2><canvas id="avC" width="520" height="220"></canvas><div id="avM">1.00×</div>' +
+  $('cgBody').className = 'g-av';
+  $('cgBody').innerHTML = '<h2>🦅 Авиатор</h2><canvas id="avC" width="520" height="220"></canvas><div id="avM">1.00×</div>' +
     betUI('avBet', MIN_BET) +
     '<div class="bet">Авто-вывод на: <input type="number" id="avAuto" value="2" step="0.1" min="1.1" style="width:70px"> ×</div>' +
     '<div class="btn-row"><button class="btn btn-take" id="avGo">СТАРТ</button></div><div id="avH" class="hist"></div>' +
-    '<div id="avR" class="res">Заберите выигрыш до того, как самолёт улетит!</div>';
+    '<div id="avR" class="res">Заберите выигрыш, пока ПАДАЛЬЩИК не улетел с добычей!</div>';
   $('avGo').onclick = avClick; avDraw(1, 0); avHist();
 }
 function avHist() {
@@ -153,7 +159,16 @@ function avDraw(m, t, boom) {
   c.beginPath();
   for (let s = 0; s <= t; s += t / 60 || 1) { const v = Math.exp(.1 * s); c.lineTo(X(s), Y(v)); }
   c.lineTo(X(t), Y(m)); c.stroke();
-  c.font = '26px serif'; c.fillText(boom ? '💥' : '✈', X(t) - 10, Y(m) - 6);
+  /* v1.5.15: вместо ✈ — силуэт ПАДАЛЬЩИКА (спрайт с лёгким покачиванием) */
+  const sp = boom ? null : avSprite();
+  if (sp) {
+    const bob = Math.sin(t * 6) * 2;
+    c.save(); c.translate(X(t), Y(m) - 8 + bob);
+    c.drawImage(sp, -16, -13, 32, 24);
+    c.restore();
+  } else {
+    c.font = '26px serif'; c.fillText(boom ? '💥' : '🦅', X(t) - 10, Y(m) - 6);
+  }
 }
 function avClick() {
   if (av && av.on) return avCash();
@@ -172,7 +187,7 @@ function avEnd(win, m) {
   if (win) stats.casinoBest = Math.max(stats.casinoBest, m);
   updateHUD(); avH.push(av.crash); avHist();
   $('avGo').textContent = 'СТАРТ';
-  $('avR').textContent = win ? '✔ Забрали на ' + m.toFixed(2) + '× → +' + fmt(net) + ' 💎 (самолёт улетел бы на ' + av.crash.toFixed(2) + '×)'
+  $('avR').textContent = win ? '✔ Забрали на ' + m.toFixed(2) + '× → +' + fmt(net) + ' 💎 (падальщик улетел бы на ' + av.crash.toFixed(2) + '×)'
     : '💥 Улетел на ' + av.crash.toFixed(2) + '× — ставка потеряна';
   $('avR').className = 'res ' + (win ? 'w' : 'l');
   checkAchievements();
@@ -191,28 +206,60 @@ function avTick(now) {
   requestAnimationFrame(avTick);
 }
 
-/* ---------------- Рулетка ---------------- */
+/* ---------------- Рулетка (v1.5.15 «Таверна Тьмы») ----------------
+   Колесо рисуется на CANVAS: 37 секторов с ЦИФРАМИ, костяной обод
+   с заклёпками, тёмная нежить-палитра. МЕТКА (указатель) — СТАТИЧНЫЙ
+   элемент над колесом, НЕ крутится вместе с ним; выпавшее число
+   появляется в неподвижной ступице. Фон экрана — сгенерированная
+   таверна; иконки ставок — капля крови / череп (спрайты). */
 let rb = {}, chip = ROULETTE_CHIPS[0], rrot = 0;
 const rcol = n => n === 0 ? '#0a7a2a' : ROULETTE_RED.has(n) ? '#b01818' : '#1a1a1a';
+const ICON_RED = '<img class="rico" src="assets/casino/icon_red.png' + ASSET_VER_Q + '" alt="красное">';
+const ICON_BLACK = '<img class="rico" src="assets/casino/icon_black.png' + ASSET_VER_Q + '" alt="чёрное">';
 function gRoulette() {
   rb = {};
-  const seg = 360 / 37;
-  const grad = ROULETTE_WHEEL.map((n, i) => rcol(n) + ' ' + i * seg + 'deg ' + (i + 1) * seg + 'deg').join(',');
   let g = '<div class="rg"><div data-k="n:0" style="grid-row:span 3;background:#0a7a2a">0</div>';
   for (let c = 0; c < 12; c++) for (let r = 0; r < 3; r++) {
     const n = c * 3 + (3 - r);
     g += '<div data-k="n:' + n + '" style="background:' + rcol(n) + '">' + n + '</div>';
   }
   g += '<div data-k="c3">2:1</div><div data-k="c2">2:1</div><div data-k="c1">2:1</div></div><div class="ro">' +
-    [['d1', '1-12'], ['d2', '13-24'], ['d3', '25-36'], ['low', '1-18'], ['even', 'Чёт'], ['red', '🔴'], ['black', '⚫'], ['odd', 'Нечёт'], ['high', '19-36']]
+    [['d1', '1-12'], ['d2', '13-24'], ['d3', '25-36'], ['low', '1-18'], ['even', 'Чёт'], ['red', ICON_RED], ['black', ICON_BLACK], ['odd', 'Нечёт'], ['high', '19-36']]
       .map(([k, t]) => '<div data-k="' + k + '">' + t + '</div>').join('') + '</div>';
-  $('cgBody').innerHTML = '<h2>🎡 Рулетка</h2><div id="rw" style="background:conic-gradient(' + grad + ')"><b id="rn">?</b></div>' +
+  $('cgBody').className = 'g-roulette';
+  $('cgBody').innerHTML = '<h2>🎡 Рулетка Таверны</h2>' +
+    '<div class="rw-wrap"><canvas id="rwC" width="280" height="280"></canvas><div class="rw-ptr"></div><b id="rn">?</b></div>' +
     '<div class="chips">' + ROULETTE_CHIPS.map(v => '<button class="mini ' + (v === chip ? 'on' : '') + '" data-chip="' + v + '">' + fmtShort(v) + '</button>').join('') +
     ' <button class="mini" id="rClr">Очистить</button></div>' + g +
     '<div class="res" id="rR">Выберите фишку и кликайте по полю. Число 35:1, цвет/чёт/диапазон 1:1, дюжины и колонки 2:1.</div>' +
     '<div class="btn-row"><button class="btn btn-take" id="rGo">КРУТИТЬ</button></div>';
   $('rGo').onclick = rSpin;
   $('rClr').onclick = () => { if (busy) return; rb = {}; rMark(); };
+  drawRouletteWheel();
+}
+/* Колесо на канве: секторы + ЦИФРЫ + костяной обод с заклёпками.
+   Рисуется ОДИН раз — вращение через CSS transform (дёшево для перфа). */
+function drawRouletteWheel() {
+  const cv = $('rwC'); if (!cv) return;
+  const c = cv.getContext('2d'), W = cv.width, R = W / 2, seg = Math.PI * 2 / 37;
+  c.clearRect(0, 0, W, W);
+  c.beginPath(); c.arc(R, R, R - 1, 0, 7); c.fillStyle = '#241f14'; c.fill();
+  for (let i = 0; i < 24; i++) { const a = i / 24 * Math.PI * 2;
+    c.beginPath(); c.arc(R + Math.cos(a) * (R - 9), R + Math.sin(a) * (R - 9), 2.6, 0, 7);
+    c.fillStyle = '#c9bb96'; c.fill(); }
+  for (let i = 0; i < 37; i++) {
+    const n = ROULETTE_WHEEL[i], a0 = i * seg - Math.PI / 2, a1 = a0 + seg;
+    c.beginPath(); c.moveTo(R, R); c.arc(R, R, R - 15, a0, a1); c.closePath();
+    c.fillStyle = n === 0 ? '#0f5a26' : ROULETTE_RED.has(n) ? '#7e1616' : '#17171c'; c.fill();
+    c.strokeStyle = '#0b0b0e'; c.lineWidth = 1; c.stroke();
+    const am = (a0 + a1) / 2;
+    c.save(); c.translate(R + Math.cos(am) * (R - 28), R + Math.sin(am) * (R - 28)); c.rotate(am + Math.PI / 2);
+    c.fillStyle = '#e8dcc8'; c.font = 'bold 12px Philosopher, Alegreya, serif';
+    c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(String(n), 0, 0); c.restore();
+  }
+  c.beginPath(); c.arc(R, R, 36, 0, 7); c.fillStyle = '#17130d'; c.fill();
+  c.lineWidth = 3; c.strokeStyle = '#c9bb96'; c.stroke();
+  c.beginPath(); c.arc(R, R, 28, 0, 7); c.strokeStyle = 'rgba(120,60,170,.45)'; c.lineWidth = 2; c.stroke();
 }
 function rMark() {
   qsa('#cgBody [data-k]').forEach(e => {
@@ -221,13 +268,16 @@ function rMark() {
   });
 }
 function rouletteBoardClick(e) {
-  const ch = e.target.dataset.chip;
-  if (ch) {
-    chip = +ch;
-    qsa('[data-chip]').forEach(b => b.classList.toggle('on', b === e.target));
+  /* v1.5.15: внутри ячеек теперь спрайты-иконки — таргет может быть <img>,
+     берём БЛИЖАЙШУЮ ячейку [data-chip]/[data-k], а не сам e.target */
+  const chipEl = e.target.closest('[data-chip]');
+  if (chipEl) {
+    chip = +chipEl.dataset.chip;
+    qsa('[data-chip]').forEach(b => b.classList.toggle('on', b === chipEl));
     return;
   }
-  const k = e.target.dataset.k;
+  const cell = e.target.closest('[data-k]');
+  const k = cell ? cell.dataset.k : null;
   if (!k || busy) return;
   const tot = Object.values(rb).reduce((a, b) => a + b, 0);
   if (tot + chip > crystals) return toast('Не хватает 💎');
@@ -243,7 +293,9 @@ function rSpin() {
   crystals -= tot; updateHUD(); busy = 1;
   const n = Math.floor(Math.random() * 37), k = ROULETTE_WHEEL.indexOf(n), seg = 360 / 37;
   rrot = (Math.floor(rrot / 360) + 7) * 360 - (k + .5) * seg;
-  $('rw').style.transform = 'rotate(' + rrot + 'deg)';
+  /* v1.5.15: крутится ТОЛЬКО колесо (канва); метка и ступица с числом — статичны */
+  $('rwC').style.transform = 'rotate(' + rrot + 'deg)';
+  $('rn').textContent = '?';
   $('rR').textContent = 'Шарик катится…';
   setTimeout(() => {
     let pay = 0;
@@ -260,12 +312,18 @@ function rSpin() {
   }, 4300);
 }
 
-/* ---------------- БЛЭКДЖЕК (v1.3.0 — вместо покера) ----------------
+/* ---------------- БЛЭКДЖЕК (v1.3.0; v1.5.15 — КАРТЫ-СПРАЙТЫ) ----------------
    Стол 1 на 1, шуе из 4 колод. Блэкджек платит 3:2, дилер добирает до 17.
    Кнопки: ЕЩЁ / ХВАТИТ / УДВОИТЬ (только первый ход) / НОВАЯ РАЗДАЧА.
+   v1.5.15: карты — СПРАЙТЫ assets/casino/bj_<ранг>_<масть>.png — карточные
+   аналоги карт игры: ВАЛЕТ = Псалмопевец, ДАМА = Плакальщик,
+   КОРОЛЬ = Владыка Тлена, ТУЗ = Лич (AI-арт в костяной рамке);
+   числовые — классическая раскладка мастей. СПРАЙТЫ ГРИДА НЕ ТРОНУТЫ.
    Математика — logic/casino_logic.js (bjShoe/bjHandVal...). */
 let bj = null, bjLast = '';
-function gBlackjack() { $('cgBody').innerHTML = '<h2>🂡 Блэкджек</h2><div id="bjT"></div>'; bjIdle(); }
+const bjImg = c => '<img class="bjc" src="assets/casino/bj_' + (c % 13) + '_' + ((c / 13 | 0) % 4) + '.png' + ASSET_VER_Q + '" alt="' + BJ_RANKS[c % 13] + BJ_SUITS[(c / 13 | 0) % 4] + '">';
+const BJ_BACK = '<img class="bjc back" src="assets/casino/bj_back.png' + ASSET_VER_Q + '" alt="?">';
+function gBlackjack() { $('cgBody').className = 'g-bj'; $('cgBody').innerHTML = '<h2>🂡 Блэкджек Тьмы</h2><div id="bjT"></div>'; bjIdle(); }
 function bjIdle() {
   $('bjT').innerHTML = '<div class="res">Стол 1 на 1 против дилера. Цель — набрать ближе к 21, не перебрав. ' +
     'Блэкджек (21 с двух карт) платит 3:2, ничья возвращает ставку, перебор проигрывает сразу. ' +
@@ -273,7 +331,7 @@ function bjIdle() {
     betUI('bjBet', MIN_BET) + '<div class="btn-row"><button class="btn btn-take" data-p="deal">РАЗДАТЬ</button></div>' +
     '<div class="res">' + bjLast + '</div>';
 }
-function bjMoney(c) { return '<span class="pc ' + (bjRed(c) ? 'r' : '') + '">' + bjCard(c) + '</span>'; }
+function bjMoney(c) { return '<span class="pcw">' + bjImg(c) + '</span>'; }
 function bjScore(hand) {
   const v = bjHandVal(hand);
   return '<b style="color:' + (v > 21 ? '#ff8080' : v === 21 ? '#ffd34d' : '#e8dcc8') + '">' + v + '</b>';
@@ -282,7 +340,7 @@ function bjRender(showDealer, note) {
   const dh = bj.dHand, ph = bj.pHand;
   const hideHole = !showDealer && dh.length;
   const dTxt = hideHole
-    ? bjMoney(dh[0]) + '<span class="pc back">?</span>'
+    ? bjMoney(dh[0]) + BJ_BACK
     : dh.map(bjMoney).join(' ');
   const dVal = hideHole ? bjRankVal(dh[0]) : bjHandVal(dh);
   $('bjT').innerHTML =

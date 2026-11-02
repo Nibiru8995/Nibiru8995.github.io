@@ -202,7 +202,7 @@ function renderChronicles() {
 }
 
 /* ---------------- Статистика (внутри Достижений, пункт 5 ТЗ) ---------------- */
-const GAME_NAMES = { slots: '🎰 Слоты', aviator: '✈ Авиатор', roulette: '🎡 Рулетка', blackjack: '🂡 Блэкджек' };
+const GAME_NAMES = { slots: '🎰 Слоты', aviator: '🦅 Авиатор', roulette: '🎡 Рулетка', blackjack: '🂡 Блэкджек' };
 function renderStats() {
   const box = $('statsBox');
   if (!box) return;

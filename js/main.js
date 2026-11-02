@@ -323,6 +323,7 @@ function wireEvents() {
     close_('hub');
     if (g.dataset.g === 'slots') return openSlots();
     open_('cgModal');
+    $('cgBody').className = ''; /* v1.5.15: фон-класс предыдущей игры сбрасывается */
     ({ aviator: gAviator, roulette: gRoulette, blackjack: gBlackjack })[g.dataset.g]();
   });
   $('cgClose').onclick = () => { if (busy) return toast('Сначала завершите раунд'); close_('cgModal'); open_('hub'); };
@@ -333,7 +334,8 @@ function wireEvents() {
   $('betReset').addEventListener('click', () => { if (casinoSpinning) return; casinoBet = MIN_BET; updateCasinoUI(); });
   $('slotLeverBtn').addEventListener('click', slotsSpin);
   $('cgBody').addEventListener('click', e => {
-    if (e.target.dataset.chip || e.target.dataset.k) rouletteBoardClick(e);
+    /* v1.5.15: ячейки рулетки содержат спрайты-иконки — ищем [data-k]/[data-chip] через closest */
+    if (e.target.closest && e.target.closest('[data-chip],[data-k]')) rouletteBoardClick(e);
     const a = e.target.dataset.p;
     if (a) bjAct(a);
   });
