@@ -489,10 +489,16 @@ body { font-family: 'Alegreya', 'Georgia', 'Times New Roman', serif; }
 #cgBody.g-roulette { background: linear-gradient(rgba(12,11,16,.88), rgba(12,11,16,.94)), url('../assets/casino/tavern.jpg') center/cover no-repeat; border-radius: 10px; padding: 10px 12px; }
 #cgBody.g-bj, #cgBody.g-av { background: radial-gradient(ellipse at 50% 0%, rgba(30,26,38,.55), rgba(10,10,14,.92)), url('../assets/casino/tavern.jpg') center/cover no-repeat; background-color: #0d0c11; border-radius: 10px; padding: 10px 12px; }
 img.rico { width: 18px; height: 18px; vertical-align: -4px; image-rendering: pixelated; }
-/* карты блэкджека — спрайты-аналоги карт игры */
+/* карты блэкджека — колода «Кровь и Кости» (v1.5.16, 150×210 → 64×90):
+   гладкий скейл (pixelated убит — мылил AI-арт), веер на руках,
+   pop-анимация сдачи последней карты, подъём под курсором */
 .pcw { display: inline-block; }
-#bjT img.bjc { width: 54px; height: 76px; border-radius: 6px; margin: 3px 3px; vertical-align: middle; box-shadow: 0 3px 8px #000b, 0 0 0 1px #4a4232; image-rendering: pixelated; }
-#bjT img.bjc.back { opacity: .95; box-shadow: 0 3px 8px #000b, 0 0 0 1px #6a5f45; }
+#bjT img.bjc { width: 64px; height: 90px; border-radius: 7px; margin: 4px 2px; vertical-align: middle; box-shadow: 0 4px 10px #000c, 0 0 0 1px #4a4232; transition: transform .15s ease; -webkit-user-drag: none; }
+#bjT img.bjc:hover { transform: translateY(-4px); }
+#bjT .pcw + .pcw { margin-left: -30px; }
+@keyframes bjPop { from { transform: translateY(-18px) scale(.78) rotate(-5deg); opacity: 0; } 60% { opacity: 1; } to { transform: none; } }
+#bjT .pcw:last-of-type .bjc { animation: bjPop .32s cubic-bezier(.2,.75,.3,1.15); }
+#bjT img.bjc.back { opacity: .96; box-shadow: 0 4px 10px #000c, 0 0 0 1px #6a5f45; }
 .rg { display: grid; grid-template-rows: repeat(3, 32px); grid-auto-flow: column; grid-auto-columns: minmax(24px,1fr); gap: 2px; }
 .ro { display: grid; grid-template-columns: repeat(9, 1fr); gap: 2px; margin-top: 3px; }
 .rg > div, .ro > div { display: flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; border: 1px solid #ffffff33; cursor: pointer; position: relative; min-height: 28px; background: #17251a; }

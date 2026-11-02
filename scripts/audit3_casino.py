@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # ИТЕРАЦИЯ 3: проверка казино — рулетка (канва, метка, цифры), карты блэкджека, падальщик, фон.
-import subprocess, time, sys
+import subprocess, time, sys, os
 from playwright.sync_api import sync_playwright
 
-REPO = '/home/z/my-project/game-repo'
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 srv = subprocess.Popen([sys.executable, '-m', 'http.server', '8091', '-d', REPO],
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 time.sleep(1.0)
@@ -61,7 +61,12 @@ with sync_playwright() as p:
     # ---------- БЛЭКДЖЕК ----------
     if not pg.evaluate("!!document.querySelector('#hub.show')"): pg.click('#casinoBtn'); time.sleep(0.4)
     pg.click('#hub [data-g="blackjack"]'); time.sleep(0.6)
-    pg.click('#cgBody [data-p="deal"]'); time.sleep(0.6)
+    # v1.5.16: раздача иногда даёт мгновенный блэкджек (≈9%) — тогда карта
+    # дилера сразу открыта и рубашки нет; крутим раздачу до обычного хода
+    for _ in range(6):
+        pg.click('#cgBody [data-p="deal"]'); time.sleep(0.4)
+        if pg.evaluate("bj && bj.phase") == 'play': break
+        pg.click('#cgBody [data-p="again"]'); time.sleep(0.2)
     imgs = pg.evaluate("[...document.querySelectorAll('#bjT img.bjc')].map(i => ({ ok: i.complete && i.naturalWidth > 0, src: i.src.split('/').pop() }))")
     note(len(imgs) >= 3 and all(i['ok'] for i in imgs), f'R9: карты-спрайты загружены ({[i["src"] for i in imgs[:5]]})')
     has_back = pg.evaluate("[...document.querySelectorAll('#bjT img.bjc.back')].length === 1")
@@ -81,6 +86,11 @@ with sync_playwright() as p:
     pg.click('#hub [data-g="aviator"]'); time.sleep(0.8)
     pg.fill('#avBet', '1000')
     pg.click('#avGo'); time.sleep(1.0)
+    # v1.5.16: если краш уже случился (рандом < 1.11) — перезапускаем раунд;
+    # для детерминированного забора поднимаем краш заведомо выше текущего множителя
+    if not pg.evaluate("av && av.on"):
+        pg.click('#avGo'); time.sleep(0.8)
+    pg.evaluate("() => { if (av && av.on) av.crash = 99; }")
     sp = pg.evaluate("""() => { const cv = document.querySelector('#avC'); const d = cv.getContext('2d').getImageData(0,0,520,220).data;
       // ищем силуэт: тёмно-серые пиксели (46,44,54)±25 в правой половине
       let n = 0;
