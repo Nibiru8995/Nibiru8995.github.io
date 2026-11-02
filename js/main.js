@@ -79,34 +79,92 @@ const TUT = [
   /* --- АКТ 1: ГРИМУАР (колода: создать, наполнить, стак, крутка) --- */
   { t: '<b>Гримуар.</b> Жмите «Гримуар» в меню.', hl: '#menuGrim', ok: () => tutOpen('grimModal') },
   { t: '<b>Своя колода.</b> В правой панели — форма новой колоды: раса (нежить), имя «Учебная», кнопка «＋ Создать».', hl: '.grim-newdeck', pre: () => { tutB.decks = decks.length; const cd = deckById(grimSelDeckId); tutDeckId = (cd && cd.race === 'undead') ? cd.id : (((activeDeckFor('undead') || decks[0]) || {}).id || null); }, ok: () => decks.length > tutB.decks },
-  { t: '<b>Наполнение.</b> Клик по карте коллекции слева добавляет её в выбранную колоду (новый блок; дубликаты разрешены). Добавьте хотя бы одну карту.', pre: () => { const d = tutActiveDeck(); tutB.t = d ? deckTotal(d) : 0; }, ok: () => { const d = tutActiveDeck(); return !!(d && deckTotal(d) > tutB.t); } },
+  { t: '<b>Наполнение.</b> Клик по карте коллекции добавляет её копию в выбранную колоду (новый блок; дубликаты разрешены). Добавьте хотя бы одну карту.', pre: () => { const d = tutActiveDeck(); tutB.t = d ? deckTotal(d) : 0; }, hl: '#grimCards', ok: () => { const d = tutActiveDeck(); return !!(d && deckTotal(d) > tutB.t); } },
   { t: '<b>Стак блока.</b> Фиолетовая стрелка ▲ у блока колоды поднимает ЕГО на +1 копию из коллекции (до ×5) — на старте забега такая карта встанет сразу стопкой ×N. Мы добавили Скелетов в коллекцию: жмите ▲.', pre: () => { if (collectionFree('u0') - (deckUsedCount(tutActiveDeck() || { cards: [] }, 'u0') || 0) < 1) collectionAdd('u0', 2); const d = tutActiveDeck(); if (d && !deckUsedCount(d, 'u0')) addToDeck(d, 'u0'); tutB.st = tutStackCount(); renderGrimuar(); }, hl: '.deck-up', ok: () => tutStackCount() > tutB.st },
   { t: '<b>Призыв.</b> Крутки стоят Души (1 Душа = 1 крутка) — тут, внизу. Мы добавили вам учебных Душ: сделайте крутку ×1 — карты падают в вечную коллекцию.', pre: () => { souls += 12; tutB.rolls = stats.rolls || 0; renderGrimuar(); }, hl: '#grimRoll1', ok: () => (stats.rolls || 0) > tutB.rolls },
 
   /* --- АКТ 2: УЛУЧШЕНИЯ (один бонус за счёт обучения) --- */
-  { t: '<b>Улучшения.</b> Закройте Гримуар (✕) и откройте «Улучшения» в меню — мастерская мета-прогресса за Души.', hl: '#menuUpgrades', ok: () => tutOpen('upgModal') },
+  { t: '<b>Улучшения.</b> Откройте «Улучшения» в меню — Гримуар закроется сам. Мастерская мета-прогресса: всё за Души.', hl: '#menuUpgrades', ok: () => tutOpen('upgModal') },
   { t: '<b>Бесплатный бонус.</b> Учебный капитал уже на счету: выберите ОДИН бонус в разделе «Бонусы» — «Импульс» (стартовый капитал) или «Изобилие» (доход) — любой по вкусу.', pre: () => { souls = Math.max(souls, 9); tutB.upg = Object.values(upgLv).reduce((a, b) => a + (b | 0), 0); if (tutOpen('upgModal')) renderUpgrades(); }, hl: '.ups', ok: () => Object.values(upgLv).reduce((a, b) => a + (b | 0), 0) > tutB.upg },
-  { t: '<b>Старт забега.</b> Закройте Улучшения и жмите «Продолжить» — учебный забег получит вашу колоду целиком (со стаками).', hl: () => tutOpen('upgModal') ? '#upgX' : '#menuContinue', ok: () => !tutOpen('upgModal') && !tutOpen('menu') },
+  { t: '<b>Старт забега.</b> Жмите «Продолжить» — окно Улучшений закроется само, учебный забег получит вашу колоду целиком (со стаками).', hl: '#menuContinue', ok: () => !tutOpen('menu') },
 
   /* --- АКТ 3: АЛТАРЬ (карта, здание, стак, звено) --- */
-  { t: '<b>Алтарь.</b> Клик по карте в коллекции слева — она «в руке»; клик по свободной клетке Алтаря ставит её. Каждая карта приносит ТЭ/сек.', pre: () => { tutStartRun(); }, hl: () => collSel(Object.keys(inventory)[0]), ok: () => placingMode },
-  { t: '<b>Ставим.</b> Клик по свободной клетке Алтаря.', hl: '#grid', ok: () => cardsOnGrid() > 0 },
-  { t: '<b>Здание!</b> «Кладбище» — постройка: сама раз в 12с поднимает бесплатную нежить и усиливает соседей. Поставьте рядом с картами.', pre: () => { if (!inventory.bl_grave) TUT_GIVE([['bl_grave', 1]]); }, hl: () => collSel('bl_grave'), ok: () => gridHas('bl_grave') },
-  { t: '<b>Стак с колоды.</b> Запись со стаком ×N встанет на грид сразу стопкой ×N — двойной/тройной доход клетки. Выберите Скелета ×3.', pre: () => { if (!inventory.u0) { inventory.u0 = 3; discovered.add('u0'); } deckStacks['u0'] = deckStacks['u0'] || [3]; renderCollection(); }, hl: () => collSel('u0'), ok: () => placingMode && pendingCard === 'u0' },
-  { t: '<b>Стопка.</b> Поставьте Скелета на свободную клетку — встанет стопкой.', hl: '#grid', ok: () => { const it = grid.flat().find(x => x && x.cardId === 'u0'); return !!(it && it.stacks >= 2); } },
-  { t: '<b>Синергия!</b> «Костяной Рыцарь» — партнёр Скелета. Выберите его (золотая подсветка).', pre: () => TUT_GIVE([['u4', 1]]), hl: () => collSel('u4'), ok: () => placingMode && pendingCard === 'u4' },
-  { t: '<b>Звено.</b> Поставьте Рыцаря рядом со Скелетом: вспыхнет линия — синергия, доход обоих вырастет. Правило: повтор одной и той же пары слабее (×0.7, ×0.45…) — стройте РАЗНЫЕ связки.', hl: '#grid', ok: () => pairLinkCount('u0', 'u4') > 0 },
+  { t: '<b>Алтарь.</b> Кликните карту в коллекции слева — она «в руке», затем по свободной клетке Алтаря — поставить. Каждая карта приносит ТЭ/сек.', pre: () => { tutStartRun(); renderCollection(); }, hl: () => placingMode ? '#grid' : collSel(Object.keys(inventory)[0]), ok: () => cardsOnGrid() > 0 },
+  { t: '<b>Здание!</b> «Кладбище» — постройка: сама раз в 12с поднимает бесплатную нежить и усиливает соседей. Выберите и поставьте рядом с картами.', pre: () => { if (!inventory.bl_grave) TUT_GIVE([['bl_grave', 1]]); }, hl: () => (placingMode && pendingCard === 'bl_grave') ? '#grid' : collSel('bl_grave'), ok: () => gridHas('bl_grave') },
+  { t: '<b>Стопка ×3.</b> Выберите Скелета ▲ (стак из Гримуара) и поставьте на свободную клетку: на грид встанет стопка ×N — кратно больше доход клетки.', pre: () => { if (!inventory.u0) { inventory.u0 = 3; discovered.add('u0'); } deckStacks['u0'] = deckStacks['u0'] || [3]; renderCollection(); }, hl: () => (placingMode && pendingCard === 'u0') ? '#grid' : collSel('u0'), ok: () => { const it = grid.flat().find(x => x && x.cardId === 'u0'); return !!(it && it.stacks >= 2); } },
+  { t: '<b>Синергия!</b> Выберите «Костяного Рыцаря» и поставьте РЯДОМ со Скелетом: вспыхнет линия — доход обоих вырастет. Правило: повтор одной и той же пары слабее (×0.7, ×0.45…) — стройте РАЗНЫЕ связки.', pre: () => TUT_GIVE([['u4', 2]]), hl: () => (placingMode && pendingCard === 'u4') ? '#grid' : collSel('u4'), ok: () => pairLinkCount('u0', 'u4') > 0 },
 
   /* --- АКТ 4: ЭПОХИ (порог, дар, Вознесение) --- */
   { t: '<b>Эпоха.</b> Большая кнопка над Алтарём показывает % порога. Учебный дар: +60 тыс ТЭ — порог перекрыт.', pre: () => { crystals += 60000; }, n: 1 },
-  { t: '<b>Вознесение.</b> Жмите кнопку ЭПОХИ над Алтарём: сводка — что сгорает, что остаётся, награда +1 Душа.', hl: '#epochUpBtn', ok: () => tutOpen('epochWarn') },
-  { t: '<b>Новая Эпоха.</b> Жмите «ДАЛЬШЕ», выберите фракцию и колоду — новый забег начнётся заново, уже на ваших условиях.', pre: () => { tutB.epoch = epoch; }, ok: () => epoch > tutB.epoch },
-  { t: '✅ <b>Цикл пройден!</b> Гримуар (колоды + крутки за Души) → Улучшения → забег → Вознесение (+1 Душа, порог растёт ×4). Повторы пар слабее — разные связки сильнее. Учебный забег не сохранён: жмите «В меню» и играйте по-настоящему.', last: 1 }
+  { t: '<b>Вознесение!</b> Жмите кнопку ЭПОХИ над Алтарём — откроется сводка смены Эпохи (забег сгорает, коллекция и Души остаются, +1 Душа). Жмите «ДАЛЬШЕ», выберите фракцию и колоду — новая Эпоха начнётся на ВАШИХ условиях.', pre: () => { tutB.epoch = epoch; }, hl: () => tutOpen('epochWarn') ? '#ewYes' : tutOpen('factionModal') ? '#factionModal' : tutOpen('deckPickModal') ? '#deckPickModal' : '#epochUpBtn', ok: () => epoch > tutB.epoch },
+  { t: '✅ <b>Цикл пройден!</b> Гримуар (колоды + крутки за Души) → Улучшения → забег → Вознесение (+1 Душа, порог растёт ×4). Повторы пар слабее — разные связки сильнее. Учебный забег не сохранён: жмите «В меню» и играйте по-настоящему.', n: 1, last: 1 }
 ];
 let tutI = -1, tutTimer = null;
+/* --- Механика обучения v2.1 ---
+   ЦЕЛЬ шага подсвечена; жать можно ТОЛЬКО её (чужие кнопки —
+   disabled/.tut-lock). Окно, где лежит цель, авто-держится открытым,
+   все лишние окна закрываются сами: просишь «Улучшения» — Гримуар
+   уходит, зовёшь в забег — Улучшения уходят; очередь фракций/колод
+   при Вознесении тоже ведётся сама.
+   Панель наставника СТАВИТСЯ ВОЗЛЕ цели (справа → слева → снизу →
+   сверху) и никогда её не накрывает; без цели — по центру сверху. */
+function tutTarget() {
+  const st = TUT[tutI]; if (!st || !st.hl) return null;
+  const sel = typeof st.hl === 'function' ? st.hl() : st.hl;
+  let el = sel ? document.querySelector(sel) : null;
+  /* оверлей-модал — цепляемся за его ВИДИМУЮ карточку, не за весь экран */
+  if (el && el.matches('.modal')) el = el.querySelector('.modal-card') || el;
+  return el;
+}
+function tutEnsure(t) {
+  if (!t) return; /* без цели (обзорные шаги) окна не трогаем */
+  qsa('.modal.show').forEach(m => { if (!(t && m.contains(t))) m.classList.remove('show'); });
+  if (t && !t.closest('.modal.show')) { const m = t.closest('.modal'); if (m) m.classList.add('show'); }
+}
+function tutLock(t) {
+  document.querySelectorAll('[data-tutdis]').forEach(e => {
+    e.disabled = e.getAttribute('data-tutwas') === '1';
+    e.removeAttribute('data-tutdis'); e.removeAttribute('data-tutwas');
+  });
+  document.querySelectorAll('.tut-lock').forEach(e => e.classList.remove('tut-lock'));
+  document.querySelectorAll('button, input, select, .coll-card, .cell, .faction-card, .deckpick-row').forEach(el => {
+    if (el.closest('#tutPanel')) return;
+    if (t && (t === el || t.contains(el) || el.contains(t))) return;
+    if (el.tagName === 'BUTTON' || el.tagName === 'INPUT' || el.tagName === 'SELECT') {
+      if (!el.hasAttribute('data-tutdis')) { if (el.disabled) el.setAttribute('data-tutwas', '1'); el.setAttribute('data-tutdis', '1'); }
+      el.disabled = true;
+    }
+    el.classList.add('tut-lock');
+  });
+}
+function tutPlace(t) {
+  const p = $('tutPanel'), m = 8, gap = 12;
+  const W = p.offsetWidth, H = p.offsetHeight, vw = window.innerWidth, vh = window.innerHeight;
+  let x = Math.max(m, (vw - W) / 2), y = 8; /* без цели — по центру сверху */
+  if (t) {
+    const r = t.getBoundingClientRect();
+    const sideY = Math.max(m, Math.min(r.top + (r.height - H) / 2, vh - m - H));
+    if (r.right + gap + W <= vw - m) { x = r.right + gap; y = sideY; }
+    else if (r.left - gap - W >= m) { x = r.left - gap - W; y = sideY; }
+    else if (r.bottom + gap + H <= vh - m) { y = r.bottom + gap; x = Math.max(m, Math.min(r.left, vw - m - W)); }
+    else if (r.top - gap - H >= m) { y = r.top - gap - H; x = Math.max(m, Math.min(r.left, vw - m - W)); }
+    else { /* узкий экран: прижимаемся к цели, не вылезая за край */
+      x = r.left >= vw / 2 ? Math.max(m, r.left - gap - W) : Math.min(vw - m - W, r.right + gap);
+      y = Math.max(m, Math.min(r.top, vh - m - H));
+    }
+  }
+  p.style.left = Math.round(x) + 'px';
+  p.style.top = Math.round(y) + 'px';
+}
+function tutSync() {
+  const t = tutTarget();
+  tutEnsure(t);
+  qsa('.tut-hl').forEach(e => e.classList.remove('tut-hl'));
+  if (t) { t.classList.add('tut-hl'); tutLock(t); tutPlace(t); }
+  else tutLock(null);
+}
 function tutGo(i) {
   tutI = i;
-  qsa('.tut-hl').forEach(e => e.classList.remove('tut-hl'));
   const st = TUT[i];
   if (st.pre) st.pre();
   $('tutText').innerHTML = st.t;
@@ -114,11 +172,9 @@ function tutGo(i) {
   const nb = $('tutNext');
   nb.style.display = st.n ? '' : 'none';
   nb.textContent = st.last ? 'В меню' : 'Далее';
-  if (st.hl) {
-    const sel = typeof st.hl === 'function' ? st.hl() : st.hl;
-    const t = sel && document.querySelector(sel);
-    if (t) { t.classList.add('tut-hl'); t.scrollIntoView({ block: 'nearest' }); }
-  }
+  tutSync();
+  const t = document.querySelector('.tut-hl');
+  if (t) t.scrollIntoView({ block: 'nearest' });
 }
 function startTutorial() {
   noSave = true;
@@ -127,11 +183,11 @@ function startTutorial() {
   $('menuBtn').style.display = 'none';
   const rb = $('epochRestartBtn'); if (rb) rb.style.display = 'none'; /* в обучении рестарта нет */
   $('tutPanel').classList.add('show');
-  $('tutPanel').style.zIndex = 1500; /* учебник поверх меню/Гримуара/Улучшений */
   $('tutNext').onclick = () => { if (TUT[tutI].last) location.reload(); else tutGo(tutI + 1); };
   $('tutExit').onclick = () => location.reload();
+  window.addEventListener('resize', tutSync);
   tutGo(0);
-  tutTimer = setInterval(() => { const st = TUT[tutI]; if (st && st.ok && st.ok()) tutGo(tutI + 1); }, 400);
+  tutTimer = setInterval(() => { const st = TUT[tutI]; if (st && st.ok && st.ok()) tutGo(tutI + 1); else tutSync(); }, 400);
 }
 
 /* ---------------- Новая игра ----------------
