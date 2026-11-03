@@ -314,6 +314,7 @@ function maybeTheophany(meds) {
   if (Math.random() >= chance) return;
   const id = externals[Math.floor(Math.random() * externals.length)];
   THEO = { id, until: gameTime + 18, cell: INC_CTX.ritualSrc, heat: id === 'c38' ? 2 : 0 };
+  stats.theos = (stats.theos || 0) + 1; /* для ачивки «Гость из-за Стены» */
   if (id === 'c39') THEO_DOUBT_FREEZE = gameTime + 78;
   const [ar, ac] = INC_CTX.ritualSrc.split(',').map(Number);
   fxAtCell(ar, ac, ['#7030a0', '#c030c0', '#fff0ff'], 10, 'wave');
