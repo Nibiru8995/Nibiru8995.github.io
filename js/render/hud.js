@@ -159,12 +159,12 @@ function showCardTooltip(e, card, income, r, c) {
   }
   /* ФИДБЕК 3+6: культисты — статус ритуала + НАГЛЯДНЫЕ схемы формаций */
   mechLine += cultistTooltipHTML(card, r, c);
-  /* ФИДБЕК 4 (v1.11.0): звери — РОЛЬ В ЛЕСУ вместо синергий */
+  /* ФИДБЕК 4 (v1.12.0): звери — РОЛЬ В ЛЕСУ вместо синергий */
   if (card.diet && DIET_INFO[card.diet]) {
     mechLine += '<div class="tt-synergy"><div class="tt-synergy-title" style="color:' + DIET_INFO[card.diet].color + '">Роль в лесу: ' + DIET_INFO[card.diet].name + '</div>' +
       DIET_INFO[card.diet].desc + '</div>';
   }
-  /* v1.11.0: статус угодий зверя на поле */
+  /* v1.12.0: статус угодий зверя на поле */
   if (card.faction === 'beast' && !card.isBuilding && r !== undefined && c !== undefined && FACTION_INFO[faction].mechanic === 'grounds') {
     const bg = (typeof BEAST_GROUNDS !== 'undefined') ? BEAST_GROUNDS : null;
     if (bg && bg.alpha && bg.alpha[r + ',' + c]) {

@@ -71,7 +71,7 @@ function buildAuraMap() {
       map[k] = { color: na.color, big: false, necro: true };
     }
   }
-  /* v1.11.0 ДИКИЕ УГОДЬЯ: зоны зверей — тихая зелёная заливка (радиусы
+  /* v1.12.0 ДИКИЕ УГОДЬЯ: зоны зверей — тихая зелёная заливка (радиусы
      берутся из BEAST_GROUNDS.zones — с учётом Тотема/Солончика/Хозяина Троп).
      Ауры Тотемов — в той же заливке (отдельные кольца не рисуем). */
   if (FACTION_INFO[faction].mechanic === 'grounds' && typeof BEAST_GROUNDS !== 'undefined' && BEAST_GROUNDS.zones) {
@@ -254,7 +254,7 @@ function renderGrid() {
     const fxLive = item.fxUntil > gameTime;
     const boomOn = mech === 'chaos' && item.boomUntil > gameTime;
     const mutOn = mech === 'chaos' && item.mutBuff && item.mutBuff !== 1;
-    /* v1.11.0: корона АЛЬФЫ стаи (двоевластие — отдельная подпись) */
+    /* v1.12.0: корона АЛЬФЫ стаи (двоевластие — отдельная подпись) */
     const bgCrown = (mech === 'grounds' && typeof BEAST_GROUNDS !== 'undefined' && BEAST_GROUNDS.alpha && BEAST_GROUNDS.alpha[key]) ? BEAST_GROUNDS.alpha[key] : null;
     const emberN = (mech === 'chaos' && item.embers > 0) ? item.embers : 0;
     /* v1.11.0: тление (Пепел), Пир хаоса (Мрак), строй (Легион) */
@@ -360,7 +360,7 @@ function renderGrid() {
       badges += '<span class="mut-badge" style="color:#c080ff" title="Пир хаоса: ×' + (item.feastBuff || 1).toFixed(2) + ' — чужие взрывы кормят (до ×1.5)">🍖</span>';
     if (formOn)
       badges += '<span class="mut-badge" style="color:#9ab0d0" title="В строю: угли ×1.25, взрыв — контролируемый бафф ×1.25">⛨</span>';
-    /* ЗВЕРИ: корона альфы (v1.11.0 — вместо бейджей сытости/голода) */
+    /* ЗВЕРИ: корона альфы (v1.12.0 — вместо бейджей сытости/голода) */
     if (bgCrown)
       badges += '<span class="anchor-badge" style="color:#ffd34d" title="' + (bgCrown.dual
         ? 'СПОРНАЯ КОРОНА: двоевластие в стае — сила короны ×0.5'
@@ -546,7 +546,7 @@ function specialActive(card, item, r, c) {
     case 'd44': return { active: r2.some(n => CARDS[n.item.cardId].subrace === 'legion' && INC_CTX.legionForm && INC_CTX.legionForm[n.r + ',' + n.c]) };
     case 'd45': case 'd46': return { active: r2.some(n => CARDS[n.item.cardId].subrace === 'legion') };
     case 'd47': return { active: radiusN(r, c, 3).some(n => CARDS[n.item.cardId].subrace === 'legion') };
-    /* ЗВЕРИ v1.11.0: активность особенности — из расчёта угодий */
+    /* ЗВЕРИ v1.12.0: активность особенности — из расчёта угодий */
     case 'b0': case 'b1': case 'b2': case 'b3': case 'b5': case 'b6': case 'b9':
     case 'b10': case 'b11': case 'b12': case 'b13': case 'b16': case 'b18': case 'b19':
     case 'b20': case 'b21': case 'b22': case 'b23': case 'b24': case 'b26': case 'b27':
@@ -636,7 +636,7 @@ function drawSynergies() {
       phaseSpecs.push((r === nr ? 'h' : 'v') + lf);
     }
   }
-  /* v1.11.0: спецификации СТАЙ зверей (пунктир между союзниками по пересечению угодий) */
+  /* v1.12.0: спецификации СТАЙ зверей (пунктир между союзниками по пересечению угодий) */
   const packSpecs = (FACTION_INFO[faction].mechanic === 'grounds' && typeof BEAST_GROUNDS !== 'undefined' && BEAST_GROUNDS.packEdges)
     ? BEAST_GROUNDS.packEdges.map(e => e.join(':')) : [];
   /* Сигнатура: состав связей + режим + вьюпорт (resize меняет координаты
@@ -737,7 +737,7 @@ faded — реальное затухание из экономики; royal —
       mkLine('base-ghost' + (lf === 0 ? ' dead' : ''), { x1: cx(c), y1: cy(r), x2: cx(nc), y2: cy(nr) });
     }
   }
-  /* v1.11.0 СТАИ ЗВЕРЕЙ: зелёный пунктир между хищниками с пересекающимися угодьями */
+  /* v1.12.0 СТАИ ЗВЕРЕЙ: зелёный пунктир между хищниками с пересекающимися угодьями */
   if (FACTION_INFO[faction].mechanic === 'grounds' && typeof BEAST_GROUNDS !== 'undefined' && BEAST_GROUNDS.packEdges) {
     BEAST_GROUNDS.packEdges.forEach(([r1, c1, r2, c2]) => {
       if (r1 < st || r1 >= st + n || c1 < st || c1 >= st + n) return;
@@ -893,7 +893,7 @@ function updateGridStats() {
     const am = Math.min(incomeCache.armyCap || 2, 1 + 0.015 * (incomeCache.armyBest - 1));
     extra += ' · Армия: <b>' + incomeCache.armyBest + '</b> (×' + am.toFixed(2) + ')';
   }
-  /* v1.11.0: сводка угодий зверей (до сигнатуры) */
+  /* v1.12.0: сводка угодий зверей (до сигнатуры) */
   if (FACTION_INFO[faction].mechanic === 'grounds' && typeof BEAST_GROUNDS !== 'undefined' && BEAST_GROUNDS) {
     extra += ' · Акты охоты: <b>' + BEAST_GROUNDS.acts + '</b>' +
       (BEAST_GROUNDS.packs ? ' · стай: <b>' + BEAST_GROUNDS.packs + '</b> (крупнейшая <b>' + BEAST_GROUNDS.packBest + '</b>)' : '');

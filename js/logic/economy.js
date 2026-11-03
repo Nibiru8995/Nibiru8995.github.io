@@ -325,7 +325,7 @@ function factionMult(r, c, card, item) {
     return 0;
   }
   if (mech === 'grounds') {
-    /* ЗВЕРИ v1.11.0: доход — ДИКИЕ УГОДЬЯ (зоны/трофеи/выпас/стаи/ауры).
+    /* ЗВЕРИ v1.12.0: доход — ДИКИЕ УГОДЬЯ (зоны/трофеи/выпас/стаи/ауры).
 Полный расчёт — computeGrounds() (faction_mechanics.js), сюда приходит
 готовый множитель клетки; парных синергий у зверей нет. */
     const bg = (typeof BEAST_GROUNDS !== 'undefined') ? BEAST_GROUNDS : null;
@@ -508,7 +508,7 @@ function computeIncome() {
 
   const mech = FACTION_INFO[faction].mechanic;
   if (mech === 'formation') buildRitualContext();
-  /* v1.11.0 ДИКИЕ УГОДЬЯ: зоны/стаи/акты пересчитываются ВМЕСТЕ с доходом */
+  /* v1.12.0 ДИКИЕ УГОДЬЯ: зоны/стаи/акты пересчитываются ВМЕСТЕ с доходом */
   if (mech === 'grounds' && typeof computeGrounds === 'function') computeGrounds();
 
   /* РЕЛИКВИИ 4.0: движок законов и кар по столбцам */
