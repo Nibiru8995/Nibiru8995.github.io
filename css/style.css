@@ -273,6 +273,14 @@ body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-i
 .cell.aura-warded { box-shadow: inset 0 0 12px #d3bd7a4d, inset 0 0 3px #d3bd7a77; }
 /* v1.4.0: ЗЕЛЕНО-ЗОЛОТАЯ зона Пакта Тишины Лича (v1.5.10: без пульсации) */
 .cell.aura-lich { border-color: #b8d06a !important; box-shadow: inset 0 0 12px #a0d04055, inset 0 0 3px #ffd34d88; }
+/* ===== v1.9.0 РЕВОРК: ТИХИЕ АУРЫ НЕКРОМАНТОВ (u23 Туман / u35 Обет) =====
+   Решение В1: видно, но не захламляет — без рамок, миганий и банадов,
+   лёгкий внутренний отсвет клетки (слабее зданий). */
+.cell.aura-necro::after { content: ''; position: absolute; inset: 1px; border-radius: 4px; pointer-events: none;
+  box-shadow: inset 0 0 12px var(--auraC, #7fb8b0); opacity: .16; }
+/* v1.9.0: ФАЗОВЫЕ звенья Призраков — тонкая пунктирная нить (без проблесков) */
+#synergySvg line.base-ghost { stroke: #8fb8c8; stroke-width: 1.5; stroke-dasharray: 3 5; opacity: .45; filter: none; }
+#synergySvg line.base-ghost.dead { stroke: #4a3a3a; opacity: .25; }
 /* ===== РИТУАЛ КУЛЬТИСТОВ (фидбек 3) ===== */
 .cell.ritual-cell { box-shadow: inset 0 0 12px #b3a15f33, inset 0 0 2px #b3a15f55; border-color: #6a5220; }
 .cell.ritual-part { box-shadow: inset 0 0 16px #b3a15f66, inset 0 0 4px #d3bd7a; border-color: #b3a15f; animation: ritualPulse 2s ease-in-out infinite; }

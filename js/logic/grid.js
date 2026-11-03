@@ -52,7 +52,29 @@ function hintClass(r, c) {
     const nearDemons = getNeighbors8(r, c).filter(n => CARDS[n.item.cardId].faction === 'demon').length;
     return nearDemons >= 2 ? 'good-spot' : '';
   }
-  if (!ns.some(n => linked(p, CARDS[n.item.cardId]))) return '';
+  if (!ns.some(n => linked(p, CARDS[n.item.cardId]))) {
+    /* v1.9.0 Призраки: ФАЗОВЫЕ звенья дотягиваются на расстояние 2 —
+       подсвечиваем и их (умеренно — только реальные пары). */
+    if (mech !== 'chain' || p.faction !== 'undead' || p.isBuilding) return '';
+    const inFog = INC_CTX.necro && INC_CTX.necro.fog.has(r + ',' + c);
+    if (p.subrace !== 'ghost' && !inFog) {
+      /* не-призраку фаза открывается только парой с Призраком или Туманом */
+      const ghostAt2 = [[0, 2], [0, -2], [2, 0], [-2, 0]].some(([dr, dc]) => {
+        const nr = r + dr, nc = c + dc;
+        return nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE && grid[nr][nc] &&
+          CARDS[grid[nr][nc].cardId].subrace === 'ghost' && linked(p, CARDS[grid[nr][nc].cardId]);
+      });
+      if (!ghostAt2) return '';
+    }
+    const phaseHit = [[0, 2], [0, -2], [2, 0], [-2, 0]].some(([dr, dc]) => {
+      const nr = r + dr, nc = c + dc;
+      if (nr < 0 || nr >= GRID_SIZE || nc < 0 || nc >= GRID_SIZE || !grid[nr][nc]) return false;
+      const oc = CARDS[grid[nr][nc].cardId];
+      if (!linked(p, oc)) return false;
+      return p.subrace === 'ghost' || oc.subrace === 'ghost' || (inFog && p.cat === 'thrall');
+    });
+    return phaseHit ? 'good-spot' : '';
+  }
   if (mech === 'formation' && p.faction === 'cultist') {
     /* рядом с ритуалом (в т.ч. с самим Алтарём) — живое звено; иначе звено будет мертво */
     if (INC_CTX.ritual.size === 0) return 'syn-hint'; /* Алтаря на поле нет ещё — не пугаем игрока */

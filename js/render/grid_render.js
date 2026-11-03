@@ -55,6 +55,22 @@ function buildAuraMap() {
       map[k] = { color: prev ? prev.color : color, big: R >= 2 || (prev && prev.big) };
     }
   }
+  /* v1.9.0 ауры НЕКРОМАНТОВ (u23 Туман — холодная бирюза, u35 Обет — глухой багрец):
+     ТИХАЯ подсветка (класс aura-necro, без миганий) — решение В1: видно, но не мешает. */
+  const necroAura = { u23: { R: 2, color: '#7fb8b0' }, u35: { R: 2, color: '#b06070' } };
+  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
+    const it = grid[r][c]; if (!it) continue;
+    const na = necroAura[it.cardId]; if (!na) continue;
+    for (let dr = -na.R; dr <= na.R; dr++) for (let dc = -na.R; dc <= na.R; dc++) {
+      const nr = r + dr, nc = c + dc;
+      if (nr < 0 || nr >= GRID_SIZE || nc < 0 || nc >= GRID_SIZE) continue;
+      if (!playableMask[nr] || !playableMask[nr][nc]) continue;
+      const k = nr + ',' + nc;
+      const prev = map[k];
+      if (prev) continue; /* аура здания важнее — не дублируем подсветку */
+      map[k] = { color: na.color, big: false, necro: true };
+    }
+  }
   return map;
 }
 
@@ -179,7 +195,7 @@ function renderGrid() {
     /* --- классы клетки (аура/ритуал/режимы) --- */
     let cls = 'cell playable';
     if (r === 4 && c === 4) cls += ' center-cell';
-    if (az) { cls += ' aura-zone'; if (az.big) cls += ' r2'; }
+    if (az) { cls += az.necro ? ' aura-necro' : ' aura-zone'; if (az.big && !az.necro) cls += ' r2'; }
     if (incomeCache.lichZone && incomeCache.lichZone.indexOf(key) >= 0) cls += ' aura-lich';
     if (INC_CTX.ritual && INC_CTX.ritual.has(key)) cls += ' ritual-cell';
     else if (INC_CTX.ritualOuter && INC_CTX.ritualOuter.has(key)) cls += ' ritual-outer';
@@ -410,17 +426,53 @@ function specialActive(card, item, r, c) {
     case 'u0': return { active: r2.some(n => CARDS[n.item.cardId].rarity === 5) };
     case 'u1': return { active: (item.growBuff || 0) > 0 };
     case 'u2': return { active: r2.some(n => n.item.hp < n.item.maxHp - 0.01) };
-    case 'u3': return { active: nb.some(n => n.item.stacks >= 2) };
+    case 'u3': return { active: nb.some(n => n.item.stacks >= 2) || nb.some(n => n.item.cardId === 'u1') };
     case 'u4': case 'u12':
       return { active: nb.some(n => !!findPair(card, CARDS[n.item.cardId])) };
-    case 'u8':
-      /* Пакт Тишины: активен при звеньях и со Склепом, и с Некромантом */
-      return { active: nb.some(n => n.item.cardId === 'bl_crypt') && nb.some(n => n.item.cardId === 'u5') };
+    case 'u5': /* «Поднятие»: есть кому поднять */
+      return { active: nb.some(n => CARDS[n.item.cardId].cat === 'thrall') };
+    case 'u8': /* Пакт Тишины (v1.9.0): достаточно Склепа рядом */
+      return { active: nb.some(n => n.item.cardId === 'bl_crypt') };
     case 'u6': return { active: nb.some(n => { const q = CARDS[n.item.cardId]; return q.faction === 'undead' && q.rarity === 3; }) };
     case 'u7': return { active: nb.some(n => CARDS[n.item.cardId].faction === 'undead') };
-    case 'u9': return { active: r2.some(n => CARDS[n.item.cardId].faction === 'undead') };
+    case 'u9': /* Коса (v1.9.0): нежить или раненые в радиусе 2 */
+      return { active: r2.some(n => CARDS[n.item.cardId].faction === 'undead' || n.item.hp < n.item.maxHp - 0.01) };
     case 'u10': return { active: nb.some(n => CARDS[n.item.cardId].faction === 'undead') };
     case 'u11': return { active: nb.some(n => CARDS[n.item.cardId].isBuilding) };
+    case 'u13': /* Рывок: ровно одно живое звено */
+      return { active: liveLinkCount(r, c, card) === 1 };
+    case 'u14': /* Правка костей: есть связанная Скованная */
+      return { active: nb.some(n => !!findPair(card, CARDS[n.item.cardId]) && CARDS[n.item.cardId].cat === 'thrall') };
+    case 'u15': return { active: emptyAround(r, c) > 0 };
+    case 'u16': /* Эхо: есть звенья, которые защищать */
+      return { active: nb.some(n => !!findPair(card, CARDS[n.item.cardId])) };
+    case 'u17': {
+      const friends = livePartners(r, c, card);
+      return { active: !getNeighbors8(r, c).some(n => CARDS[n.item.cardId].faction === 'undead' && !friends.some(p => p.r === n.r && p.c === n.c)) };
+    }
+    case 'u18': return { active: r2.some(n => { const q = CARDS[n.item.cardId]; return q.subrace === 'ghost' && !q.isBuilding; }) };
+    case 'u19': case 'u20': case 'u22': /* каналы: есть связанная Скованная */
+      return { active: nb.some(n => !!findPair(card, CARDS[n.item.cardId]) && CARDS[n.item.cardId].cat === 'thrall') };
+    case 'u21': /* Звон: связанная Скованная есть; пульс виден по fx */
+      return { active: nb.some(n => !!findPair(card, CARDS[n.item.cardId]) && CARDS[n.item.cardId].cat === 'thrall') };
+    case 'u23': /* Туман: есть Скованные в ауре */
+      return { active: r2.some(n => CARDS[n.item.cardId].cat === 'thrall') };
+    case 'u24': return { active: typeof nocturneUntil !== 'undefined' && nocturneUntil > gameTime };
+    case 'u25': return { active: radiusN(r, c, 3).some(n => CARDS[n.item.cardId].faction === 'undead') };
+    case 'u26': /* Маяк: есть призрачные звенья */
+      return { active: nb.some(n => !!findPair(card, CARDS[n.item.cardId]) && CARDS[n.item.cardId].subrace === 'ghost') };
+    case 'u27': return { active: r2.some(n => UNDEAD_LORDS[n.item.cardId]) };
+    case 'u28': return { active: (item.stacks || 1) > 1 };
+    case 'u29': return { active: r2.some(n => n.item.hp >= n.item.maxHp - 0.01) };
+    case 'u30': return { active: r2.some(n => CARDS[n.item.cardId].isBuilding) };
+    case 'u31': case 'u33': case 'u34': case 'u37': /* каналы: есть связанная Скованная */
+      return { active: nb.some(n => !!findPair(card, CARDS[n.item.cardId]) && CARDS[n.item.cardId].cat === 'thrall') };
+    case 'u32': /* Дуэль: связанная Скованная связана ТОЛЬКО с ней */
+      return { active: livePartners(r, c, card).some(p => p.card.cat === 'thrall' && liveLinkCount(p.r, p.c, p.card) === 1) };
+    case 'u35': /* Обет: есть Скованные в ауре */
+      return { active: r2.some(n => CARDS[n.item.cardId].cat === 'thrall') };
+    case 'u36': return { active: (item.midnightUntil || 0) > gameTime };
+    case 'u38': return { active: nb.some(n => !!findPair(card, CARDS[n.item.cardId])) };
     case 'c1': return { active: nb.some(n => CARDS[n.item.cardId].faction === 'cultist') };
     case 'c2': return { active: nb.some(n => RITUAL_SOURCES[n.item.cardId]) };
     case 'c3': return { active: radius2(r, c).some(n => INC_CTX.ritual && INC_CTX.ritual.has(n.r + ',' + n.c)) };
@@ -503,12 +555,26 @@ function drawSynergies() {
       }
     }
   }
+  /* v1.9.0: спецификации ФАЗОВЫХ связей (Призраки/Туман/Маяк) — для сигнатуры */
+  const phaseSpecs = [];
+  for (let r = st; r < st + n; r++) for (let c = st; c < st + n; c++) {
+    if (!grid[r][c]) continue;
+    for (const [dr, dc] of [[0, 2], [2, 0], [0, 3], [3, 0]]) {
+      const nr = r + dr, nc = c + dc;
+      if (nr >= st + n || nc >= st + n || !grid[nr][nc]) continue;
+      const lk = linkKey(r, c, nr, nc);
+      if (!incomeCache.linkPhase || !incomeCache.linkPhase[lk]) continue;
+      const lf = incomeCache.linkFactors && incomeCache.linkFactors[lk] !== undefined ? incomeCache.linkFactors[lk] : 1;
+      phaseSpecs.push((r === nr ? 'h' : 'v') + lf);
+    }
+  }
   /* Сигнатура: состав связей + режим + вьюпорт (resize меняет координаты
 тогда принудительно перерисовываем; вызов из resize-обработчика придёт
  с той же сигнатурой связей, но новым размером окна).*/
   let sig = (ug ? 'U' : 'L') + n + '|' + window.innerWidth + 'x' + window.innerHeight + '|' + specs.map(s =>
     s.horiz ? 'h' : 'v').join('') + '#' + specs.map(s =>
-    (s.mode || s.kind) + (s.lf === undefined ? '' : ':' + s.lf) + (s.royal ? 'R' : '') + (s.lichW ? 'W' : '') + (s.isMult ? 'M' : '')).join(';');
+    (s.mode || s.kind) + (s.lf === undefined ? '' : ':' + s.lf) + (s.royal ? 'R' : '') + (s.lichW ? 'W' : '') + (s.isMult ? 'M' : '')).join(';') +
+    '|PH' + phaseSpecs.join(';');
   if (sig === _synSig) return;
   _synSig = sig;
 
@@ -584,6 +650,20 @@ faded — реальное затухание из экономики; royal —
       mkLine('syn-flow' + (kind === 'mult' ? ' mult' : kind === 'chain' ? ' chainflow' : '') +
         (lf === 0 ? ' dead' : lf < 1 ? ' faded' : '') +
         (lichW ? ' lich' : royal ? ' royal' : ''), coords);
+    }
+  }
+  /* v1.9.0 ФАЗОВЫЕ СВЯЗИ: тонкая пунктирная нить между НЕсоседними клетками
+     (Призраки/Туман/Маяк). Без банадов и проблесков — тихо, по решению В1:
+     видно, но не захламляет поле. */
+  for (let r = st; r < st + n; r++) for (let c = st; c < st + n; c++) {
+    if (!grid[r][c]) continue;
+    for (const [dr, dc] of [[0, 2], [2, 0], [0, 3], [3, 0]]) {
+      const nr = r + dr, nc = c + dc;
+      if (nr >= st + n || nc >= st + n || !grid[nr][nc]) continue;
+      const lk = linkKey(r, c, nr, nc);
+      if (!incomeCache.linkPhase || !incomeCache.linkPhase[lk]) continue;
+      const lf = incomeCache.linkFactors && incomeCache.linkFactors[lk] !== undefined ? incomeCache.linkFactors[lk] : 1;
+      mkLine('base-ghost' + (lf === 0 ? ' dead' : ''), { x1: cx(c), y1: cy(r), x2: cx(nc), y2: cy(nr) });
     }
   }
   /* геометрия проблесков — на fx-канву (координаты SVG + смещение) */

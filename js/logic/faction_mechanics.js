@@ -21,6 +21,7 @@ function tickFactionMechanics(dt) {
   tickBuildings(dt);
   if (mech === 'chain') {
     tickUndeadGrowth(dt); /* «Медленный рост» Зомби (u1) */
+    tickUndeadRework(dt); /* v1.9.0: пульс Поднятия, лечение, Дань крови, Звон/Ноктюрн/Полночь */
   } else if (mech === 'cycle') {
     beastTimer += dt;
     if (beastTimer >= 2.5) { beastTimer = 0; beastCycleTick(); } /* тик 2.5с — лес живёт быстро */
@@ -47,7 +48,11 @@ function tickUndeadGrowth(dt) {
     if (it.growT >= GROW_STEP) {
       it.growT -= GROW_STEP;
       const before = it.growBuff || 0;
-      it.growBuff = Math.min(GROW_CAP, before + GROW_GAIN);
+      /* v1.9.0: кап ДИНАМИЧЕСКИЙ — живое звено u1-u3 поднимает потолок
+         с +60% до +90% (решение В4, zombieGrowCap в economy.js);
+         «Тумандело» (u19) удваивает СКОРОСТЬ роста, кап не меняет. */
+      const gain = GROW_GAIN * (livePartners(r, c, CARDS.u1).some(p => p.card.id === 'u19') ? 2 : 1);
+      it.growBuff = Math.min(zombieGrowCap(r, c), before + gain);
       if (it.growBuff > before) {
         fxAtCell(r, c, ['#7ec97e', '#c0ffb0'], 6);
         fxFloatFromCell(r, c, 'РОСТ +' + Math.round(it.growBuff * 100) + '%', '#8fc87f');
@@ -56,6 +61,109 @@ function tickUndeadGrowth(dt) {
     }
   }
   if (changed) { computeIncome(); updateHUD(); }
+}
+
+/* ================= v1.9.0 РЕВОРК: ТИКИ ПОДРАС =================
+   Все таймеры живут на item и читаются с дефолтом (item.x || 0) —
+   старые сейвы (карты уже на поле) не ломаются.
+   • u5 «Поднятие»: каждые 60с щит одной Скованной в радиусе 1 —
+     её следующее звено ×1.0 (не стакается, Д.2; расход — economy.js).
+   • Лечение: u6 3%/30с соседям-Скованным, u14 5%/30с связанной,
+     u22 5%/30с связанной + её соседям, u34 20%/45с связанной,
+     u37 5%/30с связанным. В ауре «Кровавого обета» (u35) лечение ×2.
+   • Кровоток: Дань крови u31 — −5% maxHp/30с связанной, ПОЛ 25% maxHp
+     (раны не убивают), в ауре Обета дань не берёт.
+   • Пульсы: Звон u21 (45с → связанная ×1.5 на 10с), Ноктюрн u24
+     (90с → все Призраки ×1.5 на 10с, окно глобальное — не стакается),
+     Полночь u36 (60с → его звенья ×1.5 на 8с, фактор — economy.js). */
+let nocturneUntil = 0;
+function healAmpAt(r, c) { /* «Кровавый обет» (u35): лечение в ауре вдвое быстрее */
+  return INC_CTX.necro && INC_CTX.necro.oath.has(r + ',' + c) ? 2 : 1;
+}
+function healCell(item, r, c, pct, showFloat) {
+  if (item.hp >= item.maxHp - 0.01) return false;
+  const amp = healAmpAt(r, c);
+  item.hp = Math.min(item.maxHp, item.hp + item.maxHp * pct * amp);
+  fxAtCell(r, c, ['#5ab08a', '#a0e0c0'], 5);
+  if (showFloat) fxFloatFromCell(r, c, '+' + Math.round(pct * amp * 100) + '% HP', '#8fc8a8');
+  return true;
+}
+function linkedThralls(r, c, card) {
+  return livePartners(r, c, card).filter(p => p.card.cat === 'thrall');
+}
+function tickUndeadRework(dt) {
+  let changed = false;
+  const timers = (it, key, secs) => { it[key] = (it[key] || 0) + dt; if (it[key] < secs) return false; it[key] = 0; return true; };
+  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
+    const it = grid[r][c]; if (!it) continue;
+    const card = CARDS[it.cardId];
+    if (card.faction !== 'undead' || card.isBuilding) continue;
+    const id = it.cardId;
+    if (id === 'u5' && timers(it, 'pulseT', 60)) {
+      const targets = getNeighbors8(r, c).filter(n => CARDS[n.item.cardId].cat === 'thrall' && !(n.item.shieldLinks > 0));
+      if (targets.length) {
+        const t = pick(targets);
+        t.item.shieldLinks = 1;
+        fxAtCell(t.r, t.c, ['#a0e0b8', '#d8f8e0'], 8);
+        fxFloatFromCell(t.r, t.c, 'ПОДНЯТИЕ · щит звена', '#9fd8b0');
+        changed = true;
+      }
+    }
+    if (id === 'u6' && timers(it, 'healT', 30)) {
+      let served = 0;
+      getNeighbors(r, c).forEach(n => {
+        if (CARDS[n.item.cardId].cat === 'thrall' && healCell(n.item, n.r, n.c, 0.03, false)) served++;
+      });
+      if (served) { fxFloatFromCell(r, c, 'слёзы утолили жажду', '#8fc8d8'); changed = true; }
+    }
+    if (id === 'u14' && timers(it, 'healT', 30)) {
+      linkedThralls(r, c, card).forEach(p => { if (healCell(p.item, p.r, p.c, 0.05, true)) changed = true; });
+    }
+    if (id === 'u22' && timers(it, 'healT', 30)) {
+      const seen = {};
+      linkedThralls(r, c, card).forEach(p => {
+        if (healCell(p.item, p.r, p.c, 0.05, true)) changed = true;
+        seen[p.r + ',' + p.c] = 1;
+        getNeighbors(p.r, p.c).forEach(n => {
+          const nk = n.r + ',' + n.c;
+          if (seen[nk]) return;
+          seen[nk] = 1;
+          if (CARDS[n.item.cardId].cat === 'thrall' && healCell(n.item, n.r, n.c, 0.05, true)) changed = true;
+        });
+      });
+    }
+    if (id === 'u34' && timers(it, 'healT', 45)) {
+      linkedThralls(r, c, card).forEach(p => { if (healCell(p.item, p.r, p.c, 0.20, true)) changed = true; });
+    }
+    if (id === 'u37' && timers(it, 'healT', 30)) {
+      linkedThralls(r, c, card).forEach(p => { if (healCell(p.item, p.r, p.c, 0.05, true)) changed = true; });
+    }
+    if (id === 'u31' && timers(it, 'tributeT', 30)) { /* Дань крови — цена баффа +18% */
+      linkedThralls(r, c, card).forEach(p => {
+        if (INC_CTX.necro && INC_CTX.necro.oath.has(p.r + ',' + p.c)) return; /* Обет: дань не берёт */
+        p.item.hp = Math.max(p.item.maxHp * 0.25, p.item.hp - p.item.maxHp * 0.05);
+        fxAtCell(p.r, p.c, ['#c03050', '#ff6080'], 5);
+        fxFloatFromCell(p.r, p.c, 'ДАНЬ −5% HP', '#ff9080');
+        changed = true;
+      });
+    }
+    if (id === 'u21' && timers(it, 'bellT', 45)) {
+      it.bellUntil = gameTime + 10;
+      fxAtCell(r, c, ['#e8d090', '#fff0c0'], 8);
+      changed = true;
+    }
+    if (id === 'u24' && timers(it, 'noctT', 90) && nocturneUntil < gameTime) {
+      nocturneUntil = gameTime + 10; /* окно одно на поле — аура одной карты не стакается */
+      fxAtCell(r, c, ['#90a8d8', '#d0e0ff'], 10);
+      toast('🎻 <b>Ноктюрн:</b> все Призраки ×1.5 на 10с', 'noct', 25);
+    }
+    if (id === 'u36' && timers(it, 'midnT', 60)) {
+      it.midnightUntil = gameTime + 8;
+      fxAtCell(r, c, ['#c090e0', '#f0e0ff'], 8);
+      changed = true;
+    }
+  }
+  if (changed) { computeIncome(); renderGrid(); updateHUD(); }
 }
 
 /* ============ КУЛЬТИСТЫ: РИТУАЛЬНАЯ ЭКОНОМИКА ============

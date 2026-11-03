@@ -143,6 +143,11 @@ function showCardTooltip(e, card, income, r, c) {
   }
   /* Уникальная механика (SPECIALS в data/cards.js) + статус активности */
   const sp = SPECIALS[card.id];
+  /* v1.9.0: кап Зомби в тултипе ДИНАМИЧЕСКИЙ — звено с Могильщиком поднимает его до +90% */
+  let spText = sp || '';
+  if (card.id === 'u1' && r !== undefined && grid[r] && grid[r][c] && spText) {
+    spText = spText.replace(/максимум \+60%/, 'максимум +' + Math.round(zombieGrowCap(r, c) * 100) + '%');
+  }
   if (sp && !card.isBuilding) {
     let spStatus = '';
     if (r !== undefined && c !== undefined) {
@@ -150,7 +155,7 @@ function showCardTooltip(e, card, income, r, c) {
       const sa = it ? specialActive(card, it, r, c) : { active: true };
       spStatus = sa.active ? ' <span style="color:#8fc87f">· АКТИВНА</span>' : ' <span style="color:#e08a8a">· не задействована</span>';
     }
-    mechLine += '<div class="tt-synergy"><div class="tt-synergy-title">✦ Особенность</div><span style="color:#e8c060">' + sp + '</span>' + spStatus + '</div>';
+    mechLine += '<div class="tt-synergy"><div class="tt-synergy-title">✦ Особенность</div><span style="color:#e8c060">' + spText + '</span>' + spStatus + '</div>';
   }
   /* ФИДБЕК 3+6: культисты — статус ритуала + НАГЛЯДНЫЕ схемы формаций */
   mechLine += cultistTooltipHTML(card, r, c);
@@ -179,9 +184,14 @@ function showCardTooltip(e, card, income, r, c) {
       '<span style="color:#8fc87f">✅ ' + rel.rule + '</span><br>' +
       '<span style="color:#e08a8a">❌ ' + rel.curse + '</span></div>';
   }
+  /* v1.9.0: КАТЕГОРИЯ и ПОДРАСА (Скованные/Несущие/Некроманты/Владыки · Скелеты/Призраки/Вампиры) */
+  const catLine = card.cat ? '<div class="tt-stars" style="color:#b8a888">' +
+    (CAT_INFO[card.cat] ? 'Тип: ' + CAT_INFO[card.cat].name : '') +
+    (card.subrace && SUBRACE_INFO[card.subrace] ? ' · ' + SUBRACE_INFO[card.subrace] : '') + '</div>' : '';
   tooltip.innerHTML =
     '<div class="tt-name">' + cardArtHTML(card, 'tt-art', '') + '<span>' + card.name + '</span></div>' +
     '<div class="tt-stars">' + starsOf(card.rarity) + ' · ' + FACTION_INFO[card.faction].name + (card.isBuilding ? ' · постройка' : '') + '</div>' +
+    catLine +
     (FACTION_INFO[faction].mechanic === 'formation' && card.faction === 'cultist' && !card.isBuilding
       ? '<div class="tt-income" style="color:#c9a227">Дохода нет — вклад в ритуал: ' + (r !== undefined && INC_CTX.ritualCellSpeed && INC_CTX.ritualCellSpeed[r + ',' + c] ? '⚡ +' + INC_CTX.ritualCellSpeed[r + ',' + c].toFixed(2) + '/с заряда' : 'в ритуале') + (r !== undefined && grid[r] && grid[r][c] && grid[r][c].stacks > 1 ? ' · стак ×' + grid[r][c].stacks : '') + '</div>'
       : '<div class="tt-income">Прирост: +' + (income !== undefined ? income.toFixed(2) : card.baseRate.toFixed(2)) + '/сек</div>') +

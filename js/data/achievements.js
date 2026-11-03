@@ -20,6 +20,7 @@ const ACHIEVEMENTS = [
   { id: 'floor_5',      name: 'Этаж — не приговор',       desc: 'Достичь 5 этажа Арены',                 check: () => stats.floorMax >= 5 },
   { id: 'boss_kill',    name: 'Убийца владык',            desc: 'Победить босса Арены',                  check: () => stats.bossKills >= 1 },
   { id: 'legend_5',     name: 'Легенда в коллекции',      desc: 'Получить карту ★5',                     check: () => [...discovered].some(id => CARDS[id] && CARDS[id].rarity === 5) },
+  { id: 'subraces_3',   name: 'Три рода ночи',           desc: 'Иметь на Алтаре нежить всех трёх подрас одновременно', check: () => { const s = new Set(); for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) { const it = grid[r][c]; if (it && CARDS[it.cardId] && CARDS[it.cardId].faction === 'undead' && CARDS[it.cardId].subrace) s.add(CARDS[it.cardId].subrace); } return s.size >= 3; } },
   { id: 'inc_100',      name: 'Маховик экономики',        desc: 'Достичь дохода +100/сек',               check: () => stats.maxInc >= 100 },
   { id: 'epoch_2',      name: 'Новая глава',              desc: 'Начать Эпоху 2',                        check: () => epoch >= 2 },
   { id: 'epoch_5',      name: 'Хронист',                  desc: 'Начать Эпоху 5',                        check: () => epoch >= 5 },

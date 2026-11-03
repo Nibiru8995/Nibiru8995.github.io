@@ -257,16 +257,26 @@ const CONTRACTS_UNDEAD = [
   { id: 'ud_put_u10', name: 'Трон Тлена', icon: '☠️', diff: 3, kind: 'live',
     text: n => 'Поставьте Владыку Тлена на Алтарь', val: () => gridHasCard('u10'), target: () => 1, req: { has: ['u10'] } },
   { id: 'ud_put_u11', name: 'Прикованный навсегда', icon: '⛓️', diff: 3, kind: 'live',
-    text: n => 'Поставьте Скованного Цепью на Алтарь', val: () => gridHasCard('u11'), target: () => 1, req: { has: ['u11'] } },
+    text: n => 'Поставьте Прикованного Стража на Алтарь', val: () => gridHasCard('u11'), target: () => 1, req: { has: ['u11'] } },
   { id: 'ud_army18', name: 'Живая цепь', icon: '⛓', diff: 3, kind: 'live',
     text: n => 'Соберите непрерывную армию из ' + n + ' карт',
     val: () => incomeCache.armyBest || 0, target: () => Math.min(18, playableSize * playableSize - 1) },
   { id: 'ud_income250', name: 'Гимн Бездны', icon: '💠', diff: 3, kind: 'live',
     text: n => 'Достигните дохода +' + n + '/сек', val: () => calculateIncome(), target: () => 250 },
   { id: 'ud_pact_silence', name: 'Пакт Тишины исполнен', icon: '🕯', diff: 3, kind: 'live',
-    text: n => 'Зажгите ОБА звена Лича: с Некромантом и со Склепом',
-    val: () => (pairCount2('u8', 'u5') >= 1 && pairCount2('u8', 'bl_crypt') >= 1) ? 1 : 0, target: () => 1,
-    req: { n: { u8: 1, u5: 1, bl_crypt: 1 } } }
+    text: n => 'Поставьте Лича рядом со Склепом (Пакт Тишины)',
+    val: () => pairCount2('u8', 'bl_crypt') >= 1 ? 1 : 0, target: () => 1,
+    req: { n: { u8: 1, bl_crypt: 1 } } },
+  /* v1.9.0: контракты на механики подрас */
+  { id: 'ud_phase_link', name: 'Фазовый скачок', icon: '👻', diff: 2, kind: 'live',
+    text: n => 'Соберите фазовое звено на расстоянии 2 (Призраки или Туман)',
+    val: () => { const lp = incomeCache.linkPhase || {}; let n = 0; for (const k in lp) { const lf = incomeCache.linkFactors ? incomeCache.linkFactors[k] : 1; if (lf === undefined || lf > 0) n++; } return n; },
+    target: () => 1,
+    req: { any: [['u6', 'u15', 'u16', 'u17', 'u18', 'u19', 'u20', 'u21', 'u22', 'u23', 'u24', 'u25', 'u26']] } },
+  { id: 'ud_reaper_wounds', name: 'Пир Жнеца', icon: '⚔', diff: 2, kind: 'live',
+    text: n => 'Держите ' + n + ' раненых в радиусе 2 Жнеца Душ (Кровоток)',
+    val: () => { let best = 0; for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) { const it = grid[r][c]; if (!it || it.cardId !== 'u9') continue; const nW = radius2(r, c).filter(m => m.item.hp < m.item.maxHp - 0.01).length; if (nW > best) best = nW; } return best; },
+    target: () => 2, req: { has: ['u9'] } }
 ];
 
 /* Награды по сложности (v1.8.0): обычный — 1 Душа, сложный — 2, очень сложный — 3. */
