@@ -129,20 +129,17 @@ function showCardTooltip(e, card, income, r, c) {
         return '<span class="tt-good">' + pair.text + ' (с ' + CARDS[n.item.cardId].name + ')' +
           (factor < 1 ? ' <b style="color:#ffd34d">повтор ×' + factor + '</b>' : '') + '</span>';
       }).filter(Boolean);
-    linksHtml = partners.length
-      ? '<div class="tt-synergy">' + partners.join('<br>') + '</div>'
-      : '<div class="tt-synergy"><span style="color:#8a6a4a;">С соседями активных звеньев нет.</span></div>';
+    linksHtml = '<div class="tt-synergy"><div class="tt-synergy-title">Активные звенья</div>' +
+      (partners.length ? partners.join('<br>') : '<span style="color:#8a6a4a;">Нет активных звеньев с соседями.</span>') + '</div>';
   } else {
     const ps = pairsForCard(card);
-    if (ps.length) linksHtml = '<div class="tt-synergy">' +
+    if (ps.length) linksHtml = '<div class="tt-synergy"><div class="tt-synergy-title">Возможные звенья</div>' +
       ps.map(p => '<span class="tt-good">' + p.text + '</span>').join('<br>') + '</div>';
   }
-  /* Блок механик под разделителем «Бонусы · ауры · пассивки · активки».
-     Роль — обычной строкой под доходом (как на эскизе тултипа). */
-  let mechBlocks = '';
+  let mechLine = '<div class="tt-synergy"><div class="tt-synergy-title">Роль</div>' + roleText(card) + '</div>';
   /* Здание: эффект строится отдельным блоком (SPECIALS содержит его описание) */
   if (card.isBuilding) {
-    mechBlocks += '<div class="tt-synergy"><span style="color:#e8c060">' + (SPECIALS[card.id] || '') + '</span></div>';
+    mechLine = '<div class="tt-synergy"><div class="tt-synergy-title" style="color:#e8c060">Здание — эффект</div><span style="color:#e8c060">' + (SPECIALS[card.id] || '') + '</span></div>';
   }
   /* Уникальная механика (SPECIALS в data/cards.js) + статус активности */
   const sp = SPECIALS[card.id];
@@ -158,13 +155,13 @@ function showCardTooltip(e, card, income, r, c) {
       const sa = it ? specialActive(card, it, r, c) : { active: true };
       spStatus = sa.active ? ' <span style="color:#8fc87f">· АКТИВНА</span>' : ' <span style="color:#e08a8a">· не задействована</span>';
     }
-    mechBlocks += '<div class="tt-synergy"><div class="tt-synergy-title">✦ Особенность</div><span style="color:#e8c060">' + spText + '</span>' + spStatus + '</div>';
+    mechLine += '<div class="tt-synergy"><div class="tt-synergy-title">✦ Особенность</div><span style="color:#e8c060">' + spText + '</span>' + spStatus + '</div>';
   }
   /* ФИДБЕК 3+6: культисты — статус ритуала + НАГЛЯДНЫЕ схемы формаций */
-  mechBlocks += cultistTooltipHTML(card, r, c);
+  mechLine += cultistTooltipHTML(card, r, c);
   /* ФИДБЕК 4: звери — РАЦИОН вместо синергий */
   if (card.diet && DIET_INFO[card.diet]) {
-    mechBlocks += '<div class="tt-synergy"><div class="tt-synergy-title" style="color:' + DIET_INFO[card.diet].color + '">Рацион: ' + DIET_INFO[card.diet].name + '</div>' +
+    mechLine += '<div class="tt-synergy"><div class="tt-synergy-title" style="color:' + DIET_INFO[card.diet].color + '">Рацион: ' + DIET_INFO[card.diet].name + '</div>' +
       DIET_INFO[card.diet].desc + '</div>';
   }
   /* ФИДБЕК 5: демоны — текущие угли Хаоса */
@@ -176,32 +173,62 @@ function showCardTooltip(e, card, income, r, c) {
         '<span style="color:#ff9030">Углей: ' + em + '/5</span>' + (em < 2 ? ' — нужен толпа (2+ демона рядом)' : '');
       if (it.boomUntil > gameTime) st += ' · <span style="color:#ff5030">ПЕРЕГРЕВ ×2 (' + Math.ceil(it.boomUntil - gameTime) + 'с)</span>';
       if (it.mutBuff && it.mutBuff !== 1) st += ' · накоплено ×' + it.mutBuff.toFixed(2);
-      mechBlocks += '<div class="tt-synergy"><div class="tt-synergy-title">Угли Хаоса</div>' + st + '</div>';
+      mechLine += '<div class="tt-synergy"><div class="tt-synergy-title">Угли Хаоса</div>' + st + '</div>';
     }
   }
   /* v1.4.0: ЗАКОН И КАРА столба (реликвия в этом столбце) — пока реликвии
      неоткуда взять, блок не показывается (relicAtCol вернёт null) */
   if (r !== undefined && c !== undefined && epoch >= RELIC_SLOT_EPOCH) {
     const rel = relicAtCol(c);
-    if (rel) mechBlocks += '<div class="tt-synergy"><div class="tt-synergy-title">⚒ Закон столба: ' + rel.name + '</div>' +
+    if (rel) mechLine += '<div class="tt-synergy"><div class="tt-synergy-title">⚒ Закон столба: ' + rel.name + '</div>' +
       '<span style="color:#8fc87f">✅ ' + rel.rule + '</span><br>' +
       '<span style="color:#e08a8a">❌ ' + rel.curse + '</span></div>';
   }
-  /* v1.9.0: подраса и тип — отдельными строками (как на эскизе тултипа).
-     Разделители секций рендерим ТОЛЬКО при непустом содержимом. */
-  const metaSub = card.subrace && SUBRACE_INFO[card.subrace] ? '<div class="tt-meta">Подраса: ' + SUBRACE_INFO[card.subrace] + '</div>' : '';
-  const metaCat = card.cat && CAT_INFO[card.cat] ? '<div class="tt-meta">Тип: ' + CAT_INFO[card.cat].name + '</div>' : '';
-  const roleLine = (card.isBuilding && card.cat === 'bld') ? '' : '<div class="tt-role">' + roleText(card) + '</div>';
+  /* v1.9.0: КАТЕГОРИЯ и ПОДРАСА (Скованные/Несущие/Некроманты/Владыки · Скелеты/Призраки/Вампиры) */
+  const catLine = card.cat ? '<div class="tt-stars" style="color:#b8a888">' +
+    (CAT_INFO[card.cat] ? 'Тип: ' + CAT_INFO[card.cat].name : '') +
+    (card.subrace && SUBRACE_INFO[card.subrace] ? ' · ' + SUBRACE_INFO[card.subrace] : '') + '</div>' : '';
   tooltip.innerHTML =
     '<div class="tt-name">' + cardArtHTML(card, 'tt-art', '') + '<span>' + card.name + '</span></div>' +
-    '<div class="tt-stars">' + starsOf(card.rarity) + ' · ' + FACTION_INFO[card.faction].name + '</div>' +
+    '<div class="tt-stars">' + starsOf(card.rarity) + ' · ' + FACTION_INFO[card.faction].name + (card.isBuilding ? ' · постройка' : '') + '</div>' +
+    catLine +
     (FACTION_INFO[faction].mechanic === 'formation' && card.faction === 'cultist' && !card.isBuilding
       ? '<div class="tt-income" style="color:#c9a227">Дохода нет — вклад в ритуал: ' + (r !== undefined && INC_CTX.ritualCellSpeed && INC_CTX.ritualCellSpeed[r + ',' + c] ? '⚡ +' + INC_CTX.ritualCellSpeed[r + ',' + c].toFixed(2) + '/с заряда' : 'в ритуале') + (r !== undefined && grid[r] && grid[r][c] && grid[r][c].stacks > 1 ? ' · стак ×' + grid[r][c].stacks : '') + '</div>'
       : '<div class="tt-income">Прирост: +' + (income !== undefined ? income.toFixed(2) : card.baseRate.toFixed(2)) + '/сек</div>') +
-    roleLine + metaSub + metaCat +
-    (mechBlocks ? '<div class="tt-div">Бонусы · ауры · пассивки · активки</div>' + mechBlocks : '') +
-    (linksHtml ? '<div class="tt-div">Синергии</div>' + linksHtml : '') +
+    mechLine + linksHtml +
     '<div class="tt-flavor">«' + card.flavor + '»</div>';
+  tooltip.classList.remove('gtt');
+  tooltip.classList.add('show');
+  moveTooltip(e);
+}
+
+/* ------- Тултип ГРИМУАРА (коллекция и список колоды) — строго по эскизу:
+   арт слева, справа сверху название + редкость; под ним строки
+   «подраса» и «тип» между линиями; блок «Бонусы» (эффекты карты)
+   и блок «Синергии» с линией под заголовком; внизу флейвор серым
+   курсивом («как в хартстоуне»). Пустых блоков (и их линий) нет. ------- */
+function grimShowTooltip(e, card) {
+  /* Эффекты (бонусы/ауры/пассивки/активки) */
+  let effects = '';
+  if (SPECIALS[card.id]) effects += '<div class="gtt-line" style="color:#e8c060">' + SPECIALS[card.id] + '</div>';
+  if (card.faction === 'cultist' && !card.isBuilding) effects += cultistTooltipHTML(card, undefined, undefined);
+  if (card.diet && DIET_INFO[card.diet]) effects += '<div class="gtt-line"><b style="color:' + DIET_INFO[card.diet].color + '">Рацион: ' + DIET_INFO[card.diet].name + '.</b> ' + DIET_INFO[card.diet].desc + '</div>';
+  /* Синергии (возможные звенья) — сплошным текстом через « · »,
+     иначе у Владык список на 10 строк раздувает тултип выше экрана */
+  const ps = pairsForCard(card);
+  const syn = ps.length ? '<div class="gtt-line">' + ps.map(p => '<span class="tt-good">' + p.text + '</span>').join('<span style="color:#6f6b62"> · </span>') + '</div>' : '';
+  tooltip.innerHTML =
+    '<div class="gtt-art" style="border-color:' + rarityColor(card.rarity) + '">' +
+    cardArtHTML(card, 'gtt-img', 'gtt-glyph') + '</div>' +
+    '<div class="gtt-body">' +
+    '<div class="gtt-name"><span>' + card.name + '</span>' + (card.isBuilding ? '' : '<i class="gtt-stars">' + starsOf(card.rarity) + '</i>') + '</div>' +
+    (card.subrace && SUBRACE_INFO[card.subrace] ? '<div class="gtt-field"><span>подраса: ' + SUBRACE_INFO[card.subrace] + '</span></div>' : '') +
+    (card.cat && CAT_INFO[card.cat] ? '<div class="gtt-field"><span>тип: ' + CAT_INFO[card.cat].name + '</span></div>' : '') +
+    (effects ? '<div class="gtt-h">Бонусы</div>' + effects : '') +
+    (syn ? '<div class="gtt-h">Синергии</div>' + syn : '') +
+    '<div class="tt-flavor">«' + card.flavor + '»</div>' +
+    '</div>';
+  tooltip.classList.add('gtt');
   tooltip.classList.add('show');
   moveTooltip(e);
 }

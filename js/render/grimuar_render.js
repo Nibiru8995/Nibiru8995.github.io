@@ -35,6 +35,17 @@ const GRIM_TYPE_LABELS = {
 /* v1.8.0: возврат к выбору колоды (окно выбора расы на Эпоху → «Собрать в Гримуаре») */
 let grimPickReturn = null;
 
+/* Квадратные карты коллекции: высота авто-рядов грида = ширине колонки.
+   CSS (aspect-ratio / padding-top:100%) здесь не работает — браузер не
+   учитывает эти размеры при раскладке авто-рядов, ряды сжимаются и
+   карты наезжают друг на друга. Поэтому явные px через ResizeObserver. */
+let grimCardsRO = null;
+function grimSquareRows() {
+  const gc = $('grimCards'); if (!gc) return;
+  const card = gc.querySelector('.coll-card');
+  if (card && card.offsetWidth > 0) gc.style.gridAutoRows = card.offsetWidth + 'px';
+}
+
 function openGrimuar() {
   /* Первая колода — стартовая (создастся, если колод ещё нет) */
   ensureStarterDeck('undead');
@@ -75,6 +86,10 @@ function openGrimuar() {
   card.style.maxHeight = '94vh';
   card.style.overflow = 'hidden';
   open_('grimModal');
+  if (!grimCardsRO) {
+    grimCardsRO = new ResizeObserver(() => grimSquareRows());
+    grimCardsRO.observe(document.documentElement);
+  }
   renderGrimuar();
 }
 
@@ -102,7 +117,7 @@ function renderGrimTabs() {
   el.innerHTML = races.map(f => {
     const n = Object.keys(collection).filter(id => CARDS[id].faction === f).length;
     const tot = Object.keys(CARDS).filter(id => CARDS[id].faction === f).length;
-    return '<div class="coll-tab' + (grimRaceTab === f ? ' active' : '') + '" data-r="' + f + '" title="Открыто типов карт: ' + n + ' / ' + tot + '">' +
+    return '<div class="gtab' + (grimRaceTab === f ? ' active' : '') + '" data-r="' + f + '" title="Открыто типов карт: ' + n + ' / ' + tot + '">' +
       FACTION_INFO[f].name + ' <small>' + n + '/' + tot + '</small></div>';
   }).join('');
   el.querySelectorAll('[data-r]').forEach(t => t.onclick = () => { grimRaceTab = t.dataset.r; grimSubTab = 'all'; grimTypeTab = 'all'; renderGrimuar(); });
@@ -119,14 +134,14 @@ function renderGrimSubTabs() {
   if (grimSubTab !== 'all' && !subs.includes(grimSubTab)) grimSubTab = 'all';
   subEl.style.display = subs.length ? '' : 'none';
   subEl.innerHTML = ['all'].concat(subs).map(s =>
-    '<div class="coll-tab sub' + (grimSubTab === s ? ' active' : '') + '" data-s="' + s + '">' + (s === 'all' ? 'Все' : (SUBRACE_INFO[s] || s)) + '</div>').join('');
+    '<div class="gsubtab' + (grimSubTab === s ? ' active' : '') + '" data-s="' + s + '">' + (s === 'all' ? 'Все' : (SUBRACE_INFO[s] || s)) + '</div>').join('');
   subEl.querySelectorAll('[data-s]').forEach(t => t.onclick = () => { grimSubTab = t.dataset.s; renderGrimuar(); });
   /* Типы — у нежити категории реворка, у остальных — роли */
   const types = [];
   all.forEach(c => { const k = grimTypeKey(c); if (!types.includes(k)) types.push(k); });
   if (grimTypeTab !== 'all' && !types.includes(grimTypeTab)) grimTypeTab = 'all';
   typeEl.innerHTML = ['all'].concat(types).map(t =>
-    '<div class="coll-tab sub' + (grimTypeTab === t ? ' active' : '') + '" data-t="' + t + '">' + (t === 'all' ? 'Все' : (GRIM_TYPE_LABELS[t] || t)) + '</div>').join('');
+    '<div class="gsubtab' + (grimTypeTab === t ? ' active' : '') + '" data-t="' + t + '">' + (t === 'all' ? 'Все' : (GRIM_TYPE_LABELS[t] || t)) + '</div>').join('');
   typeEl.querySelectorAll('[data-t]').forEach(t => t.onclick = () => { grimTypeTab = t.dataset.t; renderGrimuar(); });
 }
 
@@ -163,7 +178,7 @@ function renderGrimCollection() {
     }).join('');
     cont.querySelectorAll('[data-gid]').forEach(el => {
       const id = el.dataset.gid;
-      el.addEventListener('mouseenter', e => showCardTooltip(e, CARDS[id], CARDS[id].baseRate));
+      el.addEventListener('mouseenter', e => grimShowTooltip(e, CARDS[id]));
       el.addEventListener('mousemove', moveTooltip);
       el.addEventListener('mouseleave', hideTooltip);
       el.addEventListener('click', () => {
@@ -182,6 +197,7 @@ function renderGrimCollection() {
   const st = 'Типов карт в коллекции: ' + ownedTypes + ' из ' + Object.keys(CARDS).length +
     ' · копий всего: ' + fmt(Object.values(collection).reduce((a, b) => a + b, 0));
   if ($('grimCollStats').dataset.sig !== st) { $('grimCollStats').dataset.sig = st; $('grimCollStats').textContent = st; }
+  grimSquareRows();
 }
 
 /* ---------------- Колоды (справа) ---------------- */
@@ -335,7 +351,7 @@ function renderGrimDeckView() {
       if (e.target.closest('.deck-up')) return; /* стрелка — свой обработчик */
       removeFromDeck(d, idx); renderGrimuar();
     });
-    el2.addEventListener('mouseenter', e => showCardTooltip(e, CARDS[d.cards[idx].id], CARDS[d.cards[idx].id].baseRate));
+    el2.addEventListener('mouseenter', e => grimShowTooltip(e, CARDS[d.cards[idx].id]));
     el2.addEventListener('mousemove', moveTooltip);
     el2.addEventListener('mouseleave', hideTooltip);
   });

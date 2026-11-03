@@ -402,6 +402,24 @@ body { font-family: 'Alegreya', 'Georgia', 'Times New Roman', serif; }
 #tooltip .tt-good { color: #94c77c; }
 #tooltip .tt-bad { color: #cf8a80; font-weight: bold; }
 #tooltip .tt-flavor { font-style: italic; color: #a39e92; font-size: 11px; border-top: 1px solid #26262a; padding-top: 6px; margin-top: 6px; text-align: left; }
+/* Тултип ГРИМУАРА — по эскизу: арт слева, «подраса»/«тип» между линиями,
+   блоки «Бонусы» и «Синергии» с линией под заголовком, флейвор внизу.
+   Пустой блок не рендерится — вместе со своей линией. */
+#tooltip.gtt { flex-direction: row; gap: 12px; width: 470px; max-width: 470px; max-height: calc(100vh - 16px); overflow: hidden; padding: 12px; }
+#tooltip.gtt.show { display: flex; }
+#tooltip.gtt .gtt-art { flex: 0 0 150px; width: 150px; height: 150px; border: 1px solid #2c2c30; border-radius: 4px; background: #0a0a0c; box-shadow: inset 0 0 18px #000000aa; overflow: hidden; display: flex; align-items: center; justify-content: center; align-self: flex-start; }
+#tooltip.gtt .gtt-img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; image-rendering: crisp-edges; }
+#tooltip.gtt .gtt-glyph { font-size: 60px; line-height: 1; }
+#tooltip.gtt .gtt-body { flex: 1 1 auto; min-width: 0; }
+#tooltip.gtt .gtt-name { display: flex; align-items: baseline; gap: 8px; font-size: 15.5px; font-weight: bold; color: #d8d2c4; font-family: 'Philosopher', 'Georgia', serif; line-height: 1.25; }
+#tooltip.gtt .gtt-stars { color: var(--gold); font-size: 12px; font-style: normal; white-space: nowrap; flex: 0 0 auto; }
+#tooltip.gtt .gtt-field { display: flex; align-items: center; gap: 8px; margin: 4px 0 0; color: #b8a888; font-size: 11px; }
+#tooltip.gtt .gtt-field::before, #tooltip.gtt .gtt-field::after { content: ''; flex: 1 1 auto; height: 1px; }
+#tooltip.gtt .gtt-field::before { background: linear-gradient(90deg, #3a332588, #8a6a3a66); }
+#tooltip.gtt .gtt-field::after { background: linear-gradient(270deg, #3a332588, #8a6a3a66); }
+#tooltip.gtt .gtt-h { color: var(--gold); font-size: 10px; font-weight: bold; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 1px solid #8a6a3a55; padding-bottom: 2px; margin: 10px 0 5px; }
+#tooltip.gtt .gtt-line { color: #a9bcc8; font-size: 11px; margin: 0 0 5px; }
+#tooltip.gtt .tt-flavor { margin-top: 8px; }
 
 .modal { position: fixed; inset: 0; background: radial-gradient(circle at 50% 50%, #17171aaa, #000000ee); display: flex; align-items: center; justify-content: center; z-index: 100; opacity: 0; pointer-events: none; transition: opacity .3s; }
 .modal.show { opacity: 1; pointer-events: auto; }
@@ -1170,12 +1188,26 @@ body[data-faction="undead"] .cell.aura-lich { border-color:#7fa08c !important; b
 .grim-col { display: flex; flex-direction: column; gap: 6px; min-height: 0; border: 1px solid var(--border); border-radius: 4px; padding: 8px; background: #0d0d0fcc; }
 .grim-col-title { font-size: 11px; letter-spacing: 1.2px; color: var(--gold); font-weight: bold; }
 .grim-col-title small { color: var(--ink-dim); font-weight: normal; letter-spacing: .2px; text-transform: none; }
-.grim-tabs { display: flex; gap: 3px; flex-wrap: wrap; }
-.grim-tabs .coll-tab { flex: 0 1 auto; padding: 4px 8px; }
-.grim-subtabs { display: flex; gap: 3px; flex-wrap: wrap; }
-.grim-subtabs .coll-tab { padding: 2px 7px; font-size: 10.5px; flex: 0 1 auto; }
+/* Вкладки коллекции — настоящие «папки»: полоса с общей нижней границей,
+   активная вкладка поднята и слита с содержимым */
+.grim-tabs { display: flex; align-items: flex-end; flex-wrap: wrap; border-bottom: 1px solid #3a3325; }
+.grim-tabs .gtab { padding: 5px 12px 6px; margin-bottom: -1px; font-size: 11.5px; font-weight: 600; color: var(--ink-dim); cursor: pointer; background: transparent; border: 1px solid transparent; border-bottom: none; border-radius: 5px 5px 0 0; white-space: nowrap; transition: background .12s, color .12s; }
+.grim-tabs .gtab small { font-size: 9.5px; color: #6f6b62; }
+.grim-tabs .gtab:hover { color: var(--ink); background: #141417; }
+.grim-tabs .gtab.active { color: var(--gold-hi); background: #17140e; border-color: #3a3325; }
+.grim-tabs .gtab.active small { color: var(--gold); }
+/* Подвкладки (подрасы, типы) — подчёркнутые вкладки поменьше */
+.grim-subtabs { display: flex; align-items: flex-end; flex-wrap: wrap; border-bottom: 1px solid #26262a; }
+.grim-subtabs .gsubtab { padding: 3px 10px 4px; margin-bottom: -1px; font-size: 10.5px; color: var(--ink-dim); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; }
+.grim-subtabs .gsubtab:hover { color: var(--ink); }
+.grim-subtabs .gsubtab.active { color: var(--gold-hi); font-weight: bold; border-bottom-color: var(--gold); }
 .grim-cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; overflow-y: auto; min-height: 120px; flex: 1 1 auto; align-content: start; justify-items: stretch; padding: 2px; }
-.grim-cards .coll-card { width: 100%; height: auto; aspect-ratio: 1; }
+.grim-cards .coll-card { display: block; width: 100%; height: auto; }
+/* Квадрат карт и строк: высоту авто-рядов задаёт JS (grimSquareRows) —
+   по фактической ширине колонки. CSS-пути (aspect-ratio, padding-top:100%)
+   не работают: Chrome не учитывает их в intrinsic-размере авто-рядов,
+   из-за чего ряды сжимались и карты наезжали друг на друга. */
+.grim-cards .coll-card .coll-glyph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
 .grim-addable { cursor: pointer; }
 .grim-addable:hover { outline: 2px solid #8fc87f; box-shadow: 0 0 8px #8fc87f66; }
 .grim-dim { opacity: .55; cursor: default; }

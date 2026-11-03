@@ -131,11 +131,16 @@ function ask(text, onYes) {
   $('dlgNo').onclick = () => close_('dlg');
 }
 
-/* Позиционирование тултипа у курсора */
+/* Позиционирование тултипа у курсора (габарит — по самому тултипу,
+   чтобы широкий тултип Гримуара не уезжал за край экрана) */
 function moveTooltip(e) {
   const tt = $('tooltip'); if (!tt) return;
-  tt.style.left = Math.min(e.clientX + 14, window.innerWidth - 330) + 'px';
-  tt.style.top = Math.min(e.clientY + 14, window.innerHeight - 240) + 'px';
+  const w = tt.offsetWidth || 330, h = tt.offsetHeight || 240;
+  let x = e.clientX + 14, y = e.clientY + 14;
+  if (x + w > window.innerWidth - 8) x = Math.max(8, e.clientX - w - 14);
+  if (y + h > window.innerHeight - 8) y = Math.max(8, e.clientY - h - 14);
+  tt.style.left = x + 'px';
+  tt.style.top = y + 'px';
 }
 function hideTooltip() { const tt = $('tooltip'); if (tt) tt.classList.remove('show'); }
 
