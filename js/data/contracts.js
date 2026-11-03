@@ -74,11 +74,25 @@ const CONTRACT_TPL = [
     ok: () => true
   },
   {
-    id: 'hunts', name: 'Охота', icon: '🦷', diff: 1, kind: 'delta', stat: 'predKills',
-    text: n => 'Совершите ' + n + ' убийств на пищевой цепи',
-    val: () => stats.predKills || 0,
-    target: e => 3 + Math.min(9, Math.floor(e / 2)),
-    ok: () => FACTION_INFO[faction].mechanic === 'cycle'
+    id: 'hunts', name: 'Большая охота', icon: '🦷', diff: 1, kind: 'live',
+    text: n => 'Держите ' + n + ' акт(ов) охоты одновременно (хищник с дичью в угодьях)',
+    val: () => (typeof BEAST_GROUNDS !== 'undefined' && BEAST_GROUNDS) ? BEAST_GROUNDS.acts : 0,
+    target: e => 3 + Math.min(6, Math.floor(e / 2)),
+    ok: () => FACTION_INFO[faction].mechanic === 'grounds'
+  },
+  {
+    id: 'forest3', name: 'Три рода леса', icon: '🐾', diff: 2, kind: 'live',
+    text: () => 'Соберите на поле все три рода леса: Стая, Стадо и Чаща',
+    val: () => { const s = new Set(); grid.forEach(row => row.forEach(it => { if (it) { const cd = CARDS[it.cardId]; if (cd.faction === 'beast' && !cd.isBuilding && cd.subrace) s.add(cd.subrace); } })); return s.size; },
+    target: () => 3,
+    ok: () => FACTION_INFO[faction].mechanic === 'grounds'
+  },
+  {
+    id: 'alpha_pack', name: 'Верховная альфа', icon: '👑', diff: 3, kind: 'live',
+    text: n => 'Соберите стаю из ' + n + ' хищников под одной короной',
+    val: () => (typeof BEAST_GROUNDS !== 'undefined' && BEAST_GROUNDS) ? BEAST_GROUNDS.packBest : 0,
+    target: e => 4 + Math.min(4, Math.floor(e / 3)),
+    ok: () => FACTION_INFO[faction].mechanic === 'grounds'
   },
   {
     id: 'booms', name: 'Взрывы Хаоса', icon: '💥', diff: 1, kind: 'delta', stat: 'demonBooms',

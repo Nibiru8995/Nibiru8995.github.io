@@ -68,7 +68,10 @@ const ACHIEVEMENTS = [
   /* --- Пакет – --- */
   { id: 'surge_10',     name: 'Камертон Бездны',          desc: 'Провести 10 ритуалов культистов', check: () => (stats.surges || 0) >= 10 },
   { id: 'diamond_rit',  name: 'Геометр тьмы',             desc: 'Собрать формацию «Ромб» вокруг Алтаря',  check: () => Object.values(INC_CTX.formActive || {}).some(f => f.kind === 'diamond') },
-  { id: 'hunt_25',      name: 'Красный пищевой цепи',     desc: 'Хищники Алтаря совершили 25 убийств',    check: () => (stats.predKills || 0) >= 25 },
+  { id: 'hunt_big',     name: 'Великая Охота',           desc: 'Хищники Алтаря накопили 300 актов охоты за Эпоху (Дикие Угодья)', check: () => (stats.huntActs || 0) >= 300 },
+  { id: 'beast_kinds',  name: 'Три рода леса',           desc: 'Иметь на поле зверей Стаи, Стада и Чащи одновременно', check: () => { const s = new Set(); for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) { const it = grid[r][c]; if (it && CARDS[it.cardId] && CARDS[it.cardId].faction === 'beast' && CARDS[it.cardId].subrace && !CARDS[it.cardId].isBuilding) s.add(CARDS[it.cardId].subrace); } return s.size >= 3; } },
+  { id: 'alpha_5',      name: 'Корона',                  desc: 'Собрать стаю из 5+ хищников под одной короной альфы', check: () => typeof BEAST_GROUNDS !== 'undefined' && BEAST_GROUNDS && BEAST_GROUNDS.packBest >= 5 },
+  { id: 'spirit_1',     name: 'Дух Леса',                desc: 'Дождаться Ухода в Чащу — получить Духа Леса', check: () => [...discovered].some(id => CARDS[id] && CARDS[id].spirit) },
   { id: 'boom_50',      name: 'Пиротехник легиона',       desc: '50 взрывов Хаоса на Алтаре',             check: () => (stats.demonBooms || 0) >= 50 },
   { id: 'elite_10',     name: 'Гроза элит',               desc: 'Разбить 10 элитных отрядов Колыбели Войны', check: () => (stats.eliteKills || 0) >= 10 },
   { id: 'streak_8',     name: 'Серия без промаха',        desc: '8 побед Колыбели Войны подряд',          check: () => (stats.streakMax || 0) >= 8 },
