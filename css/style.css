@@ -660,6 +660,7 @@ img.rico { width: 18px; height: 18px; vertical-align: -4px; image-rendering: pix
 .omen-sec { font-size: 9px; font-weight: bold; color: #e4d6a4; line-height: 1; text-shadow: 0 1px 2px #000; }
 .omen-vein { border-color: #9fc6da; box-shadow: 0 0 14px #4f7d8f, inset 0 0 8px #9fc6da66; }
 .omen-haste { border-color: #8fbf72; box-shadow: 0 0 14px #6f9f5f, inset 0 0 8px #8fbf7266; }
+.omen-soul { border-color: #c9a0ff; box-shadow: 0 0 16px #7a40c0, inset 0 0 10px #c9a0ff66; animation-duration: 0.7s; }
 .omen-relic { border-color: #b3a15f; box-shadow: 0 0 18px #b3a15f, inset 0 0 10px #e4d6a499; animation-duration: 0.7s; }
 @keyframes omenPulse {
   0%, 100% { transform: scale(1); filter: brightness(1); }
@@ -984,7 +985,7 @@ img.rico { width: 18px; height: 18px; vertical-align: -4px; image-rendering: pix
 /* ================= v1.3.0 СТЕНА ТЬМЫ (чат в главном меню) =================
    Серый мрак, плоский чекан — в стиле «Резца Тьмы». До 15 сообщений. */
 #wallBox { margin-top: 10px; background: #121014; border: 1px solid #2e2a33; border-radius: 2px; display: flex; flex-direction: column; overflow: hidden; }
-#wallHead { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; font-family: 'Ruslan Display', Georgia, serif; font-size: 11px; letter-spacing: 1.2px; color: var(--gold); border-bottom: 1px solid #2e2a33; user-select: none; }
+#wallHead { display: flex; justify-content: center; align-items: center; position: relative; padding: 6px 8px; font-family: 'Ruslan Display', Georgia, serif; font-size: 11px; letter-spacing: 1.2px; color: var(--gold); border-bottom: 1px solid #2e2a33; user-select: none; }
 #wallRefresh { cursor: pointer; color: var(--ink-dim); font-size: 13px; padding: 0 2px; }
 #wallRefresh:hover { color: var(--gold); }
 #wallRows { height: 148px; overflow-y: auto; padding: 6px 8px; display: flex; flex-direction: column; gap: 5px; scrollbar-width: thin; scrollbar-color: #3a3040 transparent; }
@@ -1006,7 +1007,9 @@ img.rico { width: 18px; height: 18px; vertical-align: -4px; image-rendering: pix
    Блок НАД чатом, тот же серый чекан. 10 вкладок по Эпохам (последняя «10+»),
    строка рейтинга чёткая: ИГРОК — МАКСИМАЛЬНЫЙ ДОХОД. */
 #lbBox { margin-top: 10px; background: #121014; border: 1px solid #2e2a33; border-radius: 2px; display: flex; flex-direction: column; overflow: hidden; }
-#lbHead { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; font-family: 'Ruslan Display', Georgia, serif; font-size: 11px; letter-spacing: 1.2px; color: var(--gold); border-bottom: 1px solid #2e2a33; user-select: none; }
+#lbHead > span:first-child, #wallHead > span:first-child { text-align: center; }
+#lbHead #lbRefresh, #wallHead #wallRefresh { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); }
+#lbHead { display: flex; justify-content: center; align-items: center; position: relative; padding: 6px 8px; font-family: 'Ruslan Display', Georgia, serif; font-size: 11px; letter-spacing: 1.2px; color: var(--gold); border-bottom: 1px solid #2e2a33; user-select: none; }
 #lbRefresh { cursor: pointer; color: var(--ink-dim); font-size: 13px; padding: 0 2px; }
 #lbRefresh:hover { color: var(--gold); }
 #lbTabs { display: flex; gap: 3px; padding: 5px 6px; border-bottom: 1px solid #2e2a33; }
@@ -1212,6 +1215,39 @@ body[data-faction="undead"] .cell.aura-lich { border-color:#7fa08c !important; b
 .upg-buy .mini { min-width: 84px; text-align: center; }
 .upg-owned { color: #8fc87f; font-size: 12px; white-space: nowrap; }
 .upg-locked { color: #6a655c; font-size: 13px; }
+
+/* --- v1.8.0b: окно «Улучшения» переработано: группы/tabs/скролл ---
+   Прокрутка только у центрального списка; шапка и пол окна лежат
+   на фоне самого окна. */
+#upgModal .modal-card { max-width: 580px; align-items: stretch; max-height: 92vh; min-height: 340px; }
+#upgModal #upgList { flex: 1 1 auto; min-height: 0; }
+/* группа улучшений: блок чуть темнее окна */
+.upg-group {
+  background: #0b0b0d;
+  border: 1px solid #26262a;
+  border-radius: 6px;
+  padding: 10px 12px;
+  width: 100%;
+}
+.upg-group-title { display: flex; align-items: center; gap: 10px; color: var(--gold); font-size: 13px; letter-spacing: 1px; }
+.upg-group-title .line { flex: 1; height: 1px; background: var(--gold); opacity: .38; }
+/* строка улучшения */
+.upg-item { display: flex; align-items: flex-start; gap: 10px; background: #1c1c20; border: 1px solid #26262a; border-radius: 4px; padding: 6px 8px; margin: 3px 0; font-size: 12px; }
+.upg-item .ic { font-size: 14px; line-height: 1.25; flex: 0 0 auto; width: 20px; text-align: center; }
+.upg-item .txt { flex: 1 1 auto; }
+.upg-item .txt small { color: #a39e92; }
+.upg-item .cost { flex-shrink: 0; display: flex; align-items: center; gap: 4px; color: #9fe8f0; font-size: 12px; margin-top: 1px; }
+/* приглушённая строка (.avail): куплено / заблокировано / не хватает Душ */
+.upg-item.avail { background: #121214; }
+.upg-item.avail .txt b { color: #8f8a80; }
+.upg-item.avail .txt small { color: #6f6b62; }
+.upg-item.avail .ic { opacity: .55; }
+.upg-item.avail .cost { color: #5d7c85; opacity: .75; }
+/* вкладки группы «Слуги» */
+.upg-tabs { display: flex; gap: 6px; width: 100%; margin: 2px 0 6px; }
+.upg-tab { flex: 1; text-align: center; padding: 5px 4px; font-size: 12px; color: #a39e92; background: #16161a; border: 1px solid #26262a; border-radius: 4px; }
+.upg-tab.cur { color: var(--gold); border-color: var(--gold); }
+.upg-tab:hover { border-color: var(--gold); }
 
 /* --- Выбор колоды (обязательный шаг при выборе расы на Эпоху) --- */
 .deckpick-list { display: flex; flex-direction: column; gap: 5px; margin: 8px 0; max-height: 320px; overflow-y: auto; }

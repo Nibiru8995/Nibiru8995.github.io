@@ -87,8 +87,9 @@ function collectionFree(id) {
   return (collection[id] || 0);
 }
 
-/* ---------------- КОЛОДЫ (записи {id, n}) ---------------- */
-const DECK_SIZE = 64; /* копий, суммарно */
+/* ---------------- КОЛОДЫ (записи {id, n}) ----------------
+   Лимит копий — deckCap() из logic/upgrades.js (страницы Гримуара:
+   9 → 25 → 49 → 81). */
 /* Суммарное число копий в колоде */
 function deckTotal(deck) { return deck ? deck.cards.reduce((s, e) => s + (e.n || 1), 0) : 0; }
 function deckById(id) { return decks.find(k => k.id === id) || null; }
@@ -106,7 +107,7 @@ function canStackEntry(deck, idx) {
   if (!deck || !deck.cards[idx]) return false;
   const id = deck.cards[idx].id;
   return (deck.cards[idx].n || 1) < deckStackMax() &&
-    deckTotal(deck) < DECK_SIZE &&
+    deckTotal(deck) < deckCap() &&
     deckUsedCount(deck, id) < collectionFree(id);
 }
 /* Клик по карте коллекции ГРИМУАРА → добавить копию как ДУБЛИКАТ
@@ -114,7 +115,7 @@ function canStackEntry(deck, idx) {
 function addToDeck(deck, cardId) {
   if (!deck || !CARDS[cardId]) return false;
   if (CARDS[cardId].faction !== deck.race) return false;      /* колода принадлежит расе */
-  if (deckTotal(deck) >= DECK_SIZE) return false;             /* лимит 64 копий */
+  if (deckTotal(deck) >= deckCap()) return false;             /* лимит копий */
   if (deckUsedCount(deck, cardId) >= collectionFree(cardId)) return false; /* копий нет */
   deck.cards.push({ id: cardId, n: 1 });
   saveMeta();

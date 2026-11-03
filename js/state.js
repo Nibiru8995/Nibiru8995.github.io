@@ -52,13 +52,18 @@ function gainSouls(n) {
 /* --- v1.8.0 «Вечная Эпоха»: УЛУЧШЕНИЯ (мета, вечные) ---
    upgLv — уровни бонусов (бывшие печати: rich/greed/impulse/arch/fate);
    fieldLv — купленные расширения поля (3×3 → 5×5 → 7×7 → 9×9);
-   feats — купленные фичи: arena, casino, r4 (★4 в Призыве), r5;
+   deckLv — купленные страницы колоды (лимит 9 → 25 → 49 → 81);
+   feats — купленные фичи: arena, casino, r4/r5, darkomens, darksave, ground;
+   staffLv — купленные улучшения Слуг (stt_<фракция>_<№> = 1);
+   staffLv — отредактированные покупки Слуг (fid_...: 1);
    factionsOwned — купленные фракции: cultist, beast, demon.
    Печати 🔱 («эссенция») УДАЛЕНЫ из игры — всё платит Душами. */
 let upgLv = { rich: 0, greed: 0, impulse: 0, arch: 0, fate: 0 };
 let fieldLv = 0;
+let deckLv = 0;
 let feats = [];
 let factionsOwned = [];
+let staffLv = {};
 
 /* Разовое обнуление учеток: ключи прошлых версий + локальный «рекорд,
    отправленный в базу» (иначе после чистки Таблички Тьмы новые рекорды
@@ -285,8 +290,8 @@ function buildMetaSave() {
     /* Гримуар: мета-слой карт + вечные гача-счётчики (v1.7.0: без freeRolls) */
     souls, collection, decks, activeDeck, gachaRace,
     pity4, pity5,
-    /* v1.8.0: УЛУЧШЕНИЯ — уровни бонусов, поле, фичи, фракции (печати удалены) */
-    upgLv, fieldLv, feats, factionsOwned,
+    /* v1.8.0: УЛУЧШЕНИЯ — уровни бонусов, поле, страницы колоды, фичи, фракции (печати удалены) */
+    upgLv, fieldLv, deckLv, feats, factionsOwned, staffLv,
     sfx: soundOn, music: musicOn, fx: fxOn, speedMult };
 }
 function saveMeta() {
@@ -324,8 +329,10 @@ function loadMeta() {
     const lvSrc = d.upgLv || d.sealLv || {};
     upgLv = { rich: lvSrc.rich || 0, greed: lvSrc.greed || 0, impulse: lvSrc.impulse || 0, arch: lvSrc.arch || 0, fate: lvSrc.fate || 0 };
     fieldLv = clamp(Math.floor(d.fieldLv ?? 0), 0, 3);
+    deckLv = clamp(Math.floor(d.deckLv ?? 0), 0, (typeof UPG_DECK !== 'undefined' ? UPG_DECK.length : 0));
     feats = Array.isArray(d.feats) ? d.feats.filter(k => UPG_ONCE && UPG_ONCE[k]) : [];
     factionsOwned = Array.isArray(d.factionsOwned) ? d.factionsOwned.filter(f => FACTION_KEYS.includes(f)) : [];
+    staffLv = (d.staffLv && typeof d.staffLv === 'object') ? d.staffLv : {};
     soundOn = d.sfx ?? true; musicOn = d.music ?? true;
     fxOn = d.fx ?? true; speedMult = d.speedMult ?? 1;
   } catch (e) { }

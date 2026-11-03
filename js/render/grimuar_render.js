@@ -46,7 +46,7 @@ function openGrimuar() {
     '<div class="grim-collstats" id="grimCollStats"></div>' +
     '</div>' +
     '<div class="grim-col">' +
-    '<div class="grim-col-title">КОЛОДЫ <small>до ' + DECK_SIZE + ' копий · стак до ×' + deckStackMax() + ' · своя раса</small></div>' +
+    '<div class="grim-col-title">КОЛОДЫ <small>до ' + deckCap() + ' копий · стак до ×' + deckStackMax() + ' · своя раса</small></div>' +
     '<div class="grim-decks" id="grimDecks"></div>' +
     '<div class="grim-deckview" id="grimDeckView"></div>' +
     '</div>' +
@@ -114,7 +114,7 @@ function renderGrimCollection() {
       const card = CARDS[id];
       const owned = collection[id];
       const inDeck = deck && deck.race === grimRaceTab ? deckUsedCount(deck, id) : 0;
-      const canAdd = deck && deck.race === grimRaceTab && deckTotal(deck) < DECK_SIZE && inDeck < owned;
+      const canAdd = deck && deck.race === grimRaceTab && deckTotal(deck) < deckCap() && inDeck < owned;
       return '<div class="coll-card star' + card.rarity + ' f-' + card.faction + (canAdd ? ' grim-addable' : ' grim-dim') + '" data-gid="' + id + '" style="--glow:' + rarityColor(card.rarity) + ';--cardBg:' + rarityBg(card.rarity) + (card.isBuilding ? ';border-style:double' : '') + '">' +
         cardArtHTML(card, 'coll-art', 'coll-glyph') +
         '<span class="faction-dot" style="background:' + FACTION_INFO[card.faction].color + '"></span>' +
@@ -131,7 +131,7 @@ function renderGrimCollection() {
         const d = deckById(grimSelDeckId);
         if (!d) { toast('Сначала выберите или создайте колоду справа'); return; }
         if (d.race !== CARDS[id].faction) { toast('Эта колода расы «' + FACTION_INFO[d.race].name + '» — карты других рас в неё не входят'); return; }
-        if (deckTotal(d) >= DECK_SIZE) { toast('В колоде уже ' + DECK_SIZE + ' копий — лимит'); return; }
+        if (deckTotal(d) >= deckCap()) { toast('В колоде уже ' + deckCap() + ' копий — лимит'); return; }
         if (deckUsedCount(d, id) >= collectionFree(id)) { toast('Свободных копий «' + CARDS[id].name + '» больше нет — сделайте Призыв'); return; }
         addToDeck(d, id); /* v1.8.0: клик — добавить как ДУБЛИКАТ (новый блок) */
         sfx('click');
@@ -156,7 +156,7 @@ function renderGrimDecks() {
       return '<div class="grim-deck-row' + (grimSelDeckId === d.id ? ' sel' : '') + (act ? ' active' : '') + '" data-d="' + d.id + '">' +
         '<span class="gdr-dot" style="background:' + FACTION_INFO[d.race].color + '" title="' + FACTION_INFO[d.race].name + '"></span>' +
         '<span class="gdr-name">' + d.name + '</span>' +
-        '<span class="gdr-count">' + deckTotal(d) + '/' + DECK_SIZE + '</span>' +
+        '<span class="gdr-count">' + deckTotal(d) + '/' + deckCap() + '</span>' +
         (act ? '<span class="gdr-star" title="Активная колода этой расы — выдаётся на старте забега">★</span>' : '') +
         '<button class="mini gdr-rename" title="Переименовать">✎</button>' +
         '<button class="mini gdr-del" title="Удалить колоду">🗑</button>' +
@@ -215,7 +215,7 @@ function renderGrimDeckView() {
     const act = activeDeck[d.race] === d.id;
     html += '<div class="grim-deckhead">' +
       '<b>' + d.name + '</b> <span class="grim-race-badge" style="border-color:' + FACTION_INFO[d.race].color + ';color:' + FACTION_INFO[d.race].color + '">' + FACTION_INFO[d.race].name + '</span>' +
-      '<span style="margin-left:auto">' + deckTotal(d) + '/' + DECK_SIZE + '</span>' +
+      '<span style="margin-left:auto">' + deckTotal(d) + '/' + deckCap() + '</span>' +
       (act ? '<span class="gdr-star" title="Выдаётся на старте забега этой расы">★ активная</span>'
            : '<button class="mini" id="grimSetActive">★ Сделать активной</button>') +
       '</div>' +

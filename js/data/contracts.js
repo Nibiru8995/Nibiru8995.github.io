@@ -63,7 +63,7 @@ const CONTRACT_TPL = [
     id: 'deck', name: 'Колода расы', icon: '🃏', diff: 1, kind: 'live',
     text: n => 'Соберите колоду расы из ' + n + ' карт в Гримуаре',
     val: () => deckCountOf(faction),
-    target: e => Math.min(64, 16 + 4 * e),
+    target: e => Math.min(deckCap(), 16 + 4 * e),
     ok: () => true
   },
   {

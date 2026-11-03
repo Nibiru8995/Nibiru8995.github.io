@@ -81,6 +81,21 @@ function resetRunCommon(newFaction, deck) {
   milestoneIdx = 0;
   omens = []; omenTimer = 60; renderOmens();
 
+  /* v1.8.1 «Подготовленная земля»: в центре поля бесплатно стоит
+     базовое здание фракции (нежить — Кладбище, культисты — Алтарь).
+     Ставится как обычное здание (buildBuildingAuras его видит). */
+  if (featOwned('ground')) {
+    const base = faction === 'undead' ? 'bl_grave' : (faction === 'cultist' ? 'bl_altar' : null);
+    if (base) {
+      const mid = Math.floor(playableSize / 2), gr = gridStart() + mid, gc = gridStart() + mid;
+      if (!grid[gr][gc] && CARDS[base]) {
+        const hp = cardHp(CARDS[base].rarity);
+        grid[gr][gc] = { cardId: base, stacks: 1, hp, maxHp: hp,
+          predBuff: 0, mutBuff: 1, embers: 0, hunger: 1, graze: 0, floraBuff: 0, scavBuff: 0, boomUntil: 0, petrCount: 0 };
+      }
+    }
+  }
+
   /* ВЫДАЁМ КОЛОДУ (v1.6.0): выбранная колода расы забега — в инвентарь сразу.
      v1.8.0: записи {id, n} → очереди deckStacks; runDeck-снапшот.
      Пусто → старт-кит фракции, как раньше. */

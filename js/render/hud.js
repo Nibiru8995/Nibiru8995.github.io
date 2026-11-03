@@ -102,7 +102,9 @@ function updateBanner() {
     b.innerHTML = 'Выбрана карта: <b>' + CARDS[pendingCard].name + '</b>. Кликните по подсвеченной клетке. ПКМ/Esc — отмена.';
     b.classList.add('show');
   } else if (deleteMode) {
-    b.innerHTML = 'Режим удаления. Кликните по карте — она будет удалена навсегда. Esc — отмена.';
+    b.innerHTML = featOwned('darksave')
+      ? 'Режим удаления. Кликните по карте — она вернётся в Гримуар (Тёмное сохранение). Esc — отмена.'
+      : 'Режим удаления. Кликните по карте — она будет удалена навсегда. Esc — отмена.';
     b.classList.add('show');
   } else if (moveMode) {
     b.innerHTML = moveSource ? 'Перемещение: кликните по свободной подсвеченной клетке. Esc — отмена.' : 'Перемещение: кликните по карте на поле. Esc — отмена.';

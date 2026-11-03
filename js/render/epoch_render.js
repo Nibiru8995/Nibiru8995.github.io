@@ -25,7 +25,7 @@ function renderEpochMenu() {
     '<div class="goal"><span>Прогресс: ' + fmtShort(p.earned) + ' / ' + fmtShort(p.threshold) + ' ' + DE_IMG + '</span><i style="width:' + Math.floor(p.pct * 100) + '%"></i><em>' + Math.floor(p.pct * 100) + '%</em></div>' +
     '<div class="up"><b>🧱 Поле Алтаря: ' + playableSize + '×' + playableSize + '</b><br><small>Размер поля задаётся покупками в «Улучшениях» — от Эпохи больше не растёт.</small></div>' +
     milHtml() +
-    '<div class="flavor">Эпохи БЕСКОНЕЧНЫ: за переход платим Душой (' + SOUL_IMG + ' +1), пороги растут ×4. Разблокировок больше нет — фичи, поле, ★4/★5 и фракции покупаются Душами в «Улучшениях» (Меню → ✦ Улучшения).</div>' +
+    '<div class="flavor">Эпохи БЕСКОНЕЧНЫ: за переход платим Душой (' + SOUL_IMG + ' +1), пороги растут ×4. Разблокировок больше нет — фичи, поле, ★4/★5 и фракции покупаются Душами в «Улучшениях» (Меню → Улучшения).</div>' +
     '<div class="btn-row"><button class="btn btn-take" id="epochGoBtn" style="max-width:none" ' + (canEpochUp() ? '' : 'disabled') + '>' +
     (canEpochUp() ? '⚔ НАЧАТЬ ЭПОХУ ' + next + ' «' + epochName(next) + '» → +' + SOUL_IMG + ' 1 Душа' : 'Порог не достигнут (' + Math.floor(p.pct * 100) + '%)') + '</button></div>';
 
@@ -142,7 +142,7 @@ function openDeckPick(race, onPick) {
       return '<div class="deckpick-row' + (act ? ' active' : '') + '" data-dk="' + d.id + '">' +
         '<span class="gdr-dot" style="background:' + FACTION_INFO[race].color + '"></span>' +
         '<span class="gdr-name">' + d.name + '</span>' +
-        '<span class="gdr-count">' + deckTotal(d) + '/64</span>' +
+        '<span class="gdr-count">' + deckTotal(d) + '/' + deckCap() + '</span>' +
         (stk ? '<span class="gdr-stk" title="Карт с стаком ×2+">▲ ' + stk + '</span>' : '') +
         (act ? '<span class="gdr-star" title="Активная колода расы">★</span>' : '') +
         '<button class="mini" title="Выбрать эту колоду">ВЫБРАТЬ</button>' +

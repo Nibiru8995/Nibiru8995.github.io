@@ -98,6 +98,8 @@ function onCellClick(r, c) {
   if (deleteMode) {
     if (item) {
       const doDelete = () => {
+        /* Тёмное сохранение: карта возвращается в Гримуар, а не стирается */
+        if (featOwned('darksave')) inventory[item.cardId] = (inventory[item.cardId] || 0) + item.stacks;
         grid[r][c] = null; stats.deleted++;
         computeIncome(); renderGrid(); renderCollection(); updateHUD();
       };

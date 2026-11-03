@@ -40,10 +40,13 @@ function spawnOmen() {
       if (!omens.some(o => o.r === r && o.c === c)) open.push([r, c]);
   if (!open.length) return;
   const [r, c] = pick(open);
-  const type = Math.random() < 0.6 ? 'vein' : 'haste';
+  /* Тёмное Знамение: взамен обычного, если куплено — шанс 20% */
+  const dark = featOwned('darkomens') && Math.random() < 0.2;
+  const type = dark ? 'soul' : (Math.random() < 0.6 ? 'vein' : 'haste');
   omens.push({ r, c, type, until: gameTime + 18 });
   renderOmens();
-  toast('✨ <b>Знамение</b> на Алтаре! Жми, пока не погасло');
+  toast(dark ? '💀 <b>Тёмное Знамение</b> на Алтаре! Жми, пока не погасло'
+             : '✨ <b>Знамение</b> на Алтаре! Жми, пока не погасло');
   /* Знамения БОЛЬШЕ НЕ озвучиваются — только вспышка */
   if (!guideSeen.omen) { guideQueue.push('omen'); guideQueueRun(); }
 }
@@ -53,7 +56,7 @@ function collectOmen(o) {
   if (idx < 0) return;
   omens.splice(idx, 1);
   stats.omens = (stats.omens || 0) + 1;
-  const colors = { vein: ['#80e0ff', '#e8c060', '#fff'], haste: ['#80e060', '#fff', '#e8c060'] }[o.type];
+  const colors = { vein: ['#80e0ff', '#e8c060', '#fff'], haste: ['#80e060', '#fff', '#e8c060'], soul: ['#c9a0ff', '#6030a0', '#fff'] }[o.type];
   fxAtCell(o.r, o.c, colors, 26, 'wave');
   if (o.type === 'vein') {
     /* +45 сек дохода — целиком ВНЕ порога Эпохи (иначе Эпохи копились слишком быстро). */
@@ -62,6 +65,12 @@ function collectOmen(o) {
     fxAtCell(o.r, o.c, colors, 0);
     fxFloatFromCell(o.r, o.c, '+' + fmtShort(gain) + ' ТЭ', '#c9a0ff');
     sfx('win');
+  } else if (o.type === 'soul') {
+    /* Тёмное Знамение (улучшение «Знамения Тьмы»): +1 Душа */
+    gainSouls(1);
+    fxAtCell(o.r, o.c, colors, 0);
+    fxFloatFromCell(o.r, o.c, '+1 Душа', '#c9a0ff');
+    sfx('milestone');
   } else {
     /* Ребаланс : множитель и длительность растут с Эпохой: ×3..×6, 30..60 сек. */
     const mult = Math.min(6, 3 + Math.floor((epoch - 1) / 3));
@@ -87,11 +96,14 @@ function fxFloatFromCell(r, c, text, color, size) {
 /* Отрисовка слоя знамений поверх грида (спрайты + эмодзи-фолбэк) */
 const OMEN_META = {
   vein:  { icon: '💠', name: 'Жила Бездны', img: 'assets/fx/omen_vein.png' },
-  haste: { icon: '⏱', name: 'Ускорение',  img: 'assets/fx/omen_haste.png' }
+  haste: { icon: '⏱', name: 'Ускорение',  img: 'assets/fx/omen_haste.png' },
+  soul:  { icon: '💀', name: 'Тёмное Знамение: +1 Душа' }
 };
 function omenIconHTML(type) {
   const m = OMEN_META[type];
-  return '<img class="omen-img" src="' + m.img + '" alt="" onerror="cardArtFail(this,\'omen-ic\',\'' + m.icon + '\')">';
+  return m.img
+    ? '<img class="omen-img" src="' + m.img + '" alt="" onerror="cardArtFail(this,\'omen-ic\',\'' + m.icon + '\')">'
+    : '<span class="omen-ic">' + m.icon + '</span>';
 }
 /* слой знамений перестраивается только когда список
 знамений/размер поля реально изменились (renderOmens зовётся из

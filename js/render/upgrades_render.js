@@ -1,102 +1,169 @@
 'use strict';
 /* ============================================================
    РЕНДЕР: УЛУЧШЕНИЯ (render/upgrades_render.js) — v1.8.0
-   Окно «✦ Улучшения» (Меню → Улучшения): все мета-покупки за ДУШИ.
-   Разделы: Фичи / Поле / Призыв / Фракции / Бонусы / Реликвии.
-   Реликвии — заглушка: способа получить их пока нет (позже).
+   Окно «УЛУЧШЕНИЯ» (Меню → Улучшения): все мета-покупки за ДУШИ.
+   Четыре группы: Контроль (поле/опции забега), Гримуар (редкости,
+   страницы колоды, фракции), Фичи (Арена, Казино, бонусы),
+   Слуги (улучшения фракций, вкладки открытых).
+   Строки: яркое = можно купить сейчас; приглушённое (.avail) —
+   куплено, заблокировано или не хватает Душ.
    ============================================================ */
+
+let upgHideBought = false; /* «Скрыть купленные» */
+let upgStaffTab = 'undead'; /* открытая вкладка группы «Слуги» */
 
 function openUpgrades() {
   mk('upgModal',
-    '<h2>✦ УЛУЧШЕНИЯ</h2>' +
-    '<div class="res upg-res">Мастерская Тьмы. Всё покупается <b>Душами</b> ' + SOUL_IMG +
-    ' — источники: старт 30, смена Эпохи, каждые 5 этажей Арены, контракты. <span class="upg-souls">В наличии: <b id="upgSouls">0</b></span></div>' +
-    '<div id="upgList" style="width:100%"></div>' +
-    '<div class="flavor">Эпохи больше ничего не открывают — только порог (растёт ×4). Всё остальное — здесь, за Души.</div>' +
-    '<div class="btn-row"><button class="btn btn-take" id="upgX">Закрыть</button></div>', 560);
+    '<h2>УЛУЧШЕНИЯ</h2>' +
+    '<div id="upgList" style="width:100%;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px;min-height:0"></div>' +
+    '<div class="btn-row" style="display:flex;justify-content:center;align-items:center;gap:28px">' +
+      '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#a39e92;visibility:hidden" aria-hidden="true"><input type="checkbox" disabled style="width:14px;height:14px">Скрыть купленные</label>' +
+      '<button class="btn btn-take" id="upgX">Закрыть</button>' +
+      '<label class="upg-hide" style="display:flex;align-items:center;gap:6px;font-size:12px;color:#a39e92"><input type="checkbox" id="upgHideChk" style="width:14px;height:14px;accent-color:var(--gold)">Скрыть купленные</label>' +
+    '</div>', 560);
+  const card = document.querySelector('#upgModal .modal-card');
+  if (card) card.style.overflow = 'hidden'; /* прокрутка — только у списка */
   $('upgX').onclick = () => close_('upgModal');
+  $('upgHideChk').onchange = () => { upgHideBought = $('upgHideChk').checked; renderUpgrades(); };
   renderUpgrades();
   open_('upgModal');
 }
 
-function upgRowHTML(icon, name, desc, rightHTML, cls) {
-  return '<div class="epoch-row upg-row ' + (cls || 'on') + '">' +
-    '<span class="er-icon">' + icon + '</span>' +
-    '<span class="er-txt"><b>' + name + '</b><br><small>' + desc + '</small></span>' +
-    '<span class="upg-buy">' + rightHTML + '</span></div>';
+/* Строка улучшения: icon / название+описание / цена справа.
+   cls 'avail' — приглушённая (недоступная сейчас). */
+function upgRowHTML(icon, name, desc, rightHTML, cls, action) {
+  return '<div class="upg-item ' + (cls || '') + '"' + (action ? ' data-upg="' + action + '"' : '') + '>' +
+    '<span class="ic">' + icon + '</span>' +
+    '<span class="txt"><b>' + name + '</b><br><small>' + desc + '</small></span>' +
+    '<span class="cost">' + rightHTML + '</span></div>';
+}
+/* Цена в Душах (иконка + число) / отметка о покупке */
+function upgCost(n) { return SOUL_IMG + '<b>' + n + '</b>'; }
+function upgOwnedMsg(txt) { return txt || '✔'; }
+/* Скрывать строку под «Скрыть купленные»? (только класс done) */
+function upgHidden(cls) { return upgHideBought && String(cls || '').indexOf('done') >= 0; }
+
+/* Строки типа UPG_ONCE (фичи, редкости, опции) покупаются через
+   buyUpgradeOnce из logic/upgrades.js — там же проверки и тосты. */
+
+/* Последовательные строки (поле / страницы колоды):
+   i — индекс уровня, lv — текущий уровень, data — массив уровней. */
+function seqRow(icon, lv, i, item, action) {
+  if (lv > i) { /* куплено */
+    const right = upgOwnedMsg();
+    if (upgHidden('avail done')) return '';
+    return upgRowHTML(icon, item.name, item.desc, right, 'avail done', null);
+  }
+  if (lv < i) { /* ещё не открыто */
+    if (upgHidden('avail')) return '';
+    return upgRowHTML(icon, item.name, item.desc, upgCost(item.cost), 'avail', null);
+  }
+  /* следующий уровень — покупается сейчас */
+  const afford = souls >= item.cost;
+  return upgRowHTML(icon, item.name, item.desc, upgCost(item.cost), afford ? '' : 'avail', action);
 }
 
 function renderUpgrades() {
   const list = $('upgList');
   if (!list) return;
-  const soulsLbl = $('upgSouls');
-  if (soulsLbl) soulsLbl.textContent = fmt(souls);
   let html = '';
 
-  /* ---- Фичи ---- */
-  html += '<h3 class="upg-cat">' + UPG_CATS[0].title + '</h3>';
-  ['arena', 'casino'].forEach(k => {
+  /* ============ КОНТРОЛЬ ============ */
+  html += '<div class="upg-group-title"><span class="line"></span><span>' + UPG_CATS[0].title + '</span><span class="line"></span></div>';
+  html += '<div class="upg-group">';
+  UPG_FIELD.forEach((f, i) => { html += seqRow('🧱', fieldLv, i, f, 'field'); });
+  if (fieldLv >= UPG_FIELD.length && !upgHidden('done'))
+    html += upgRowHTML('🧱', 'Территория: ' + fieldSize() + '×' + fieldSize(), 'Максимальный размер Алтаря.', upgOwnedMsg(), 'avail done');
+  ['darkomens', 'darksave', 'ground'].forEach(k => {
     const u = UPG_ONCE[k];
     const owned = featOwned(k);
-    html += upgRowHTML(u.icon, u.name, u.desc,
-      owned ? '<span class="upg-owned">✔ куплено</span>'
-            : '<button class="mini" data-upg="' + k + '" ' + (souls < u.cost ? 'disabled' : '') + '>' + u.cost + ' Душ</button>',
-      owned ? 'on' : (souls >= u.cost ? 'on' : 'off'));
+    const afford = souls >= u.cost;
+    const cls = owned ? 'avail done' : (afford ? '' : 'avail need');
+    if (upgHidden(owned ? 'done' : '')) return;
+    html += upgRowHTML(u.icon, u.name, u.desc, owned ? upgOwnedMsg() : upgCost(u.cost), cls, owned ? null : k);
   });
+  html += '</div>';
 
-  /* ---- Поле ---- */
-  html += '<h3 class="upg-cat">' + UPG_CATS[1].title + '</h3>';
-  if (fieldLv >= UPG_FIELD.length) {
-    html += upgRowHTML('🧱', 'Поле ' + fieldSize() + '×' + fieldSize(), 'Максимальный размер Алтаря.', '<span class="upg-owned">✔ максимум</span>');
-  } else {
-    const f = UPG_FIELD[fieldLv];
-    html += upgRowHTML('🧱', f.name + ' <small>(сейчас ' + fieldSize() + '×' + fieldSize() + ')</small>', f.desc,
-      '<button class="mini" data-upg="field" ' + (souls < f.cost ? 'disabled' : '') + '>' + f.cost + ' Душ</button>');
-  }
-
-  /* ---- Призыв (редкости) ---- */
-  html += '<h3 class="upg-cat">' + UPG_CATS[2].title + '</h3>';
+  /* ============ ГРИМУАР ============ */
+  html += '<div class="upg-group-title"><span class="line"></span><span>' + UPG_CATS[1].title + '</span><span class="line"></span></div>';
+  html += '<div class="upg-group">';
   ['r4', 'r5'].forEach(k => {
     const u = UPG_ONCE[k];
     const owned = featOwned(k);
     const locked = u.need && !featOwned(u.need);
-    html += upgRowHTML(u.icon, u.name, u.desc + (locked ? ' <i style="color:#a08860">— сперва ' + UPG_ONCE[u.need].name + '</i>' : ''),
-      owned ? '<span class="upg-owned">✔ куплено</span>'
-            : locked ? '<span class="upg-locked">🔒</span>'
-            : '<button class="mini" data-upg="' + k + '" ' + (souls < u.cost ? 'disabled' : '') + '>' + u.cost + ' Душ</button>',
-      owned ? 'on' : 'off');
+    const afford = souls >= u.cost;
+    const cls = owned ? 'avail done' : (locked || !afford ? 'avail need' : '');
+    if (upgHidden(owned ? 'done' : '')) return;
+    html += upgRowHTML(u.icon, u.name, u.desc + (locked ? ' <i>— сперва ' + UPG_ONCE[u.need].name + '</i>' : ''),
+      owned ? upgOwnedMsg() : upgCost(u.cost), cls, owned ? null : k);
   });
-
-  /* ---- Фракции ---- */
-  html += '<h3 class="upg-cat">' + UPG_CATS[3].title + '</h3>';
+  UPG_DECK.forEach((p, i) => { html += seqRow('📖', deckLv, i, p, 'deck'); });
+  if (deckLv >= UPG_DECK.length && !upgHidden('done'))
+    html += upgRowHTML('📖', 'Гримуар: ' + deckCap() + ' карт', 'Полный Гримуар — максимум страниц.', upgOwnedMsg(), 'avail done');
   ['f_cultist', 'f_beast', 'f_demon'].forEach(k => {
     const u = UPG_ONCE[k];
     const owned = factionOwned(k.slice(2));
-    html += upgRowHTML(u.icon, u.name, u.desc,
-      owned ? '<span class="upg-owned">✔ открыта</span>'
-            : '<button class="mini" data-upg="' + k + '" ' + (souls < u.cost ? 'disabled' : '') + '>' + u.cost + ' Душ</button>',
-      owned ? 'on' : 'off');
+    const afford = souls >= u.cost;
+    const cls = owned ? 'avail done' : (afford ? '' : 'avail need');
+    if (upgHidden(owned ? 'done' : '')) return;
+    html += upgRowHTML(u.icon, u.book || u.name, u.desc, owned ? upgOwnedMsg() : upgCost(u.cost), cls, owned ? null : k);
   });
+  html += '</div>';
 
-  /* ---- Бонусы (бывшие печати) ---- */
-  html += '<h3 class="upg-cat">' + UPG_CATS[4].title + '</h3>';
-  html += '<div class="ups">' + UPG_BONUS.map(s => {
+  /* ============ ФИЧИ ============ */
+  html += '<div class="upg-group-title"><span class="line"></span><span>' + UPG_CATS[2].title + '</span><span class="line"></span></div>';
+  html += '<div class="upg-group"><div class="ups">';
+  ['arena', 'casino'].forEach(k => {
+    const u = UPG_ONCE[k];
+    const owned = featOwned(k);
+    const afford = souls >= u.cost;
+    const cls = owned ? 'avail done' : (afford ? '' : 'avail need');
+    if (upgHidden(owned ? 'done' : '')) return;
+    html += upgRowHTML(u.icon, u.name, u.desc, owned ? upgOwnedMsg() : upgCost(u.cost), cls, owned ? null : k);
+  });
+  UPG_BONUS.forEach(s => {
     const l = upgLv[s.id] || 0, maxed = l >= s.max;
     const cost = maxed ? null : s.cost(l);
-    return '<div class="up"><b>' + s.icon + ' ' + s.name + '</b> ур.' + l + '/' + s.max + '<br><small>' + s.desc + '</small>' +
-      '<button class="mini" data-upgb="' + s.id + '" ' + (maxed || souls < cost ? 'disabled' : '') + '>' + (maxed ? 'МАКС' : cost + ' Душ') + '</button></div>';
-  }).join('') + '</div>';
+    const afford = !maxed && souls >= cost;
+    const cls = maxed ? 'avail done' : (afford ? '' : 'avail need');
+    if (upgHidden(maxed ? 'done' : '')) return;
+    html += upgRowHTML(s.icon, s.name + ' <small style="color:#8f8a80">(ур. ' + l + '/' + s.max + ')</small>', s.desc,
+      maxed ? 'МАКС' : upgCost(cost), cls, maxed ? null : 'b:' + s.id);
+  });
+  html += '</div></div>';
 
-  /* ---- Реликвии (заглушка) ---- */
-  html += '<h3 class="upg-cat">' + UPG_CATS[5].title + '</h3>';
-  html += upgRowHTML('⚒', 'Реликвии — Схрон Тьмы',
-    'Источник реликвий появится в будущих итерациях: слоты столбов, законы и кары столбов уже ждут в коде. Пока реликвию получить НЕЛЬЗЯ — так и задумано.',
-    '<span class="upg-locked" title="Доработаем позже">🔒 скоро</span>', 'off');
+  /* ============ СЛУГИ ============ */
+  html += '<div class="upg-group-title"><span class="line"></span><span>' + UPG_CATS[3].title + '</span><span class="line"></span></div>';
+  html += '<div class="upg-group">';
+  const openFacs = availFactions();
+  if (openFacs.indexOf(upgStaffTab) < 0) upgStaffTab = openFacs[0];
+  html += '<div class="upg-tabs">' + openFacs.map(f =>
+    '<div class="upg-tab' + (f === upgStaffTab ? ' cur' : '') + '" data-fac="' + f + '">' + FACTION_INFO[f].name + '</div>').join('') + '</div>';
+  UPG_STAFF.filter(s => s.fac === upgStaffTab).forEach(s => {
+    const owned = !!staffLv[s.id];
+    const afford = souls >= s.cost;
+    const cls = owned ? 'avail done' : (afford ? '' : 'avail need');
+    if (upgHidden(owned ? 'done' : '')) return;
+    html += upgRowHTML(s.icon, s.name, s.desc, owned ? upgOwnedMsg() : upgCost(s.cost), cls, owned ? null : 'st:' + s.id);
+  });
+  html += '</div>';
 
   list.innerHTML = html;
-  list.querySelectorAll('[data-upg]').forEach(b => b.onclick = () => {
-    if (b.dataset.upg === 'field') buyUpgradeField();
-    else buyUpgradeOnce(b.dataset.upg);
+
+  /* Клик: вся строка — покупка */
+  list.querySelectorAll('[data-upg]').forEach(row => {
+    const a = row.dataset.upg;
+    row.style.cursor = 'pointer';
+    row.onclick = () => {
+      if (a === 'field') buyUpgradeField();
+      else if (a === 'deck') buyUpgradeDeck();
+      else if (a.indexOf('b:') === 0) buyUpgradeBonus(a.slice(2));
+      else if (a.indexOf('st:') === 0) buyUpgradeStaff(a.slice(3));
+      else buyUpgradeOnce(a);
+    };
   });
-  list.querySelectorAll('[data-upgb]').forEach(b => b.onclick = () => buyUpgradeBonus(b.dataset.upgb));
+  list.querySelectorAll('.upg-tab').forEach(tab => {
+    tab.style.cursor = 'pointer';
+    tab.onclick = () => { upgStaffTab = tab.dataset.fac; renderUpgrades(); };
+  });
 }
