@@ -33,20 +33,18 @@ function openGrimuar() {
     '<h2 style="margin:0">📖 ГРИМУАР</h2>' +
     '<div class="grim-res">' +
     '<span class="res-chip grim-souls" title="Души — валюта Призыва. Источники: старт 30, смена Эпохи, каждые 5 этажей Арены, контракты"><span class="soul-icon"></span><b id="grimSouls">0</b>&nbsp;Души</span>' +
-    '<span class="grim-free" id="grimFree"></span>' +
     '</div>' +
     '<button class="mini" id="grimX" style="margin-left:auto">✕ Закрыть</button>' +
     '</div>' +
-    '<div class="grim-note" id="grimNote"></div>' +
     '<div class="grim-body">' +
     '<div class="grim-col">' +
-    '<div class="grim-col-title">КОЛЛЕКЦИЯ <small>вечная · клик — добавить в выбранную колоду</small></div>' +
+    '<div class="grim-col-title">КОЛЛЕКЦИЯ</div>' +
     '<div class="grim-tabs" id="grimTabs"></div>' +
     '<div class="grim-cards" id="grimCards"></div>' +
     '<div class="grim-collstats" id="grimCollStats"></div>' +
     '</div>' +
     '<div class="grim-col">' +
-    '<div class="grim-col-title">КОЛОДЫ <small>до ' + deckCap() + ' копий · стак до ×' + deckStackMax() + ' · своя раса</small></div>' +
+    '<div class="grim-col-title">КОЛОДЫ</div>' +
     '<div class="grim-decks" id="grimDecks"></div>' +
     '<div class="grim-deckview" id="grimDeckView"></div>' +
     '</div>' +
@@ -77,15 +75,6 @@ function renderGrimuar() {
 
 function renderGrimHead() {
   hudSet('gsouls', $('grimSouls'), 'text', fmt(souls));
-  const free = $('grimFree');
-  /* v1.8.0: Души — валюта Призыва И Улучшений */
-  const txt = '1 Душа = 1 крутка · Души также тратятся в «Улучшениях» · источники: старт 30, смена Эпохи, каждые 5 этажей Арены, контракты';
-  if (free.dataset.sig !== txt) { free.dataset.sig = txt; free.textContent = txt; }
-  /* Примечание про применение изменений */
-  const note = $('grimNote');
-  let n = '';
-  if (gameStarted) n += '⚠ Забег уже идёт: крутки пополнят коллекцию, а состав колоды применится со СЛЕДУЮЩЕГО забега. ';
-  if (n !== (note.dataset.sig || '')) { note.dataset.sig = n; note.innerHTML = n || '&nbsp;'; note.style.display = n ? '' : 'none'; }
 }
 
 /* ---------------- Вкладки рас коллекции ---------------- */
@@ -252,8 +241,7 @@ function renderGrimDeckView() {
     html += '<div class="grim-deckhead">' +
       '<b>' + d.name + '</b> <span class="grim-race-badge" style="border-color:' + FACTION_INFO[d.race].color + ';color:' + FACTION_INFO[d.race].color + '">' + FACTION_INFO[d.race].name + '</span>' +
       '<span style="margin-left:auto">' + deckTotal(d) + '/' + deckCap() + '</span>' +
-      (act ? '<span class="gdr-star" title="Выдаётся на старте забега этой расы">★ активная</span>'
-           : '<button class="mini" id="grimSetActive">★ Сделать активной</button>') +
+      (act ? '' : '<button class="mini" id="grimSetActive">★ Сделать активной</button>') +
       '</div>' +
       '<div class="deck-list" id="grimDeckCards">';
     if (d.cards.length) {
@@ -269,7 +257,7 @@ function renderGrimDeckView() {
         const canStack = canStackEntry(d, idx);
         return '<div class="deck-row star' + card.rarity + '" data-rm="' + idx + '" style="--glow:' + rarityColor(card.rarity) + ';--cardBg:' + rarityBg(card.rarity) + '" title="' + card.name + ' — клик: убрать копию из колоды">' +
           cardArtHTML(card, 'deck-art', 'deck-glyph') +
-          '<div class="deck-info"><span class="deck-name">' + card.name + ' <i>' + starsOf(card.rarity) + (card.isBuilding ? ' · постройка' : '') + '</i></span>' +
+          '<div class="deck-info"><span class="deck-name">' + card.name + ' <i>' + starsOf(card.rarity) + '</i></span>' +
           '<span class="deck-sub">' + FACTION_INFO[card.faction].name + (n >= dsm ? ' · стак полон ×' + n : '') + '</span></div>' +
           (n > 1 ? '<span class="deck-count">×' + n + '</span>' : '<span class="deck-count dim">×1</span>') +
           (canStack ? '<button class="deck-up" data-up="' + idx + '" title="Застакать ЭТУ копию: +1 из коллекции (×' + (n + 1) + ')">▲</button>' : '') +
@@ -278,13 +266,7 @@ function renderGrimDeckView() {
     } else {
       html += '<div class="fighter-empty" style="grid-column:1/-1">Пусто. Кликайте карты коллекции слева — каждая ляжет сюда отдельным блоком (дубликаты разрешены).</div>';
     }
-    html += '</div>' +
-      '<div class="grim-deckhint">' +
-      'Клик по карте коллекции — добавить копию как дубликат (новый блок). ' +
-      '▲ у блока — застакать ИМЕННО ЭТУ копию из коллекции (до ×' + deckStackMax() + '): на старте забега она встанет на грид ГОТОВОЙ стопкой ×N. ' +
-      'Клик по блоку — убрать копию. ' + (gameStarted
-      ? 'Состав применится со следующего забега этой расы.'
-      : 'На старте забега этой расы вся колода выдаётся в инвентарь целиком.') + '</div>';
+    html += '</div>';
   } else {
     html += '<div class="fighter-empty">Выберите колоду выше или создайте новую.</div>';
   }
