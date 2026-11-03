@@ -31,6 +31,7 @@ const GRIM_TYPE_LABELS = {
   thrall: 'Скованные', bearer: 'Несущие волю', necro: 'Некроманты', lord: 'Владыки',
   chanter: 'Певчие', architect: 'Архитекторы', medium: 'Медиумы', entity: 'Сущности',
   furnace: 'Топки', smith: 'Кузнецы', tamer: 'Укротители', crown: 'Венцы',
+  stalker: 'Ловчие', warden: 'Покровители', totem: 'Тотемы', great: 'Великие',
   r_builder: 'Строители', r_amplifier: 'Усилители', r_anchor: 'Якоря', r_healer: 'Поддержка',
   r_burst: 'Взрывные', r_predator: 'Хищники', r_flora: 'Флора', r_scav: 'Падальщики'
 };

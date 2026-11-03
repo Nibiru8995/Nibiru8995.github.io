@@ -39,12 +39,14 @@ function hintClass(r, c) {
     if (ns.length) return 'good-spot';
     return '';
   }
-  if (mech === 'cycle' && p.faction === 'beast' && p.diet) {
-    /* Рацион: где эта зверюга будет сытa */
-    if (p.diet === 'pred') return ns.some(n => isPrey(CARDS[n.item.cardId])) ? 'good-spot' : '';
-    if (p.diet === 'herb') return ns.some(n => CARDS[n.item.cardId].diet === 'flora') ? 'good-spot' : '';
-    if (p.diet === 'flora') return ns.some(n => isPrey(CARDS[n.item.cardId]) || isPredator(CARDS[n.item.cardId])) ? 'good-spot' : '';
-    if (p.diet === 'scav') return ns.length ? '' : ''; /* падальщику нужен радиус 2 — подсказку не рисуем */
+  if (mech === 'grounds' && p.faction === 'beast' && p.diet) {
+    /* Угодья: где эта зверюга будет сытa (радиус её будущих угодий) */
+    const R = (typeof groundRadius === 'function') ? groundRadius(p) : (rarityRank(p.rarity) >= 4 ? 2 : 1);
+    const inR = R >= 3 ? radius2(r, c).concat(getNeighbors(r, c)) : (R === 2 ? radius2(r, c) : ns);
+    if (p.diet === 'pred') return inR.some(n => CARDS[n.item.cardId].diet === 'herb') ? 'good-spot' : '';
+    if (p.diet === 'herb') return inR.some(n => CARDS[n.item.cardId].diet === 'flora') ? 'good-spot' : '';
+    if (p.diet === 'flora') return inR.some(n => CARDS[n.item.cardId].diet === 'herb') ? 'good-spot' : '';
+    if (p.diet === 'scav') return ''; /* падальщик чует широко — подсказку не рисуем */
     return '';
   }
   if (mech === 'chaos' && p.faction === 'demon') {

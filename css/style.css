@@ -281,6 +281,8 @@ body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-i
 /* v1.9.0: ФАЗОВЫЕ звенья Призраков — тонкая пунктирная нить (без проблесков) */
 #synergySvg line.base-ghost { stroke: #8fb8c8; stroke-width: 1.5; stroke-dasharray: 3 5; opacity: .45; filter: none; }
 #synergySvg line.base-ghost.dead { stroke: #4a3a3a; opacity: .25; }
+/* v1.11.0: стаи зверей — зелёный пунктир между хищниками с пересекающимися угодьями */
+#synergySvg line.base-pack { stroke: #4a9a4a; stroke-width: 1.5; stroke-dasharray: 3 5; opacity: .5; filter: none; }
 /* ===== РИТУАЛ КУЛЬТИСТОВ (фидбек 3) ===== */
 .cell.ritual-cell { box-shadow: inset 0 0 12px #b3a15f33, inset 0 0 2px #b3a15f55; border-color: #6a5220; }
 .cell.ritual-part { box-shadow: inset 0 0 16px #b3a15f66, inset 0 0 4px #d3bd7a; border-color: #b3a15f; animation: ritualPulse 2s ease-in-out infinite; }

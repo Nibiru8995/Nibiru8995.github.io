@@ -143,7 +143,7 @@ function linkKey(r1, c1, r2, c2) {
 function formation(r, c) {
   const it = grid[r][c]; if (!it) return 1;
   const mech = FACTION_INFO[faction].mechanic;
-  if (mech === 'formation' || mech === 'cycle') return 1;
+  if (mech === 'formation' || mech === 'cycle' || mech === 'grounds') return 1;
   const f = CARDS[it.cardId].faction;
   const same = (a, b) => grid[a] && grid[a][b] && CARDS[grid[a][b].cardId].faction === f;
   let m = 1;
@@ -324,22 +324,12 @@ function factionMult(r, c, card, item) {
     /* у культистов ДОХОДА НЕТ — вся экономика фракции — выплата за ритуал */
     return 0;
   }
-  if (mech === 'cycle') {
-    /* ЗВЕРИ БЕЗ СИНЕРГИЙ. Инкам — исключительно от пищевой цепи. */
-    let buffSum = (item.predBuff || 0) + (item.graze || 0) + (item.floraBuff || 0) + (item.scavBuff || 0);
-    let m = 1 + buffSum;
-    const eng = colEngine(c);
-    /* Голод хищника (без добычи рядом) — ставит beastCycleTick.
-       «Кость Голода» (hungerFlip): голодный хищник НЕ СЛАБЕЕТ */
-    if (item.hunger && item.hunger < 1 && !(eng && eng.hungerFlip)) m *= item.hunger;
-    /* v1.4.0 КАРА «Кости Голода» (hungerSated): сытый хищник столба −25% */
-    if (eng && eng.hungerSated && !(item.hunger && item.hunger < 1)) m *= 0.75;
-    if (card.id === 'b12') m *= 1 + 0.06 * getNeighbors(r, c).filter(n => CARDS[n.item.cardId].diet === 'herb').length;
-    if (card.id === 'b17' && item.fleshyBuff) m *= 1 + item.fleshyBuff;
-    if (card.id === 'b9') m *= 1 + 0.10 * getNeighbors(r, c).filter(n => isPredator(CARDS[n.item.cardId])).length;
-    if (card.id === 'b8') m *= 1 + 0.10 * (item.petrCount || 0);
-    if (item.hydraBuff && item.hydraBuff > 1) m *= item.hydraBuff;
-    return m;
+  if (mech === 'grounds') {
+    /* ЗВЕРИ v1.11.0: доход — ДИКИЕ УГОДЬЯ (зоны/трофеи/выпас/стаи/ауры).
+Полный расчёт — computeGrounds() (faction_mechanics.js), сюда приходит
+готовый множитель клетки; парных синергий у зверей нет. */
+    const bg = (typeof BEAST_GROUNDS !== 'undefined') ? BEAST_GROUNDS : null;
+    return (bg && bg.mults && bg.mults[r + ',' + c]) || 1;
   }
   if (mech === 'chaos') {
     /* ДЕМОНЫ: УГЛИ — в толпе демон копит угли и ВЗРЫВАЕТСЯ.
@@ -518,6 +508,8 @@ function computeIncome() {
 
   const mech = FACTION_INFO[faction].mechanic;
   if (mech === 'formation') buildRitualContext();
+  /* v1.11.0 ДИКИЕ УГОДЬЯ: зоны/стаи/акты пересчитываются ВМЕСТЕ с доходом */
+  if (mech === 'grounds' && typeof computeGrounds === 'function') computeGrounds();
 
   /* РЕЛИКВИИ 4.0: движок законов и кар по столбцам */
   rebuildRelicEngine();

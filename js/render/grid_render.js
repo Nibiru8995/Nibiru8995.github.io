@@ -71,6 +71,22 @@ function buildAuraMap() {
       map[k] = { color: na.color, big: false, necro: true };
     }
   }
+  /* v1.11.0 ДИКИЕ УГОДЬЯ: зоны зверей — тихая зелёная заливка (радиусы
+     берутся из BEAST_GROUNDS.zones — с учётом Тотема/Солончика/Хозяина Троп).
+     Ауры Тотемов — в той же заливке (отдельные кольца не рисуем). */
+  if (FACTION_INFO[faction].mechanic === 'grounds' && typeof BEAST_GROUNDS !== 'undefined' && BEAST_GROUNDS.zones) {
+    const bcol = FACTION_INFO.beast.color;
+    BEAST_GROUNDS.zones.forEach(z => {
+      for (let dr = -z.rad; dr <= z.rad; dr++) for (let dc = -z.rad; dc <= z.rad; dc++) {
+        const nr = z.r + dr, nc = z.c + dc;
+        if (nr < 0 || nr >= GRID_SIZE || nc < 0 || nc >= GRID_SIZE) continue;
+        if (!playableMask[nr] || !playableMask[nr][nc]) continue;
+        const k = nr + ',' + nc;
+        if (map[k]) continue; /* аура здания важнее */
+        map[k] = { color: bcol, big: z.rad >= 2, grounds: true };
+      }
+    });
+  }
   return map;
 }
 
@@ -238,11 +254,8 @@ function renderGrid() {
     const fxLive = item.fxUntil > gameTime;
     const boomOn = mech === 'chaos' && item.boomUntil > gameTime;
     const mutOn = mech === 'chaos' && item.mutBuff && item.mutBuff !== 1;
-    let fed = 0, hungry = false;
-    if (mech === 'cycle') {
-      fed = (item.predBuff || 0) + (item.graze || 0) + (item.floraBuff || 0) + (item.scavBuff || 0);
-      hungry = item.hunger !== undefined && item.hunger < 1;
-    }
+    /* v1.11.0: корона АЛЬФЫ стаи (двоевластие — отдельная подпись) */
+    const bgCrown = (mech === 'grounds' && typeof BEAST_GROUNDS !== 'undefined' && BEAST_GROUNDS.alpha && BEAST_GROUNDS.alpha[key]) ? BEAST_GROUNDS.alpha[key] : null;
     const emberN = (mech === 'chaos' && item.embers > 0) ? item.embers : 0;
     /* v1.11.0: тление (Пепел), Пир хаоса (Мрак), строй (Легион) */
     const tleOn = mech === 'chaos' && (item.tleUntil || 0) > gameTime;
@@ -255,7 +268,7 @@ function renderGrid() {
       '|' + (damaged ? 'D' : '') +
       '|' + (emberN ? 'e' : '') + (mutOn ? 'm' : '') + (boomOn ? 'b' : '') +
       (tleOn ? 't' : '') + (feastOn ? 'p' : '') + (formOn ? 's' : '') +
-      (fed > 0 ? 'f' : '') + (hungry ? 'h' : '') +
+      (bgCrown ? (bgCrown.dual ? 'q2' : 'q1') : '') +
       '|' + (colRel ? colRel.id : '') +
       '|' + (chainedB ? 'C' : '') + (u11chain ? 'U' : '') +
       '|' + (hasSp ? (sa.active ? 'A' : 'a') : '-') +
@@ -347,11 +360,11 @@ function renderGrid() {
       badges += '<span class="mut-badge" style="color:#c080ff" title="Пир хаоса: ×' + (item.feastBuff || 1).toFixed(2) + ' — чужие взрывы кормят (до ×1.5)">🍖</span>';
     if (formOn)
       badges += '<span class="mut-badge" style="color:#9ab0d0" title="В строю: угли ×1.25, взрыв — контролируемый бафф ×1.25">⛨</span>';
-    /* ЗВЕРИ: сытость (▲) и голод (▼) по рациону */
-    if (mech === 'cycle') {
-      if (fed > 0) badges += '<span class="mut-badge" style="color:#8fc87f">▲</span>';
-      if (hungry) badges += '<span class="mut-badge" style="color:#e05a5a">▼</span>';
-    }
+    /* ЗВЕРИ: корона альфы (v1.11.0 — вместо бейджей сытости/голода) */
+    if (bgCrown)
+      badges += '<span class="anchor-badge" style="color:#ffd34d" title="' + (bgCrown.dual
+        ? 'СПОРНАЯ КОРОНА: двоевластие в стае — сила короны ×0.5'
+        : 'АЛЬФА СТАИ: трофеи ×1.25, вся стая +10%') + '">👑</span>';
     if (item.stacks > 1) badges += '<span class="stack-badge">x' + item.stacks + '</span>';
     cardEl.innerHTML = (damaged ? '<div class="hp-bar" style="width:' + hpPct + '%;background:' + hpColor + ';color:' + hpColor + ';"></div>' : '') +
       cardArtHTML(card, 'card-art', 'glyph') + badges;
@@ -406,9 +419,7 @@ function gridSignature() {
       ',h' + Math.round(it.hp) + '/' + Math.round(it.maxHp) +
       ',e' + (it.embers || 0) + ',g' + Math.round((it.growBuff || 0) * 100) +
       ',m' + Math.round((it.mutBuff || 1) * 100) + ',b' + Math.round((it.balrBuff || 1) * 100) +
-      ',p' + Math.round(((it.predBuff || 0) + (it.graze || 0) + (it.floraBuff || 0) + (it.scavBuff || 0)) * 100) +
-      ',y' + Math.round((it.hunger === undefined ? 1 : it.hunger) * 100) +
-      (it.boomUntil > gameTime ? '!' : ''); /* fxUntil НЕ в сигнатуре — вспышки обновляет updateFxLive (дёшево), поле не стирается */
+      (it.boomUntil > gameTime ? '!' : '');
   }
   return s;
 }
@@ -535,12 +546,20 @@ function specialActive(card, item, r, c) {
     case 'd44': return { active: r2.some(n => CARDS[n.item.cardId].subrace === 'legion' && INC_CTX.legionForm && INC_CTX.legionForm[n.r + ',' + n.c]) };
     case 'd45': case 'd46': return { active: r2.some(n => CARDS[n.item.cardId].subrace === 'legion') };
     case 'd47': return { active: radiusN(r, c, 3).some(n => CARDS[n.item.cardId].subrace === 'legion') };
-    case 'b0': return { active: nb.some(n => CARDS[n.item.cardId].faction === 'beast') };
-    case 'b1': return { active: nb.some(n => n.item.cardId === 'b1' || n.item.cardId === 'b4') };
-    case 'b12': return { active: nb.some(n => CARDS[n.item.cardId].diet === 'herb') };
-    case 'b6': return { active: nb.some(n => isPredator(CARDS[n.item.cardId])) };
-    case 'b8': return { active: nb.some(n => CARDS[n.item.cardId].diet === 'herb' || CARDS[n.item.cardId].diet === 'scav') };
-    case 'b9': return { active: nb.some(n => isPredator(CARDS[n.item.cardId])) };
+    /* ЗВЕРИ v1.11.0: активность особенности — из расчёта угодий */
+    case 'b0': case 'b1': case 'b2': case 'b3': case 'b5': case 'b6': case 'b9':
+    case 'b10': case 'b11': case 'b12': case 'b13': case 'b16': case 'b18': case 'b19':
+    case 'b20': case 'b21': case 'b22': case 'b23': case 'b24': case 'b26': case 'b27':
+    case 'b28': case 'b29': case 'b30': case 'b32': case 'b34': case 'b35': case 'b36':
+    case 'b37': case 'b38': case 'b40': case 'b41': case 'b42': case 'b46': case 'b47':
+    case 'b48': case 'b49': case 'b50': case 'b51': case 'b52': case 'b53':
+    case 'b54': case 'b55': case 'b56': case 'b57': case 'b58': case 'b59': {
+      const bg2 = (typeof BEAST_GROUNDS !== 'undefined') ? BEAST_GROUNDS : null;
+      return { active: !!(bg2 && bg2.active && bg2.active[r + ',' + c]) };
+    }
+    case 'b4': case 'b7': case 'b8': case 'b14': case 'b15': case 'b17': case 'b25':
+    case 'b31': case 'b33': case 'b39': case 'b43': case 'b44': case 'b45':
+      return { active: true }; /* постоянные свойства: радиус/укрытие/аура */
     default: return { active: true }; /* здания и остальное — всегда */
   }
 }
@@ -617,13 +636,16 @@ function drawSynergies() {
       phaseSpecs.push((r === nr ? 'h' : 'v') + lf);
     }
   }
+  /* v1.11.0: спецификации СТАЙ зверей (пунктир между союзниками по пересечению угодий) */
+  const packSpecs = (FACTION_INFO[faction].mechanic === 'grounds' && typeof BEAST_GROUNDS !== 'undefined' && BEAST_GROUNDS.packEdges)
+    ? BEAST_GROUNDS.packEdges.map(e => e.join(':')) : [];
   /* Сигнатура: состав связей + режим + вьюпорт (resize меняет координаты
 тогда принудительно перерисовываем; вызов из resize-обработчика придёт
  с той же сигнатурой связей, но новым размером окна).*/
   let sig = (ug ? 'U' : 'L') + n + '|' + window.innerWidth + 'x' + window.innerHeight + '|' + specs.map(s =>
     s.horiz ? 'h' : 'v').join('') + '#' + specs.map(s =>
     (s.mode || s.kind) + (s.lf === undefined ? '' : ':' + s.lf) + (s.royal ? 'R' : '') + (s.lichW ? 'W' : '') + (s.isMult ? 'M' : '')).join(';') +
-    '|PH' + phaseSpecs.join(';');
+    '|PH' + phaseSpecs.join(';') + '|PK' + packSpecs.join(';');
   if (sig === _synSig) return;
   _synSig = sig;
 
@@ -714,6 +736,14 @@ faded — реальное затухание из экономики; royal —
       const lf = incomeCache.linkFactors && incomeCache.linkFactors[lk] !== undefined ? incomeCache.linkFactors[lk] : 1;
       mkLine('base-ghost' + (lf === 0 ? ' dead' : ''), { x1: cx(c), y1: cy(r), x2: cx(nc), y2: cy(nr) });
     }
+  }
+  /* v1.11.0 СТАИ ЗВЕРЕЙ: зелёный пунктир между хищниками с пересекающимися угодьями */
+  if (FACTION_INFO[faction].mechanic === 'grounds' && typeof BEAST_GROUNDS !== 'undefined' && BEAST_GROUNDS.packEdges) {
+    BEAST_GROUNDS.packEdges.forEach(([r1, c1, r2, c2]) => {
+      if (r1 < st || r1 >= st + n || c1 < st || c1 >= st + n) return;
+      if (r2 < st || r2 >= st + n || c2 < st || c2 >= st + n) return;
+      mkLine('base-pack', { x1: cx(c1), y1: cy(r1), x2: cx(c2), y2: cy(r2) });
+    });
   }
   /* геометрия проблесков — на fx-канву (координаты SVG + смещение) */
   if (typeof fxSetGlints === 'function') fxSetGlints(fxGlintList, sr.left, sr.top);
@@ -862,6 +892,11 @@ function updateGridStats() {
   if (FACTION_INFO[faction].mechanic === 'chain' && incomeCache.armyBest > 1) {
     const am = Math.min(incomeCache.armyCap || 2, 1 + 0.015 * (incomeCache.armyBest - 1));
     extra += ' · Армия: <b>' + incomeCache.armyBest + '</b> (×' + am.toFixed(2) + ')';
+  }
+  /* v1.11.0: сводка угодий зверей (до сигнатуры) */
+  if (FACTION_INFO[faction].mechanic === 'grounds' && typeof BEAST_GROUNDS !== 'undefined' && BEAST_GROUNDS) {
+    extra += ' · Акты охоты: <b>' + BEAST_GROUNDS.acts + '</b>' +
+      (BEAST_GROUNDS.packs ? ' · стай: <b>' + BEAST_GROUNDS.packs + '</b> (крупнейшая <b>' + BEAST_GROUNDS.packBest + '</b>)' : '');
   }
   const sig = 'gs|' + countLinks() + '|' + currentDiversity() + '|' + inc.toFixed(2) + '|' + extra;
   if (updateGridStats._sig === sig) return; /* не перерисовываем строку каждый кадр */

@@ -159,10 +159,22 @@ function showCardTooltip(e, card, income, r, c) {
   }
   /* ФИДБЕК 3+6: культисты — статус ритуала + НАГЛЯДНЫЕ схемы формаций */
   mechLine += cultistTooltipHTML(card, r, c);
-  /* ФИДБЕК 4: звери — РАЦИОН вместо синергий */
+  /* ФИДБЕК 4 (v1.11.0): звери — РОЛЬ В ЛЕСУ вместо синергий */
   if (card.diet && DIET_INFO[card.diet]) {
-    mechLine += '<div class="tt-synergy"><div class="tt-synergy-title" style="color:' + DIET_INFO[card.diet].color + '">Рацион: ' + DIET_INFO[card.diet].name + '</div>' +
+    mechLine += '<div class="tt-synergy"><div class="tt-synergy-title" style="color:' + DIET_INFO[card.diet].color + '">Роль в лесу: ' + DIET_INFO[card.diet].name + '</div>' +
       DIET_INFO[card.diet].desc + '</div>';
+  }
+  /* v1.11.0: статус угодий зверя на поле */
+  if (card.faction === 'beast' && !card.isBuilding && r !== undefined && c !== undefined && FACTION_INFO[faction].mechanic === 'grounds') {
+    const bg = (typeof BEAST_GROUNDS !== 'undefined') ? BEAST_GROUNDS : null;
+    if (bg && bg.alpha && bg.alpha[r + ',' + c]) {
+      const a = bg.alpha[r + ',' + c];
+      mechLine += '<div class="tt-synergy"><div class="tt-synergy-title">👑 Стая</div>' +
+        (a.isAlpha
+          ? (a.dual ? '<span style="color:#ffd34d">СПОРНАЯ КОРОНА: двоевластие — трофеи ×1.125, стая +10%</span>'
+                    : '<span style="color:#ffd34d">АЛЬФА: трофеи ×1.25, вся стая +10%</span>')
+          : 'В стае из ' + a.size + ' хищников (альфа даёт +10%)') + '</div>';
+    }
   }
   /* ФИДБЕК 5: демоны — текущие угли Хаоса */
   if (card.faction === 'demon' && r !== undefined && FACTION_INFO[faction].mechanic === 'chaos') {
@@ -212,7 +224,7 @@ function grimShowTooltip(e, card) {
   let effects = '';
   if (SPECIALS[card.id]) effects += '<div class="gtt-line" style="color:#e8c060">' + SPECIALS[card.id] + '</div>';
   if (card.faction === 'cultist' && !card.isBuilding) effects += cultistTooltipHTML(card, undefined, undefined);
-  if (card.diet && DIET_INFO[card.diet]) effects += '<div class="gtt-line"><b style="color:' + DIET_INFO[card.diet].color + '">Рацион: ' + DIET_INFO[card.diet].name + '.</b> ' + DIET_INFO[card.diet].desc + '</div>';
+  if (card.diet && DIET_INFO[card.diet]) effects += '<div class="gtt-line"><b style="color:' + DIET_INFO[card.diet].color + '">Роль в лесу: ' + DIET_INFO[card.diet].name + '.</b> ' + DIET_INFO[card.diet].desc + '</div>';
   /* Синергии (возможные звенья) — сплошным текстом через « · »,
      иначе у Владык список на 10 строк раздувает тултип выше экрана */
   const ps = pairsForCard(card);
@@ -298,8 +310,8 @@ function roleText(card) {
     anchor: '🔱 Якорь — сердце фракционной механики',
     healer: '💚 Поддержка — лечит и стабилизирует',
     burst: '💥 Взрывной — крупный доход в правильной связке',
-    predator: '🦁 Хищник — кусает соседних травоядных/падальщиков, растёт на охоте',
-    flora: '🌳 Флора — кормит травоядных и лечит хищников, замыкая круговорот',
-    scav: '🦅 Падальщик — жиреет с каждой чужой смерти рядом'
+    predator: '🦁 Хищник — берёт ТРОФЕЙ с дичи в своих угодьях, ходит в стае',
+    flora: '🌳 Чаща — укрывает дичь, кормит стадо выпасом, собирает поросль',
+    scav: '🦅 Падальщик — жиреет с чужих актов охоты'
   }[card.role] || '—';
 }
