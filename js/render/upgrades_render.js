@@ -9,7 +9,7 @@
    куплено, заблокировано или не хватает Душ.
    ============================================================ */
 
-let upgHideBought = false; /* «Скрыть купленные» */
+let upgHideBought = false; /* «Скрыть недоступные»: купленное + закрытое предусловиями */
 let upgStaffTab = 'undead'; /* открытая вкладка группы «Слуги» */
 
 function openUpgrades() {
@@ -17,14 +17,15 @@ function openUpgrades() {
     '<h2>УЛУЧШЕНИЯ</h2>' +
     '<div id="upgList" style="width:100%;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px;min-height:0"></div>' +
     '<div class="btn-row" style="display:flex;justify-content:center;align-items:center;gap:28px">' +
-      '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#a39e92;visibility:hidden" aria-hidden="true"><input type="checkbox" disabled style="width:14px;height:14px">Скрыть купленные</label>' +
+      '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#a39e92;visibility:hidden" aria-hidden="true"><input type="checkbox" disabled style="width:14px;height:14px">Скрыть недоступные</label>' +
       '<button class="btn btn-take" id="upgX">Закрыть</button>' +
-      '<label class="upg-hide" style="display:flex;align-items:center;gap:6px;font-size:12px;color:#a39e92"><input type="checkbox" id="upgHideChk" style="width:14px;height:14px;accent-color:var(--gold)">Скрыть купленные</label>' +
+      '<label class="upg-hide" style="display:flex;align-items:center;gap:6px;font-size:12px;color:#a39e92"><input type="checkbox" id="upgHideChk" style="width:14px;height:14px;accent-color:var(--gold)">Скрыть недоступные</label>' +
     '</div>', 560);
   const card = document.querySelector('#upgModal .modal-card');
   if (card) card.style.overflow = 'hidden'; /* прокрутка — только у списка */
   $('upgX').onclick = () => close_('upgModal');
   $('upgHideChk').onchange = () => { upgHideBought = $('upgHideChk').checked; renderUpgrades(); };
+  $('upgHideChk').checked = upgHideBought; /* галочка живёт между открытиями окна */
   renderUpgrades();
   open_('upgModal');
 }
@@ -40,8 +41,12 @@ function upgRowHTML(icon, name, desc, rightHTML, cls, action) {
 /* Цена в Душах (иконка + число) / отметка о покупке */
 function upgCost(n) { return SOUL_IMG + '<b>' + n + '</b>'; }
 function upgOwnedMsg(txt) { return txt || '✔'; }
-/* Скрывать строку под «Скрыть купленные»? (только класс done) */
-function upgHidden(cls) { return upgHideBought && String(cls || '').indexOf('done') >= 0; }
+/* Скрывать строку под «Скрыть недоступные»? Куплено (.done) или
+   закрыто предусловием (.lock): недоступно и то, и другое. */
+function upgHidden(cls) {
+  const s = String(cls || '');
+  return upgHideBought && (s.indexOf('done') >= 0 || s.indexOf('lock') >= 0);
+}
 
 /* Строки типа UPG_ONCE (фичи, редкости, опции) покупаются через
    buyUpgradeOnce из logic/upgrades.js — там же проверки и тосты. */
@@ -54,9 +59,9 @@ function seqRow(icon, lv, i, item, action) {
     if (upgHidden('avail done')) return '';
     return upgRowHTML(icon, item.name, item.desc, right, 'avail done', null);
   }
-  if (lv < i) { /* ещё не открыто */
-    if (upgHidden('avail')) return '';
-    return upgRowHTML(icon, item.name, item.desc, upgCost(item.cost), 'avail', null);
+  if (lv < i) { /* ещё не открыто (закрыто предыдущим уровнем) */
+    if (upgHidden('avail lock')) return '';
+    return upgRowHTML(icon, item.name, item.desc, upgCost(item.cost), 'avail lock', null);
   }
   /* следующий уровень — покупается сейчас */
   const afford = souls >= item.cost;
@@ -92,7 +97,7 @@ function renderUpgrades() {
     const owned = featOwned(k);
     const locked = u.need && !featOwned(u.need);
     const afford = souls >= u.cost;
-    const cls = owned ? 'avail done' : (locked || !afford ? 'avail need' : '');
+    const cls = owned ? 'avail done' : (locked ? 'avail lock' : (afford ? '' : 'avail need'));
     if (upgHidden(owned ? 'done' : '')) return;
     html += upgRowHTML(u.icon, u.name, u.desc + (locked ? ' <i>— сперва ' + UPG_ONCE[u.need].name + '</i>' : ''),
       owned ? upgOwnedMsg() : upgCost(u.cost), cls, owned ? null : k);

@@ -1238,11 +1238,17 @@ body[data-faction="undead"] .cell.aura-lich { border-color:#7fa08c !important; b
 .upg-item .txt small { color: #a39e92; }
 .upg-item .cost { flex-shrink: 0; display: flex; align-items: center; gap: 4px; color: #9fe8f0; font-size: 12px; margin-top: 1px; }
 /* приглушённая строка (.avail): куплено / заблокировано / не хватает Душ */
-.upg-item.avail { background: #121214; }
+.upg-item.avail { background: #101013; border-color: #1b1a1f; }
+.upg-item.avail > * { opacity: .82; }
 .upg-item.avail .txt b { color: #8f8a80; }
 .upg-item.avail .txt small { color: #6f6b62; }
-.upg-item.avail .ic { opacity: .55; }
+.upg-item.avail .ic { opacity: .45; }
 .upg-item.avail .cost { color: #5d7c85; opacity: .75; }
+/* куплено окончательно (.done): купить нельзя — максимально тускло */
+.upg-item.done { opacity: .5; background: #0d0d10; border-color: #17161a; }
+.upg-item.done .txt b { color: #6f6a60; }
+.upg-item.done .txt small { color: #55524a; }
+.upg-item.done .cost { color: #4f5f66; }
 /* вкладки группы «Слуги» */
 .upg-tabs { display: flex; gap: 6px; width: 100%; margin: 2px 0 6px; }
 .upg-tab { flex: 1; text-align: center; padding: 5px 4px; font-size: 12px; color: #a39e92; background: #16161a; border: 1px solid #26262a; border-radius: 4px; }
