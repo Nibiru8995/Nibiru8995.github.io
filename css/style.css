@@ -1257,6 +1257,8 @@ body[data-faction="undead"] .cell.aura-lich { border-color:#7fa08c !important; b
 
 /* --- Выбор колоды (обязательный шаг при выборе расы на Эпоху) --- */
 .deckpick-list { display: flex; flex-direction: column; gap: 5px; margin: 8px 0; max-height: 320px; overflow-y: auto; }
+.gdr-fic { flex: 0 0 auto; width: 18px; text-align: center; font-size: 15px; line-height: 1; }
+.gdr-div { flex: 0 0 auto; width: 1px; height: 15px; background: #3a3040; }
 .deckpick-row { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 4px; background: #101013; cursor: pointer; font-size: 13px; }
 .deckpick-row:hover { border-color: var(--gold); background: #16130c; }
 .deckpick-row.active { border-color: #3f5c30; background: #12150f; }

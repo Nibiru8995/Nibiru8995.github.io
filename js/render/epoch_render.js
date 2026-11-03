@@ -130,29 +130,19 @@ function pickFactionForRestart() {
 function openDeckPick(race, onPick) {
   ensureStarterDeck(race);
   const list = decks.filter(k => k.race === race);
-  const maxN = deckStackMax();
   mkFresh('deckPickModal',
-    '<h2>Выберите колоду — ' + FACTION_INFO[race].name + '</h2>' +
-    '<div class="res">Забег выдаст <b>ВСЮ колоду целиком</b> (застакованные карты — стопками ×N). ' +
-    'Колоды собираются в Гримуаре: каждая копия карты — отдельный блок, стак — фиолетовой стрелкой ▲.</div>' +
+    '<h2>ВЫБЕРИТЕ КОЛОДУ</h2>' +
+    '<div class="res">Забег выдаст <b>ВСЮ колоду целиком</b> (застакованные карты — стопками ×N). Кликните по колоде, чтобы выбрать её.</div>' +
     '<div class="deckpick-list">' +
-    (list.length ? list.map(d => {
-      const act = activeDeck[race] === d.id;
-      const stk = d.cards.filter(e => (e.n || 1) >= 2).length;
-      return '<div class="deckpick-row' + (act ? ' active' : '') + '" data-dk="' + d.id + '">' +
-        '<span class="gdr-dot" style="background:' + FACTION_INFO[race].color + '"></span>' +
-        '<span class="gdr-name">' + d.name + '</span>' +
-        '<span class="gdr-count">' + deckTotal(d) + '/' + deckCap() + '</span>' +
-        (stk ? '<span class="gdr-stk" title="Карт с стаком ×2+">▲ ' + stk + '</span>' : '') +
-        (act ? '<span class="gdr-star" title="Активная колода расы">★</span>' : '') +
-        '<button class="mini" title="Выбрать эту колоду">ВЫБРАТЬ</button>' +
-        '</div>';
-    }).join('') : '<div class="fighter-empty">У этой расы ещё нет колод — выберите «Создать пустую» или вернитесь в Гримуар.</div>') +
+    (list.length ? list.map(d =>
+      '<div class="deckpick-row" data-dk="' + d.id + '">' +
+      '<span class="gdr-fic">' + lbFactionIcon(race) + '</span>' +
+      '<span class="gdr-div"></span>' +
+      '<span class="gdr-name">' + String(d.name || '').replace(/[<>&]/g, '') + '</span>' +
+      '<span class="gdr-count">' + deckTotal(d) + '/' + deckCap() + '</span>' +
+      '</div>').join('') : '<div class="fighter-empty">У этой расы нет колод — соберите их в Гримуаре.</div>') +
     '</div>' +
-    '<div class="btn-row" style="flex-wrap:wrap">' +
-    '<button class="btn btn-take" id="dpNew" style="max-width:none;width:auto;min-width:180px">＋ Новая пустая колода</button>' +
-    '<button class="btn btn-take" id="dpGrim" style="max-width:none;width:auto;min-width:200px">📖 Собрать в Гримуаре</button>' +
-    '<button class="btn btn-take" id="dpCancel" style="max-width:none;width:auto;min-width:110px">Назад</button></div>', 600);
+    '<div class="btn-row"><button class="btn btn-take" id="dpCancel" style="max-width:none;width:auto;min-width:110px">Закрыть</button></div>', 600);
   const pickIt = id => {
     const d = deckById(id);
     if (!d) return;
@@ -166,15 +156,6 @@ function openDeckPick(race, onPick) {
   $('deckPickModal').querySelectorAll('.deckpick-row').forEach(row => {
     row.onclick = () => pickIt(row.dataset.dk);
   });
-  $('dpNew').onclick = () => {
-    const nd = createDeck(race, '');
-    if (nd) { grimSelDeckId = nd.id; pickIt(nd.id); }
-  };
-  $('dpGrim').onclick = () => {
-    close_('deckPickModal');
-    grimPickReturn = () => openDeckPick(race, onPick); /* вернуться к выбору после Гримуара */
-    openGrimuar();
-  };
   $('dpCancel').onclick = () => close_('deckPickModal');
   open_('deckPickModal');
 }
