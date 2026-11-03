@@ -1196,7 +1196,10 @@ function demonEmberTick() {
         fxAtCell(n.r, n.c, ['#ff8030', '#ffd34d'], 5);
         ignited++;
       });
-      if (ignited) { toast('🔥 Цепной пожар: ' + card.name + ' поджёг ' + ignited + ' сосед' + (ignited === 1 ? 'а' : 'ей'), 'chainfire', 30); changed = true; }
+      if (ignited) {
+        stats.chainfire = (stats.chainfire || 0) + ignited; /* ачивка «Вечный пожар» */
+        toast('🔥 Цепной пожар: ' + card.name + ' поджёг ' + ignited + ' сосед' + (ignited === 1 ? 'а' : 'ей'), 'chainfire', 30); changed = true;
+      }
     }
     /* ПИР ХАОСА (Т.4.2): чужой взрыв кормит мраковых (не Венцов) в рад.2 */
     let feasted = 0;
@@ -1211,7 +1214,10 @@ function demonEmberTick() {
       fxAtCell(n.r, n.c, ['#9040c0', '#ff8030'], 6);
       feasted++;
     });
-    if (feasted) { toast('🍖 Пир хаоса: ' + feasted + ' мраков' + (feasted === 1 ? ' кормится' : ' кормятся') + ' взрывом ' + card.name, 'feast', 30); changed = true; }
+    if (feasted) {
+      stats.feasts = (stats.feasts || 0) + feasted; /* ачивка «Дегустатор хаоса» */
+      toast('🍖 Пир хаоса: ' + feasted + ' мраков' + (feasted === 1 ? ' кормится' : ' кормятся') + ' взрывом ' + card.name, 'feast', 30); changed = true;
+    }
     /* ШЁПОТ Сукуба (d5) и Липкая Тень (d29): чужой взрыв в рад.1 */
     nb1.forEach(n => {
       if (n.r === r && n.c === c) return;

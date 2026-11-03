@@ -71,5 +71,11 @@ const ACHIEVEMENTS = [
   { id: 'hunt_25',      name: 'Красный пищевой цепи',     desc: 'Хищники Алтаря совершили 25 убийств',    check: () => (stats.predKills || 0) >= 25 },
   { id: 'boom_50',      name: 'Пиротехник легиона',       desc: '50 взрывов Хаоса на Алтаре',             check: () => (stats.demonBooms || 0) >= 50 },
   { id: 'elite_10',     name: 'Гроза элит',               desc: 'Разбить 10 элитных отрядов Колыбели Войны', check: () => (stats.eliteKills || 0) >= 10 },
-  { id: 'streak_8',     name: 'Серия без промаха',        desc: '8 побед Колыбели Войны подряд',          check: () => (stats.streakMax || 0) >= 8 }
+  { id: 'streak_8',     name: 'Серия без промаха',        desc: '8 побед Колыбели Войны подряд',          check: () => (stats.streakMax || 0) >= 8 },
+
+  /* --- v1.11.0: реворк демонов — подрасы Пепел/Мрак/Легион --- */
+  { id: 'courts_3',     name: 'Три двора Пекла',          desc: 'Иметь на Алтаре демонов Пепла, Мрака и Легиона одновременно', check: () => { const s = new Set(); for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) { const it = grid[r][c]; if (it && CARDS[it.cardId] && CARDS[it.cardId].faction === 'demon' && CARDS[it.cardId].subrace) s.add(CARDS[it.cardId].subrace); } return s.size >= 3; } },
+  { id: 'chainfire_25', name: 'Вечный пожар',             desc: 'Цепной пожар поджёг 25 демонов',         check: () => (stats.chainfire || 0) >= 25 },
+  { id: 'feast_25',     name: 'Дегустатор хаоса',         desc: 'Пир хаоса накормил 25 мраков чужими взрывами', check: () => (stats.feasts || 0) >= 25 },
+  { id: 'form_6',       name: 'Строй не рассыпается',     desc: 'Держать 6 легионеров в строю одновременно', check: () => Object.keys((INC_CTX && INC_CTX.legionForm) || {}).length >= 6 }
 ];
