@@ -71,6 +71,7 @@ function seqRow(icon, lv, i, item, action) {
 function renderUpgrades() {
   const list = $('upgList');
   if (!list) return;
+  if (typeof renderMenuSouls === 'function') renderMenuSouls(); /* счётчик Душ в меню за окном */
   let html = '';
 
   /* ============ КОНТРОЛЬ ============ */

@@ -283,8 +283,17 @@ function refreshAll() {
 }
 
 /* ---------------- Меню ---------------- */
+/* Счётчик Душ в меню (замена старой строки «Тёмное Наследие»):
+   баланс + рекорд Эпохи, для видности живёт рядом с любыми покупками */
+function renderMenuSouls() {
+  const el = $('menuSouls');
+  if (!el) return;
+  el.innerHTML = SOUL_IMG + ' Души: <b style="color:#d8b74a">' + fmtShort(souls) +
+    '</b> <span style="color:#55555a">·</span> рекорд Эпоха <b>' + maxEpoch + '</b>';
+}
 function showMenu() {
   gamePaused = true;
+  renderMenuSouls();
   $('menuContinue').disabled = !hasRunSave() && !gameStarted;
   $('menu').classList.add('show');
   /* v1.4.1 ТЗ: выход в меню — тихая запись рекорда (только рост),
@@ -452,6 +461,7 @@ function wireEvents() {
     titleTwoN = 0;
     gainSouls(100);
     saveMeta();
+    renderMenuSouls();
     toast('🕯 <b>Гача-Гриндер II благословил вас: +100 Душ.</b>');
   };
   /* v1.5.13: закрытие окон Эпохи больше не «выбрасывает» из меню. */
