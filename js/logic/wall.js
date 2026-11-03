@@ -91,7 +91,7 @@ function wallSend() {
 function wallAskName() {
   mk('wallNameModal',
     '<h2>✒ ИМЯ НА СТЕНЕ</h2>' +
-    '<div class="desc">Подпись под сообщениями Стены Тьмы. Она же — в Табличке Тьмы.</div>' +
+    '<div class="desc">Подпись под сообщениями Стены тленных шёпотов. Она же — в Скрижалях Тьмы.</div>' +
     '<input id="wallNameIn" maxlength="20" placeholder="Псевдоним до 20 символов" ' +
     'style="width:100%;padding:9px 11px;background:#0d0a0f;border:1px solid #3a3040;color:#e8dcc8;border-radius:8px;font-family:inherit;margin:6px 0 4px">' +
     '<div class="btn-row" style="gap:8px">' +

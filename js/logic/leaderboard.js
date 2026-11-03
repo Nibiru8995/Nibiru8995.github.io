@@ -1,14 +1,14 @@
 'use strict';
 /*
-ЛОГИКА: ТАБЛИЦА ТЬМЫ (logic/leaderboard.js)
-Облачный топ инкама по Эпохам + счётчик игроков за день
+ЛОГИКА: СКРИЖАЛИ ТЬМЫ (logic/leaderboard.js)
+Облачный топ инкама по расам + счётчик игроков за день
 (Supabase, Free-план).
 
 рейтинг переехал из кнопки в игре в ГЛАВНОЕ МЕНЮ,
-в блок НАД чатом (Стеной Тьмы). 10 вкладок по Эпохам:
-1..9 и «10+» (Эпоха 10 и выше). Запись игрока чёткая:
-ИГРОК — МАКСИМАЛЬНЫЙ ДОХОД (за выбранную Эпоху).
-Запросы с базы — по вкладке: epoch=eq.N, для «10+» — epoch=gte.10.
+в блок НАД чатом (Стеной тленных шёпотов). Вкладки по РАСАМ
+(Эпохи бонуса не дают). Запись игрока чёткая:
+ИГРОК — МАКСИМАЛЬНЫЙ ДОХОД (среди своей расы).
+Запросы с базы — по вкладке: faction=eq.<race>.
 
 КОГДА ПИШЕМ В БАЗУ (проверено — три точки записи):
 1) открытие страницы → пинг (день + устройство): счётчик «за день»;
@@ -28,7 +28,7 @@ RLS базы разрешает INSERT и SELECT, обновлять/удаля�
 const SUPA_URL = 'https://gtxutfpdfknpttrkjzhq.supabase.co';
 const SUPA_KEY = 'sb_publishable_3pAfzOXNPB8k4yPnlTd3bQ_c7ul-Fsk';
 const LB_TOP = 6; /* строк в топе одной вкладки */
-const LB_EPOCH_TABS = 10; /* вкладки 1..9 + «10+» */
+const LB_RACES = FACTION_KEYS; /* рейтинг по расам — Эпохи бонуса не дают */
 
 function supaHeaders(extra) {
   return Object.assign({
@@ -140,7 +140,7 @@ function supaSubmit(runSecs, force, silent) {
   }).then(res => {
     if (res.ok) {
       lbSetBestSent(score);
-      if (!silent) toast('🏆 <b>Рекорд записан в Табличку Тьмы!</b> Смотри меню — блок над Стеной.');
+      if (!silent) toast('🏆 <b>Рекорд вписан в Скрижали Тьмы!</b> Гляди в главном меню.');
     }
   }).catch(() => { /* оффлайн — не страшно */ });
 }
@@ -167,8 +167,8 @@ function maybeAskNick() {
   try { if (localStorage.getItem('gg3_player')) return; } catch (e) { }
   mk('nickModal',
     '<h2>👑 КАК ТЕБЯ ЗОВУТ, ГРИНДЕР?</h2>' +
-    '<div class="desc">Тьма ведёт <b>Табличку Тьмы</b> — топ инкама по Эпохам, теперь в главном меню. ' +
-    'Записываются твои Вознесения. Имя меняется когда угодно под Стеной Тьмы.</div>' +
+    '<div class="desc">Тьма ведёт <b>Скрижали Тьмы</b> — топ инкама по расам, теперь в главном меню. ' +
+    'Записываются твои Вознесения. Имя меняется когда угодно под Стеной тленных шёпотов.</div>' +
     '<input id="nickIn" maxlength="20" placeholder="Псевдоним до 20 символов" ' +
     'style="width:100%;padding:10px 12px;background:#0d0a0f;border:1px solid #3a3040;color:#e8dcc8;border-radius:8px;font-family:inherit;margin:6px 0 4px">' +
     '<div class="btn-row" style="gap:8px">' +
@@ -184,8 +184,9 @@ function maybeAskNick() {
 }
 
 /* ================= БЛОК РЕЙТИНГА В ГЛАВНОМ МЕНЮ =================
-10 вкладок по Эпохам: 1..9 и «10+». Строка рейтинга — чётко:
- ИГРОК — МАКСИМАЛЬНЫЙ ДОХОД (рекорд дохода/сек в этой Эпохе).*/
+Вкладки по РАСАМ: Нежить / Культисты / Звери / Демоны.
+Строка рейтинга — чётко: ИГРОК — МАКСИМАЛЬНЫЙ ДОХОД
+(рекорд дохода/сек среди своей расы).*/
 
 function lbFactionIcon(f) {
   const F = { undead: '⛓', cultist: '🔯', beast: '🐾', demon: '🔥' };
@@ -195,35 +196,38 @@ function lbEscape(s) {
   return String(s || '').replace(/[<>&"]/g, c =>
     ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
 }
-function lbTabLabel(n) { return n >= LB_EPOCH_TABS ? '10+' : String(n); }
-function lbTabFilter(n) { return n >= LB_EPOCH_TABS ? 'epoch=gte.10' : 'epoch=eq.' + n; }
+function lbTabLabel(r) {
+  const inf = FACTION_INFO[r] || {};
+  return lbFactionIcon(r) + ' ' + (inf.name || '?');
+}
+function lbTabFilter(r) { return 'faction=eq.' + r; }
 
-let lbTab = 1;
+let lbTab = 'undead';
 
 function lbBuildTabs() {
   const box = $('lbTabs');
   if (!box) return;
   box.innerHTML = '';
-  for (let n = 1; n <= LB_EPOCH_TABS; n++) {
+  LB_RACES.forEach(r => {
     const b = document.createElement('button');
-    b.className = 'lb-tab' + (n === lbTab ? ' active' : '');
-    b.textContent = lbTabLabel(n);
-    b.title = n >= LB_EPOCH_TABS ? 'Эпоха 10 и выше' : 'Эпоха ' + n;
-    b.onclick = () => lbSetTab(n);
+    b.className = 'lb-tab' + (r === lbTab ? ' active' : '');
+    b.textContent = lbTabLabel(r);
+    b.title = 'Лучшие из «' + ((FACTION_INFO[r] || {}).name || r) + '»';
+    b.onclick = () => lbSetTab(r);
     box.appendChild(b);
-  }
+  });
 }
 
-function lbSetTab(n) {
-  lbTab = n;
+function lbSetTab(r) {
+  lbTab = r;
   lbBuildTabs();
   lbFetch();
 }
 
 function lbInit() {
   if (!$('lbRows')) return;
-  /* открываем вкладку текущей Эпохи (для «10+» — последняя вкладка) */
-  lbTab = Math.max(1, Math.min(LB_EPOCH_TABS, Math.floor(epoch || 1)));
+  /* открываем вкладку текущей расы (незнакомая раса → нежить) */
+  lbTab = LB_RACES.indexOf(faction) >= 0 ? faction : 'undead';
   lbBuildTabs();
   const rf = $('lbRefresh');
   if (rf) rf.onclick = lbFetch;
@@ -251,7 +255,7 @@ async function lbFetch() {
     });
     const top = Object.values(best).sort((a, b) => b.max_inc - a.max_inc).slice(0, LB_TOP);
     if (!top.length) {
-      rows.innerHTML = '<div class="wall-empty">В Эпохе «' + lbTabLabel(lbTab) +
+      rows.innerHTML = '<div class="wall-empty">Среди «' + ((FACTION_INFO[lbTab] || {}).name || '?') +
         '» пока пусто. Вознесись — и впиши себя первым!</div>';
       return;
     }
@@ -259,7 +263,7 @@ async function lbFetch() {
     top.forEach((r, i) => {
       const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '.';
       const me = (r.player || 'Аноним') === supaPlayerName();
-      const epTag = lbTab >= LB_EPOCH_TABS ? '<span class="lb-ep">Э' + r.epoch + '</span>' : '';
+      const epTag = ' <span class="lb-ep">Э' + r.epoch + '</span>';
       html += '<div class="lb-row">' +
         '<span class="lb-place">' + medal + '</span>' +
         '<span class="lb-player">' + lbFactionIcon(r.faction) + ' <b' + (me ? ' class="lb-me"' : '') + '>' +
