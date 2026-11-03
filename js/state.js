@@ -65,13 +65,22 @@ let feats = [];
 let factionsOwned = [];
 let staffLv = {};
 
-/* Разовое обнуление учеток: ключи прошлых версий + локальный «рекорд,
+/* Разовое обнуление учёток: ключи прошлых версий + локальный «рекорд,
    отправленный в базу» (иначе после чистки Таблички Тьмы новые рекорды
    не писались бы — score <= lbBestSent). Ник/устройство не трогаем. */
+const NUKE_KEY = 'gg3_nuke_2026_11';
 function wipeLegacySaves() {
   try {
-    SAVE_LEGACY.forEach(k => localStorage.removeItem(k));
-    localStorage.removeItem('gg3_lbBest');
+    if (!localStorage.getItem(NUKE_KEY)) {
+      /* v1.8.1 срочный сброс ВСЕХ учёток: сейв, мета, ник, устройство, отправленный рекорд */
+      SAVE_LEGACY.forEach(k => localStorage.removeItem(k));
+      [SAVE_RUN, SAVE_META, 'gg3_lbBest', 'gg3_player', 'gg3_visitor']
+        .forEach(k => localStorage.removeItem(k));
+      localStorage.setItem(NUKE_KEY, '1'); /* один раз на устройство */
+    } else {
+      SAVE_LEGACY.forEach(k => localStorage.removeItem(k));
+      localStorage.removeItem('gg3_lbBest');
+    }
   } catch (e) { }
 }
 /* --- v1.8.0: ПЕЧАТИ 🔱 («эссенция») УДАЛЕНЫ ИЗ ИГРЫ —

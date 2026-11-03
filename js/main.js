@@ -441,6 +441,19 @@ function wireEvents() {
     else go();
   };
   $('menuTut').onclick = () => restartWith('tutorial');
+  /* Пасхалка: три быстрых клика на «2» в заголовке меню — благословение, +100 Душ */
+  let titleTwoN = 0, titleTwoT = 0;
+  const elTitleTwo = $('titleTwo');
+  if (elTitleTwo) elTitleTwo.onclick = () => {
+    const now = Date.now();
+    if (now - titleTwoT > 1500) titleTwoN = 0; /* серия прервана — заново */
+    titleTwoT = now;
+    if (++titleTwoN < 3) return;
+    titleTwoN = 0;
+    gainSouls(100);
+    saveMeta();
+    toast('🕯 <b>Гача-Гриндер II благословил вас: +100 Душ.</b>');
+  };
   /* v1.5.13: закрытие окон Эпохи больше не «выбрасывает» из меню. */
   /* v1.6.0: ГРИМУАР и УЛУЧШЕНИЯ в главном меню; v1.8.0: Улучшения — рабочая мастерская за Души */
   $('menuGrim').onclick = () => { openGrimuar(); };
