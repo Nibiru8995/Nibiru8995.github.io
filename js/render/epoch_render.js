@@ -64,8 +64,7 @@ function confirmEpochUp() {
 /* ---------------- Выбор колоды (без выбора фракции: раса остаётся ТЕКУЩЕЙ) ----------------
    Вознесение и рестарт ведут сразу к окну выбора колоды (openDeckPick). */
 function pickFactionAndAscend() {
-  const f = FACTION_KEYS.indexOf(faction) >= 0 ? faction : availFactions()[0];
-  openDeckPick(f, d => doEpochUp(f, d));
+  openDeckPick(null, d => doEpochUp(d.race, d)); /* раса — та, чья колода выбрана */
 }
 
 /* ---------------- РЕСТАРТ ЭПОХИ ----------------
@@ -87,8 +86,7 @@ function confirmEpochRestart() {
 
 /* Рестарт: сразу выбор колоды — фракция остаётся ТЕКУЩЕЙ */
 function pickFactionForRestart() {
-  const f = FACTION_KEYS.indexOf(faction) >= 0 ? faction : availFactions()[0];
-  openDeckPick(f, d => doEpochRestart(f, d));
+  openDeckPick(null, d => doEpochRestart(d.race, d)); /* раса — та, чья колода выбрана */
 }
 
 /* ---------------- ВЫБОР КОЛОДЫ (обязательный шаг, v1.8.0) ----------------
@@ -96,19 +94,22 @@ function pickFactionForRestart() {
    забег получит её целиком (включая застакованные карты).
    onPick(dek) — что делать дальше (doEpochUp / doEpochRestart / startFreshRun). */
 function openDeckPick(race, onPick) {
-  ensureStarterDeck(race);
-  const list = decks.filter(k => k.race === race);
+  /* race == null → показываем колоды ВСЕХ открытых рас (значок расы в строке),
+     race != null → только колоды этой расы. */
+  const races = race ? [race] : availFactions();
+  races.forEach(ensureStarterDeck);
+  const list = decks.filter(k => races.indexOf(k.race) >= 0);
   mkFresh('deckPickModal',
     '<h2>ВЫБЕРИТЕ КОЛОДУ</h2>' +
     '<div class="res">Забег выдаст <b>ВСЮ колоду целиком</b> (застакованные карты — стопками ×N). Кликните по колоде, чтобы выбрать её.</div>' +
     '<div class="deckpick-list">' +
     (list.length ? list.map(d =>
       '<div class="deckpick-row" data-dk="' + d.id + '">' +
-      '<span class="gdr-fic">' + lbFactionIcon(race) + '</span>' +
+      '<span class="gdr-fic">' + lbFactionIcon(d.race) + '</span>' +
       '<span class="gdr-div"></span>' +
       '<span class="gdr-name">' + String(d.name || '').replace(/[<>&]/g, '') + '</span>' +
       '<span class="gdr-count">' + deckTotal(d) + '/' + deckCap() + '</span>' +
-      '</div>').join('') : '<div class="fighter-empty">У этой расы нет колод — соберите их в Гримуаре.</div>') +
+      '</div>').join('') : '<div class="fighter-empty">Колод нет — соберите их в Гримуаре.</div>') +
     '</div>' +
     '<div class="btn-row"><button class="btn btn-take" id="dpCancel" style="max-width:none;width:auto;min-width:110px">Закрыть</button></div>', 600);
   const pickIt = id => {
