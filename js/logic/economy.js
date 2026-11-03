@@ -342,16 +342,34 @@ function factionMult(r, c, card, item) {
     return m;
   }
   if (mech === 'chaos') {
-    /* ДЕМОНЫ: УГЛИ — в толпе демон копит угли и ВЗРЫВАЕТСЯ. */
-    let m = (1 + 0.10 * (item.embers || 0)) * (item.mutBuff || 1);
-    if (item.boomUntil && item.boomUntil > gameTime) m *= 2;   /* «Перегрев»: ×2 на 12 сек */
+    /* ДЕМОНЫ: УГЛИ — в толпе демон копит угли и ВЗРЫВАЕТСЯ.
+       v1.11.0: подрасы Пепел/Мрак/Легион (Цепной пожар / Пир хаоса /
+       Строй — Т.4 дизайн-дока) + временные и постоянные баффы новых карт. */
+    const emberPct = card.id === 'd21' ? 0.12 : 0.10; /* Сажевик: угли жирнее */
+    let m = (1 + emberPct * (item.embers || 0)) * (item.mutBuff || 1);
+    if (item.boomUntil && item.boomUntil > gameTime) m *= (item.boomMult || 2); /* «Перегрев»: ×2 (под Кошмаром ×2.5) */
+    /* ТЛЕНИЕ (Т.4.1): 8с после взрыва пепельник даёт себе ×1.1 (Тлетень d19 — ×1.2) */
+    if ((item.tleUntil || 0) > gameTime && item.tleVal) m *= item.tleVal;
+    /* ПИР ХАОСА (Т.4.2): чужие взрывы кормят мракового (не Венца): +10% на 12с, стак до ×1.5 */
+    if ((item.feastUntil || 0) > gameTime && (item.feastBuff || 1) > 1) m *= item.feastBuff;
+    /* Временные баффы новых карт */
+    if (card.id === 'd5' && (item.whisperUntil || 0) > gameTime) m *= 1.15;               /* Шёпот Сукуба */
+    if (card.id === 'd31' && (item.zavUntil || 0) > gameTime) m *= 1.2;                   /* Заводила подкуражен */
+    if ((item.voidUntil || 0) > gameTime && (item.voidBuff || 1) > 1) m *= item.voidBuff; /* Пустотный Вельможа */
+    /* Постоянные баффы (капы ставит тик углей) */
+    if (item.pyroBuff && item.pyroBuff > 1) m *= item.pyroBuff; /* Пирокласт: корона пожаров (до ×2.5) */
+    if (item.phxBuff && item.phxBuff > 1) m *= item.phxBuff;    /* Феникс: за свои взрывы (до ×2) */
+    if (item.harkBuff && item.harkBuff > 1) m *= item.harkBuff; /* Внемлющий: за каждый взрыв поля (до ×3) */
     const nb = getNeighbors(r, c);
     const eng = colEngine(c);
-    /* v1.4.0 КАРА «Кандалов Легиона» (marchLoner): демон столба без соседей-демонов −30% */
-    if (eng && eng.marchLoner &&
+    /* КАРА «Кандалов Легиона» (marchLoner): одиночка −30%; Ночной Шёпот (d27) к ней невосприимчив */
+    if (eng && eng.marchLoner && card.id !== 'd27' &&
         !getNeighbors8(r, c).some(n => CARDS[n.item.cardId].faction === 'demon' && !CARDS[n.item.cardId].isBuilding)) m *= 0.7;
-    /* v1.4.0 КАРА «Разлома Ада» (riftDrain): −5% навсегда за каждый свой взрыв */
+    /* КАРА «Разлома Ада» (riftDrain): −5% навсегда за каждый свой взрыв */
     if (item.riftTax) m *= (1 - item.riftTax);
+    /* СТРОЙ ЛЕГИОНА (Т.4.3) — считается в computeIncome → INC_CTX.legionForm */
+    const inForm = !!(INC_CTX.legionForm && INC_CTX.legionForm[r + ',' + c]);
+    const isDemon = n => CARDS[n.item.cardId].faction === 'demon' && !CARDS[n.item.cardId].isBuilding;
     if (card.id === 'd6') m *= 1 + 0.08 * nb.filter(n => CARDS[n.item.cardId].faction === 'demon').length;
     if (card.id === 'd8') m *= 1 + 0.06 * nb.filter(n => CARDS[n.item.cardId].faction === 'demon').length;
     if (card.id === 'd10') m *= 1 + 0.10 * radius2(r, c).filter(n => CARDS[n.item.cardId].faction === 'demon').length;
@@ -363,6 +381,23 @@ function factionMult(r, c, card, item) {
     if (card.id === 'd11') m *= 1 + 0.40 * nb.filter(n => CARDS[n.item.cardId].faction === 'demon').length;
     else if (nb.some(n => n.item.cardId === 'd11')) m *= 0.9;
     if (card.id === 'd12') m *= 1 + 0.12 * nb.filter(n => (n.item.embers || 0) >= 3).length;
+    /* --- v1.11.0: новые пассивки (живые d4/d5/d7 + d16–d47) --- */
+    if (card.id === 'd4') m *= 1 + 0.12 * nb.filter(n => CARDS[n.item.cardId].subrace === 'dark' && isDemon(n)).length;      /* Соблазн */
+    if (card.id === 'd7' && inForm) m *= 1.10;                                                                                /* В ногу */
+    if (card.id === 'd16') m *= 1 + 0.12 * nb.filter(n => CARDS[n.item.cardId].subrace === 'ash' && isDemon(n)).length;       /* Искры */
+    if (card.id === 'd17') m *= 1 + 0.10 * radius2(r, c).filter(n => (n.item.embers || 0) >= 3 && isDemon(n)).length;         /* Дымовая завеса */
+    if (card.id === 'd18') m *= 1 + 0.10 * nb.filter(n => (n.item.embers || 0) >= 3 && isDemon(n)).length;                    /* Чуйка */
+    if (card.id === 'd20') m *= 1 + 0.08 * nb.filter(n => CARDS[n.item.cardId].subrace === 'ash' && isDemon(n)).length;       /* Зыбь */
+    if (card.id === 'd24') m *= 1 + 0.10 * nb.filter(n => CARDS[n.item.cardId].subrace === 'ash' && isDemon(n)).length;       /* Держит жар */
+    if (card.id === 'd28') m *= 1 + 0.10 * radius2(r, c).filter(n => (n.item.boomUntil || 0) > gameTime && isDemon(n)).length; /* Злорадство */
+    if (card.id === 'd37' && inForm) m *= 1.10;                                                                                /* В строю */
+    if (card.id === 'd38') m *= 1 + 0.08 * nb.filter(n => CARDS[n.item.cardId].subrace === 'legion' && isDemon(n)).length;     /* Сомкнуть щиты */
+    if (card.id === 'd40') m *= 1 + 0.10 * radius2(r, c).filter(n => CARDS[n.item.cardId].isBuilding).length;                  /* Интендантура */
+    if (card.id === 'd42') m *= 1 + 0.12 * nb.filter(n => CARDS[n.item.cardId].cat === 'crown' && isDemon(n)).length;          /* Крылатая */
+    if (card.id === 'd43' && nb.filter(isDemon).length >= 2) m *= 1.15;                                                        /* Курьер */
+    if (card.id === 'd45') m *= 1 + 0.10 * radius2(r, c).filter(n => CARDS[n.item.cardId].subrace === 'legion' && isDemon(n)).length; /* Учёт */
+    if (card.id === 'd46') m *= 1 + 0.08 * radius2(r, c).filter(n => CARDS[n.item.cardId].subrace === 'legion' && isDemon(n)).length; /* Приказ */
+    if (card.id === 'd47') m *= 1 + 0.15 * radiusN(r, c, 3).filter(n => CARDS[n.item.cardId].subrace === 'legion' && isDemon(n)).length; /* Маршал */
     /* Врата Ада: +10% демонов в зоне (прикованные — +15%); Ледник: +8% (+12%) */
     const ga = B.gates[r + ',' + c] || 0, gl = B.glacier[r + ',' + c] || 0;
     if (ga) m *= 1 + 0.10 * (B.gatesM[r + ',' + c] ? 1.5 : 1) * Math.min(2, ga);
@@ -394,6 +429,80 @@ function buildNecroAuras() {
     }
   }
   return { fog, oath, fogSrc };
+}
+
+/* ---------------- СТРОЙ ЛЕГИОНА (v1.11.0, Т.4.3) ----------------
+   Строй = 2+ легионеров-соседей (8-соседство). Центурион (d45)
+   засчитывает Легионов в своём радиусе 2 (кроме себя), Маршал (d47)
+   держит ВЕСЬ Легион в строю. (Т.7.2) Кандалы Легиона дают угли без
+   толпы, но НЕ делают одиночку стройным — считаются только реальные
+   соседи, Центурион или Маршал. */
+function buildLegionFormation() {
+  const form = {};
+  const cells = [];
+  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
+    const it = grid[r][c]; if (!it) continue;
+    const cd = CARDS[it.cardId];
+    if (cd.faction !== 'demon' || cd.isBuilding || cd.subrace !== 'legion') continue;
+    cells.push({ r, c, key: r + ',' + c, id: it.cardId });
+  }
+  const marshal = cells.some(cl => cl.id === 'd47');
+  if (marshal) {
+    /* Маршал: Легион ВСЕГДА в строю */
+    cells.forEach(cl => { form[cl.key] = 1; });
+  } else {
+    /* Строй = связная группа из 2+ легионеров (8-соседство, Т.4.3):
+       флуд-филл по компонентам — любой легионер в компоненте 2+ в строю */
+    const seen = {};
+    cells.forEach(cl => {
+      if (seen[cl.key]) return;
+      const comp = [];
+      const stack = [cl];
+      seen[cl.key] = 1;
+      while (stack.length) {
+        const cur = stack.pop();
+        comp.push(cur);
+        getNeighbors8(cur.r, cur.c).forEach(n => {
+          const q = CARDS[n.item.cardId];
+          if (q.faction !== 'demon' || q.isBuilding || q.subrace !== 'legion') return;
+          const nk = n.r + ',' + n.c;
+          if (seen[nk]) return;
+          seen[nk] = 1;
+          stack.push({ r: n.r, c: n.c, key: nk, id: q.id });
+        });
+      }
+      if (comp.length >= 2) comp.forEach(m => { form[m.key] = 1; });
+    });
+    /* Центурион: Легионы в его рад.2 засчитываются в строй */
+    cells.filter(cl => cl.id === 'd45').forEach(ctr => {
+      radius2(ctr.r, ctr.c).forEach(n => {
+        const q = CARDS[n.item.cardId];
+        if (q.faction === 'demon' && !q.isBuilding && q.subrace === 'legion') form[n.r + ',' + n.c] = 1;
+      });
+    });
+  }
+  /* ГРУППЫ строя (флуд-филл по соседству между членами): нужна
+     Дисциплине Рыцаря — «в рад.1 от Рыцаря не превращается ВЕСЬ строй» */
+  const groupOf = {};
+  const members = cells.filter(cl => form[cl.key]);
+  const seen = {};
+  members.forEach(cl => {
+    if (seen[cl.key]) return;
+    const group = [];
+    const stack = [cl];
+    seen[cl.key] = 1;
+    while (stack.length) {
+      const cur = stack.pop();
+      group.push(cur.key); groupOf[cur.key] = group;
+      getNeighbors8(cur.r, cur.c).forEach(n => {
+        const nk = n.r + ',' + n.c;
+        if (!form[nk] || seen[nk]) return;
+        seen[nk] = 1;
+        stack.push({ r: n.r, c: n.c, key: nk });
+      });
+    }
+  });
+  return { map: form, groups: groupOf };
 }
 
 /* ---------------- РАСЧЁТ ДОХОДА (три фазы, v1.4.0) ---------------- */
@@ -430,6 +539,11 @@ function computeIncome() {
   const cryptChainedZone = INC_CTX.cryptChainedZone || new Set();
   /* v1.9.0: ауры Некромантов (Туман u23 / Кровавый обет u35) */
   INC_CTX.necro = buildNecroAuras();
+  /* v1.11.0: СТРОЙ ЛЕГИОНА — множество клеток «в строю» (читают economy
+     и тик углей; перестраивается на каждом расчёте дохода) */
+  const LEGF = buildLegionFormation();
+  INC_CTX.legionForm = LEGF.map;
+  INC_CTX.legionGroups = LEGF.groups;
   let undeadCount = 0;
   for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
     const it = grid[r][c];

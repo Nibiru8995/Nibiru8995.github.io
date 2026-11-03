@@ -244,11 +244,17 @@ function renderGrid() {
       hungry = item.hunger !== undefined && item.hunger < 1;
     }
     const emberN = (mech === 'chaos' && item.embers > 0) ? item.embers : 0;
+    /* v1.11.0: тление (Пепел), Пир хаоса (Мрак), строй (Легион) */
+    const tleOn = mech === 'chaos' && (item.tleUntil || 0) > gameTime;
+    const feastOn = mech === 'chaos' && (item.feastUntil || 0) > gameTime && (item.feastBuff || 1) > 1;
+    const formOn = mech === 'chaos' && !card.isBuilding && card.subrace === 'legion' &&
+      !!(INC_CTX.legionForm && INC_CTX.legionForm[key]);
 
     /* --- СТРУКТУРА: что требует пересборки DOM (наличие элементов/атрибутов) --- */
     const struct = item.cardId + '#' + item.stacks +
       '|' + (damaged ? 'D' : '') +
       '|' + (emberN ? 'e' : '') + (mutOn ? 'm' : '') + (boomOn ? 'b' : '') +
+      (tleOn ? 't' : '') + (feastOn ? 'p' : '') + (formOn ? 's' : '') +
       (fed > 0 ? 'f' : '') + (hungry ? 'h' : '') +
       '|' + (colRel ? colRel.id : '') +
       '|' + (chainedB ? 'C' : '') + (u11chain ? 'U' : '') +
@@ -316,9 +322,12 @@ function renderGrid() {
         (sa.active ? 'Особенность активна' : 'Особенность не задействована') + ': ' + (SPECIALS[card.id] || '').replace(/"/g, '') + '">✦</span>';
       /* Карта НЕ мерцает; активность показывает золотой ✦ (класс on). */
     }
-    /* Таймерные способности: бейджи перезарядки (: + Зомби-рост, Кладбище, Врата) */
+    /* Таймерные способности: бейджи перезарядки (: + Зомби-рост, Кладбище, Врата, Кузнецы демонов) */
     if (card.id === 'bl_mound') badges += '<span class="cd-badge" data-cd="mound"></span>';
     if (card.id === 'd9') badges += '<span class="cd-badge" data-cd="balr"></span>';
+    if (card.id === 'd22') badges += '<span class="cd-badge" data-cd="gor"></span>';
+    if (card.id === 'd31') badges += '<span class="cd-badge" data-cd="zav"></span>';
+    if (card.id === 'd41') badges += '<span class="cd-badge" data-cd="trub"></span>';
     if (card.id === 'u1') badges += '<span class="cd-badge" data-cd="grow" data-r="' + r + '" data-c2="' + c + '"></span>';
     if (card.id === 'bl_grave') badges += '<span class="cd-badge" data-cd="grave"></span>';
     if (card.id === 'bl_gates') badges += '<span class="cd-badge" data-cd="gates"></span>';
@@ -331,6 +340,13 @@ function renderGrid() {
     /* ДЕМОНЫ: накопленный бафф мутаций */
     if (mutOn)
       badges += '<span class="mut-badge">▲</span>';
+    /* ДЕМОНЫ v1.11.0: тление · Пир хаоса · строй */
+    if (tleOn)
+      badges += '<span class="mut-badge" style="color:#ffb060" title="Тление: ×' + (item.tleVal || 1.1).toFixed(2) + ' — жар своего взрыва ещё тёплый">✹</span>';
+    if (feastOn)
+      badges += '<span class="mut-badge" style="color:#c080ff" title="Пир хаоса: ×' + (item.feastBuff || 1).toFixed(2) + ' — чужие взрывы кормят (до ×1.5)">🍖</span>';
+    if (formOn)
+      badges += '<span class="mut-badge" style="color:#9ab0d0" title="В строю: угли ×1.25, взрыв — контролируемый бафф ×1.25">⛨</span>';
     /* ЗВЕРИ: сытость (▲) и голод (▼) по рациону */
     if (mech === 'cycle') {
       if (fed > 0) badges += '<span class="mut-badge" style="color:#8fc87f">▲</span>';
@@ -480,12 +496,45 @@ function specialActive(card, item, r, c) {
     case 'd0': case 'd12': return { active: nb.some(n => (n.item.embers || 0) >= 3) };
     case 'd1': return { active: nb.some(n => CARDS[n.item.cardId].faction === 'demon') };
     case 'd2': return { active: (item.harmBuff || 0) > 0 };
+    case 'd4': return { active: nb.some(n => CARDS[n.item.cardId].subrace === 'dark') };
+    case 'd5': return { active: (item.whisperUntil || 0) > gameTime || nb.some(n => CARDS[n.item.cardId].faction === 'demon') };
     case 'd6': case 'd8': case 'd10': case 'd14':
       return { active: (card.id === 'd10' || card.id === 'd14' ? r2 : nb).some(n => CARDS[n.item.cardId].faction === 'demon') };
+    case 'd7': case 'd37': return { active: !!(INC_CTX.legionForm && INC_CTX.legionForm[r + ',' + c]) };
     case 'd9': return { active: (item.balrBuff || 1) > 1 || nb.some(n => CARDS[n.item.cardId].faction === 'demon') };
     case 'd11': return { active: nb.some(n => CARDS[n.item.cardId].faction === 'demon') };
     case 'd13': return { active: (item.tyrBuff || 1) > 1 };
     case 'd15': return { active: nb.some(n => CARDS[n.item.cardId].faction === 'demon') };
+    /* --- v1.11.0: новые демоны --- */
+    case 'd16': return { active: nb.some(n => CARDS[n.item.cardId].subrace === 'ash') };
+    case 'd17': return { active: r2.some(n => (n.item.embers || 0) >= 3) };
+    case 'd18': return { active: nb.some(n => (n.item.embers || 0) >= 3) };
+    case 'd19': return { active: (item.tleUntil || 0) > gameTime };
+    case 'd20': return { active: nb.some(n => CARDS[n.item.cardId].subrace === 'ash') };
+    case 'd21': return { active: (item.embers || 0) > 0 };
+    case 'd22': return { active: nb.some(n => CARDS[n.item.cardId].faction === 'demon') };
+    case 'd23': return { active: (item.pyroBuff || 1) > 1 };
+    case 'd24': return { active: (item.embers || 0) > 0 || nb.some(n => CARDS[n.item.cardId].subrace === 'ash') };
+    case 'd25': return { active: (item.phxBuff || 1) > 1 || (item.embers || 0) > 0 };
+    case 'd26': return { active: nb.some(n => CARDS[n.item.cardId].faction === 'demon') };
+    case 'd27': return { active: nb.some(n => CARDS[n.item.cardId].faction === 'demon') };
+    case 'd28': return { active: r2.some(n => (n.item.boomUntil || 0) > gameTime) };
+    case 'd29': return { active: nb.some(n => CARDS[n.item.cardId].faction === 'demon') };
+    case 'd30': return { active: nb.some(n => CARDS[n.item.cardId].faction === 'demon') };
+    case 'd31': return { active: (item.zavUntil || 0) > gameTime || nb.some(n => CARDS[n.item.cardId].faction === 'demon') };
+    case 'd32': return { active: r2.some(n => CARDS[n.item.cardId].faction === 'demon') };
+    case 'd33': return { active: (item.voidUntil || 0) > gameTime || r2.some(n => CARDS[n.item.cardId].faction === 'demon') };
+    case 'd34': return { active: r2.some(n => CARDS[n.item.cardId].faction === 'demon') };
+    case 'd35': return { active: (item.harkBuff || 1) > 1 };
+    case 'd36': return { active: true }; /* аура поля: пока на поле — работает */
+    case 'd38': case 'd39': return { active: nb.some(n => CARDS[n.item.cardId].subrace === 'legion') };
+    case 'd40': return { active: r2.some(n => CARDS[n.item.cardId].isBuilding) };
+    case 'd41': return { active: radiusN(r, c, 3).some(n => CARDS[n.item.cardId].subrace === 'legion' && INC_CTX.legionForm && INC_CTX.legionForm[n.r + ',' + n.c]) };
+    case 'd42': return { active: nb.some(n => CARDS[n.item.cardId].cat === 'crown') };
+    case 'd43': return { active: nb.filter(n => CARDS[n.item.cardId].faction === 'demon').length >= 2 };
+    case 'd44': return { active: r2.some(n => CARDS[n.item.cardId].subrace === 'legion' && INC_CTX.legionForm && INC_CTX.legionForm[n.r + ',' + n.c]) };
+    case 'd45': case 'd46': return { active: r2.some(n => CARDS[n.item.cardId].subrace === 'legion') };
+    case 'd47': return { active: radiusN(r, c, 3).some(n => CARDS[n.item.cardId].subrace === 'legion') };
     case 'b0': return { active: nb.some(n => CARDS[n.item.cardId].faction === 'beast') };
     case 'b1': return { active: nb.some(n => n.item.cardId === 'b1' || n.item.cardId === 'b4') };
     case 'b12': return { active: nb.some(n => CARDS[n.item.cardId].diet === 'herb') };
@@ -873,6 +922,12 @@ function updateCooldownBadges() {
       else txt = '🗿 ' + Math.max(0, Math.ceil(30 - bldMoundTimer)) + 'с';
     } else if (el.dataset.cd === 'balr' && mech === 'chaos') {
       txt = '🌋 ' + Math.max(0, Math.ceil(20 - balrTimer)) + 'с';
+    } else if (el.dataset.cd === 'gor' && mech === 'chaos') {
+      txt = '♨️ ' + Math.max(0, Math.ceil(15 - gorTimer)) + 'с';
+    } else if (el.dataset.cd === 'zav' && mech === 'chaos') {
+      txt = '🎭 ' + Math.max(0, Math.ceil(30 - zavTimer)) + 'с';
+    } else if (el.dataset.cd === 'trub' && mech === 'chaos') {
+      txt = '📯 ' + Math.max(0, Math.ceil(45 - trubTimer)) + 'с';
     } else if (el.dataset.cd === 'grow') {
       /* Зомби (u1): накопленный рост + время до следующей ступени */
       const r = +el.dataset.r, c = +el.dataset.c2;
