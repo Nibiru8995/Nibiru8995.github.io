@@ -181,6 +181,47 @@ function renderGrimDecks() {
   }
 }
 
+/* Создание колоды — ОДНА кнопка открывает модальную форму: имя + фракция */
+function grimHexA(hex, a) {
+  const v = parseInt(hex.slice(1), 16);
+  return 'rgba(' + ((v >> 16) & 255) + ',' + ((v >> 8) & 255) + ',' + (v & 255) + ',' + a + ')';
+}
+function openGrimNewDeckModal() {
+  const races = grimUnlocked();
+  let selRace = races.includes(grimRaceTab) ? grimRaceTab : races[0];
+  mkFresh('grimNewDeckModal',
+    '<h2 style="margin:2px 0 8px">Новая колода</h2>' +
+    '<div class="grim-ndf">' +
+    '<label class="grim-ndf-l" for="grimNdName">Имя колоды</label>' +
+    '<input id="grimNdName" maxlength="24" placeholder="Например: Кости и Туман…">' +
+    '<label class="grim-ndf-l">Фракция</label>' +
+    '<div class="grim-ndf-races" id="grimNdRaces">' +
+    races.map(f => '<div class="grim-ndf-race' + (f === selRace ? ' sel' : '') + '" data-f="' + f + '" style="border-color:' + FACTION_INFO[f].color + ';color:' + FACTION_INFO[f].color + '">' +
+      '<span class="gdr-dot" style="background:' + FACTION_INFO[f].color + '"></span>' + FACTION_INFO[f].name + '</div>').join('') +
+    '</div>' +
+    '</div>' +
+    '<div class="btn-row"><button class="btn btn-take" id="grimNdCancel">Отмена</button><button class="btn btn-take" id="grimNdOk">Создать</button></div>', 950);
+  const sel = f => {
+    selRace = f;
+    $('grimNdRaces').querySelectorAll('.grim-ndf-race').forEach(el => el.classList.toggle('sel', el.dataset.f === f));
+  };
+  $('grimNdRaces').querySelectorAll('.grim-ndf-race').forEach(el => el.onclick = () => { sel(el.dataset.f); sfx('click'); });
+  $('grimNdCancel').onclick = () => close_('grimNewDeckModal');
+  $('grimNdOk').onclick = () => {
+    const nd = createDeck(selRace, $('grimNdName').value);
+    if (nd) {
+      close_('grimNewDeckModal');
+      grimSelDeckId = nd.id; grimRaceTab = selRace;
+      sfx('milestone');
+      toast('Колода «' + nd.name + '» создана — наполняйте её картами коллекции');
+      renderGrimuar();
+    }
+  };
+  $('grimNdName').addEventListener('keydown', e => { if (e.key === 'Enter') $('grimNdOk').click(); });
+  open_('grimNewDeckModal');
+  $('grimNdName').focus();
+}
+
 function grimRenameDeck(id) {
   const d = deckById(id); if (!d) return;
   const row = document.querySelector('.grim-deck-row[data-d="' + id + '"]');
@@ -204,13 +245,8 @@ function grimRenameDeck(id) {
 function renderGrimDeckView() {
   const el = $('grimDeckView');
   const d = deckById(grimSelDeckId);
-  /* Форма создания новой колоды — всегда внизу панели */
-  const races = grimUnlocked();
-  let html = '<div class="grim-newdeck">' +
-    '<select id="grimNewRace">' + races.map(f => '<option value="' + f + '"' + (f === grimRaceTab ? ' selected' : '') + '>' + FACTION_INFO[f].name + '</option>').join('') + '</select>' +
-    '<input id="grimNewName" maxlength="24" placeholder="Имя новой колоды…">' +
-    '<button class="mini" id="grimNewBtn">＋ Создать</button>' +
-    '</div>';
+  /* Создание колоды — одна кнопка, форма открывается модалкой */
+  let html = '<div class="grim-newdeck"><button class="mini grim-newdeck-btn" id="grimNewBtn">＋ Создать колоду</button></div>';
   if (d) {
     const act = activeDeck[d.race] === d.id;
     html += '<div class="grim-deckhead">' +
@@ -253,11 +289,7 @@ function renderGrimDeckView() {
     html += '<div class="fighter-empty">Выберите колоду выше или создайте новую.</div>';
   }
   el.innerHTML = html;
-  $('grimNewBtn').onclick = () => {
-    const race = $('grimNewRace').value;
-    const nd = createDeck(race, $('grimNewName').value);
-    if (nd) { grimSelDeckId = nd.id; grimRaceTab = race; sfx('click'); renderGrimuar(); }
-  };
+  $('grimNewBtn').onclick = openGrimNewDeckModal;
   const sa = $('grimSetActive');
   if (sa) sa.onclick = () => {
     activeDeck[d.race] = d.id;
@@ -288,38 +320,40 @@ function renderGrimDeckView() {
 }
 
 /* ---------------- ПРИЗЫВ (снизу) ---------------- */
+/* Призыв — блок на каждую доступную фракцию: линия-разделитель с именем,
+   под ней «1 призыв» и «10 призывов». Стиль блока — в цветах фракции;
+   расу Призыва задаёт нажатая кнопка. Гаранты — в подсказке блока. */
 function renderGrimGacha() {
   const el = $('grimGacha');
   const races = grimUnlocked();
   if (!races.includes(gachaRace)) gachaRace = races[0];
   const unlocked = unlockedRarities();
-  let pity = 'Гаранты: ';
+  let pity = 'Гаранты (вечные): ';
   if (unlocked.includes(5)) pity += '★4 через ' + Math.max(0, pity4Max() - pity4) + ' · ★5 через ' + Math.max(0, 80 - pity5);
   else if (unlocked.includes(4)) pity += '★4 через ' + Math.max(0, pity4Max() - pity4);
   else pity += '★3 через ' + Math.max(0, pity4Max() - pity4);
-  el.innerHTML =
-    '<div class="gg-left">' +
-    '<span class="gg-title">ПРИЗЫВ</span>' +
-    '<select id="grimRace">' + races.map(f => '<option value="' + f + '"' + (f === gachaRace ? ' selected' : '') + '>' + FACTION_INFO[f].name + '</option>').join('') + '</select>' +
-    '<span class="gg-pity" title="Гарантия не сбрасывается никогда (вечная)">' + pity + '</span>' +
-    '<span class="gg-free">1 Душа = 1 крутка · бесплатных круток нет</span>' +
-    '</div>' +
-    '<div class="gg-btns">' +
-    '<button class="roll-btn" id="grimRoll1">Крутка ×1<span class="cost">1 Душа</span></button>' +
-    '<button class="roll-btn" id="grimRoll10">Крутка ×10<span class="cost">10 Душ</span></button>' +
-    '</div>';
-  $('grimRace').onchange = e => { gachaRace = e.target.value; saveMeta(); renderGrimGacha(); };
-  $('grimRoll1').onclick = () => grimDoRolls(1);
-  $('grimRoll10').onclick = () => grimDoRolls(10);
+  el.innerHTML = races.map(f => {
+    const col = FACTION_INFO[f].color;
+    return '<div class="gg-block" title="' + pity + '" style="--fc:' + col +
+      ';--fc-brd:' + grimHexA(col, .5) + ';--fc-bg:' + grimHexA(col, .07) +
+      ';--fc-line:' + grimHexA(col, .55) + '">' +
+      '<div class="gg-divider"><span>' + FACTION_INFO[f].name.toLowerCase() + '</span></div>' +
+      '<div class="gg-btns">' +
+      '<button class="roll-btn gg-roll" data-race="' + f + '" data-n="1">1 призыв<span class="cost">1 Душа</span></button>' +
+      '<button class="roll-btn gg-roll" data-race="' + f + '" data-n="10">10 призывов<span class="cost">10 Душ</span></button>' +
+      '</div></div>';
+  }).join('');
+  el.querySelectorAll('.gg-roll').forEach(b => b.onclick = () => {
+    gachaRace = b.dataset.race; saveMeta(); grimDoRolls(+b.dataset.n);
+  });
   refreshGrimRollButtons();
 }
 
 function refreshGrimRollButtons() {
-  const b1 = $('grimRoll1'), b10 = $('grimRoll10');
-  if (!b1 || !b10) return;
-  /* v1.7.0: бесплатных круток нет — только Души */
-  b1.disabled = souls < GRIM_ROLL_COST;
-  b10.disabled = souls < 10 * GRIM_ROLL_COST;
+  /* бесплатных круток нет — только Души */
+  document.querySelectorAll('#grimGacha .gg-roll').forEach(b => {
+    b.disabled = souls < (+b.dataset.n) * GRIM_ROLL_COST;
+  });
 }
 
 function grimDoRolls(count) {

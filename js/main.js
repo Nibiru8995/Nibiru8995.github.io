@@ -81,7 +81,7 @@ const TUT = [
   { t: 'Заведи свою колоду. Жми «Создать» — впишу тебя в списки.', hl: '.grim-newdeck', pre: () => { tutB.decks = decks.length; const cd = deckById(grimSelDeckId); tutDeckId = (cd && cd.race === 'undead') ? cd.id : (((activeDeckFor('undead') || decks[0]) || {}).id || null); }, ok: () => decks.length > tutB.decks },
   { t: 'Кликни карту — и впишем её в колоду. Пустой список — пустая паства.', pre: () => { const d = tutActiveDeck(); tutB.t = d ? deckTotal(d) : 0; }, hl: '#grimCards', ok: () => { const d = tutActiveDeck(); return !!(d && deckTotal(d) > tutB.t); } },
   { t: 'Стрелка ▲ множит копии. В походе такая карта встанет стопкой, как покойники в телеге.', pre: () => { if (collectionFree('u0') - (deckUsedCount(tutActiveDeck() || { cards: [] }, 'u0') || 0) < 1) collectionAdd('u0', 2); const d = tutActiveDeck(); if (d && !deckUsedCount(d, 'u0')) addToDeck(d, 'u0'); tutB.st = tutStackCount(); renderGrimuar(); }, hl: '.deck-up', ok: () => tutStackCount() > tutB.st },
-  { t: 'Отдай Душу за «Крутку» — и получишь то, что мне задолжали. Душа — монета честная: за неё и паства.', pre: () => { souls += 12; tutB.rolls = stats.rolls || 0; renderGrimuar(); }, hl: '#grimRoll1', ok: () => (stats.rolls || 0) > tutB.rolls },
+  { t: 'Отдай Душу за «1 призыв» — и получишь то, что мне задолжали. Душа — монета честная: за неё и паства.', pre: () => { souls += 12; tutB.rolls = stats.rolls || 0; renderGrimuar(); }, hl: '#grimGacha .gg-roll[data-race="undead"][data-n="1"]', ok: () => (stats.rolls || 0) > tutB.rolls },
 
   /* --- АКТ 2: УЛУЧШЕНИЯ (один бонус за счёт обучения) --- */
   { t: 'Ныне — в мои кассы. Открой «Улучшения»: Гримуар закроется сам, добро не растеряй.', hl: '#menuUpgrades', ok: () => tutOpen('upgModal') },
@@ -212,7 +212,17 @@ function debugSecretClick() {
   dbgFlavorTimer = setTimeout(() => dbgFlavorClicks = 0, 1600);
   if (dbgFlavorClicks >= 3) { dbgFlavorClicks = 0; openDebugModal(); }
 }
+/* Чит-пасхалка: по одному экземпляру каждой карты — в вечную коллекцию
+   Гримуара (для тестов колод и синергий). */
+function grantFullCollection() {
+  const ids = Object.keys(CARDS);
+  ids.forEach(id => collectionAdd(id, 1));
+  saveMeta();
+  toast('🛠 ЧИТ: в Гримуар добавлено по 1 экземпляру каждой карты (' + ids.length + ' типов)');
+  if ($('grimModal') && $('grimModal').classList.contains('show')) renderGrimuar();
+}
 function openDebugModal() {
+  grantFullCollection(); /* клик по пасхалке сразу выдаёт коллекцию */
   const maxE = Math.max(EPOCHS.length + 2, 12);
   mk('dbgModal',
     '<h2>🛠 ЧИТ-РЕЖИМ</h2>' +
@@ -224,6 +234,7 @@ function openDebugModal() {
     '<div class="set-row" style="margin-top:8px"><span>💰 Толстый кошелёк (+1 млрд ТЭ):</span><input type="checkbox" id="dbgRich"></div>' +
     '<div class="set-row"><span>💾 Включить сохранение (ОСТОРОЖНО: перезапишет забег):</span><input type="checkbox" id="dbgSave"></div>' +
     '<div class="set-row"><span>' + DE_IMG + ' Тёмная энергия в ТЕКУЩИЙ забег (+250 тыс):</span><button class="mini" id="dbgCash"' + (gameStarted ? '' : ' disabled') + '>ВЫДАТЬ</button></div>' +
+    '<div class="set-row"><span>📚 Полная коллекция Гримуара (+1 каждой карты):</span><button class="mini" id="dbgColl">ВЫДАТЬ</button></div>' +
     '<div class="btn-row"><button class="btn btn-take" id="dbgX">Закрыть</button><button class="btn btn-take" id="dbgGo" disabled>СТАРТ</button></div>', 640);
   $('dbgX').onclick = () => close_('dbgModal');
   $('dbgCash').onclick = () => {
@@ -231,6 +242,7 @@ function openDebugModal() {
     computeIncome(); updateHUD(); saveRun();
     toast('🛠 ЧИТ: +250 000 Тёмной энергии');
   };
+  $('dbgColl').onclick = () => grantFullCollection();
   let selE = 0, selF = null;
   const refresh = () => {
     $('dbgEpochs').querySelectorAll('.dbg-e').forEach(b => b.style.borderColor = +b.dataset.e === selE ? '#ffe080' : '');
