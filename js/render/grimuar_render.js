@@ -17,6 +17,21 @@
 
 let grimSelDeckId = null;   // выбранная колода в правой панели
 let grimRaceTab = null;     // раса фильтра коллекции (null = текущая gachaRace)
+let grimSubTab = 'all';     // подвкладка подфракций (подрас) — только у нежить
+let grimTypeTab = 'all';    // подвкладка типов (у нежити — cat, у остальных — роль)
+
+/* Ключ типа карты для подвкладки: здания — отдельный тип, у нежити — категория,
+   у остальных фракций — роль */
+function grimTypeKey(card) {
+  if (card.isBuilding) return 'bld';
+  return card.cat || ('r_' + card.role);
+}
+const GRIM_TYPE_LABELS = {
+  bld: 'Здания',
+  thrall: 'Скованные', bearer: 'Несущие волю', necro: 'Некроманты', lord: 'Владыки',
+  r_builder: 'Строители', r_amplifier: 'Усилители', r_anchor: 'Якоря', r_healer: 'Поддержка',
+  r_burst: 'Взрывные', r_predator: 'Хищники', r_flora: 'Флора', r_scav: 'Падальщики'
+};
 /* v1.8.0: возврат к выбору колоды (окно выбора расы на Эпоху → «Собрать в Гримуаре») */
 let grimPickReturn = null;
 
@@ -40,6 +55,8 @@ function openGrimuar() {
     '<div class="grim-col">' +
     '<div class="grim-col-title">КОЛЛЕКЦИЯ</div>' +
     '<div class="grim-tabs" id="grimTabs"></div>' +
+    '<div class="grim-subtabs" id="grimSubTabs"></div>' +
+    '<div class="grim-subtabs" id="grimTypeTabs"></div>' +
     '<div class="grim-cards" id="grimCards"></div>' +
     '<div class="grim-collstats" id="grimCollStats"></div>' +
     '</div>' +
@@ -67,6 +84,7 @@ function renderGrimuar() {
   if (!$('grimModal') || !$('grimModal').classList.contains('show')) return;
   renderGrimHead();
   renderGrimTabs();
+  renderGrimSubTabs();
   renderGrimCollection();
   renderGrimDecks();
   renderGrimDeckView();
@@ -87,17 +105,49 @@ function renderGrimTabs() {
     return '<div class="coll-tab' + (grimRaceTab === f ? ' active' : '') + '" data-r="' + f + '" title="Открыто типов карт: ' + n + ' / ' + tot + '">' +
       FACTION_INFO[f].name + ' <small>' + n + '/' + tot + '</small></div>';
   }).join('');
-  el.querySelectorAll('[data-r]').forEach(t => t.onclick = () => { grimRaceTab = t.dataset.r; renderGrimuar(); });
+  el.querySelectorAll('[data-r]').forEach(t => t.onclick = () => { grimRaceTab = t.dataset.r; grimSubTab = 'all'; grimTypeTab = 'all'; renderGrimuar(); });
+}
+
+/* ---------------- Подвкладки: подфракции (подрасы) и типы ---------------- */
+function renderGrimSubTabs() {
+  const subEl = $('grimSubTabs'), typeEl = $('grimTypeTabs');
+  if (!subEl || !typeEl) return;
+  const all = Object.keys(CARDS).map(id => CARDS[id]).filter(c => c.faction === grimRaceTab);
+  /* Подфракции — только если у фракции они есть (сейчас — нежить) */
+  const subs = [];
+  all.forEach(c => { if (c.subrace && !subs.includes(c.subrace)) subs.push(c.subrace); });
+  if (grimSubTab !== 'all' && !subs.includes(grimSubTab)) grimSubTab = 'all';
+  subEl.style.display = subs.length ? '' : 'none';
+  subEl.innerHTML = ['all'].concat(subs).map(s =>
+    '<div class="coll-tab sub' + (grimSubTab === s ? ' active' : '') + '" data-s="' + s + '">' + (s === 'all' ? 'Все' : (SUBRACE_INFO[s] || s)) + '</div>').join('');
+  subEl.querySelectorAll('[data-s]').forEach(t => t.onclick = () => { grimSubTab = t.dataset.s; renderGrimuar(); });
+  /* Типы — у нежити категории реворка, у остальных — роли */
+  const types = [];
+  all.forEach(c => { const k = grimTypeKey(c); if (!types.includes(k)) types.push(k); });
+  if (grimTypeTab !== 'all' && !types.includes(grimTypeTab)) grimTypeTab = 'all';
+  typeEl.innerHTML = ['all'].concat(types).map(t =>
+    '<div class="coll-tab sub' + (grimTypeTab === t ? ' active' : '') + '" data-t="' + t + '">' + (t === 'all' ? 'Все' : (GRIM_TYPE_LABELS[t] || t)) + '</div>').join('');
+  typeEl.querySelectorAll('[data-t]').forEach(t => t.onclick = () => { grimTypeTab = t.dataset.t; renderGrimuar(); });
 }
 
 /* ---------------- Коллекция (слева) ---------------- */
 function renderGrimCollection() {
   const cont = $('grimCards');
   const deck = deckById(grimSelDeckId);
-  const ids = Object.keys(collection).filter(id => CARDS[id].faction === grimRaceTab);
+  const filtered = grimSubTab !== 'all' || grimTypeTab !== 'all';
+  const ids = Object.keys(collection).filter(id => {
+    const cd = CARDS[id];
+    if (cd.faction !== grimRaceTab) return false;
+    if (grimSubTab !== 'all' && cd.subrace !== grimSubTab) return false;
+    if (grimTypeTab !== 'all' && grimTypeKey(cd) !== grimTypeTab) return false;
+    return true;
+  });
   ids.sort((a, b) => rarityRank(CARDS[b].rarity) - rarityRank(CARDS[a].rarity) || a.localeCompare(b));
   if (!ids.length) {
-    cont.innerHTML = '<div class="fighter-empty">Коллекция этой расы пуста.<br>Сделайте Призыв внизу экрана — карты ложатся сюда навсегда.</div>';
+    const anyInFaction = Object.keys(collection).some(id => CARDS[id].faction === grimRaceTab);
+    cont.innerHTML = '<div class="fighter-empty">' + (anyInFaction && filtered
+      ? 'Под текущие подвкладки ничего не попало.'
+      : 'Коллекция этой расы пуста.<br>Сделайте Призыв внизу экрана — карты ложатся сюда навсегда.') + '</div>';
   } else {
     cont.innerHTML = ids.map(id => {
       const card = CARDS[id];

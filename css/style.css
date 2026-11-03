@@ -391,6 +391,13 @@ body { font-family: 'Alegreya', 'Georgia', 'Times New Roman', serif; }
 #tooltip .tt-stars { color: var(--gold); font-size: 13px; margin-bottom: 6px; text-align: center; }
 #tooltip .tt-income { color: #94c77c; font-size: 13px; font-weight: bold; margin-bottom: 8px; text-align: center; }
 #tooltip .tt-synergy { color: #a9bcc8; font-size: 11px; margin-bottom: 6px; text-align: left; }
+#tooltip .tt-role { color: #b8c4cc; font-size: 11px; margin: 2px 0 6px; text-align: left; }
+#tooltip .tt-meta { color: #b8a888; font-size: 11.5px; text-align: left; }
+#tooltip .tt-meta + .tt-meta { margin-top: 2px; }
+#tooltip .tt-div { display: flex; align-items: center; gap: 8px; margin: 8px 0 5px; color: var(--gold); font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; font-weight: bold; }
+#tooltip .tt-div::before, #tooltip .tt-div::after { content: ''; flex: 1 1 auto; height: 1px; }
+#tooltip .tt-div::before { background: linear-gradient(90deg, transparent, #8a6a3a99); }
+#tooltip .tt-div::after { background: linear-gradient(270deg, transparent, #8a6a3a99); }
 #tooltip .tt-synergy-title { color: var(--gold); font-size: 10px; text-transform: uppercase; margin-bottom: 2px; font-weight: bold;}
 #tooltip .tt-good { color: #94c77c; }
 #tooltip .tt-bad { color: #cf8a80; font-weight: bold; }
@@ -1165,8 +1172,10 @@ body[data-faction="undead"] .cell.aura-lich { border-color:#7fa08c !important; b
 .grim-col-title small { color: var(--ink-dim); font-weight: normal; letter-spacing: .2px; text-transform: none; }
 .grim-tabs { display: flex; gap: 3px; flex-wrap: wrap; }
 .grim-tabs .coll-tab { flex: 0 1 auto; padding: 4px 8px; }
-.grim-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 5px; overflow-y: auto; min-height: 120px; flex: 1 1 auto; align-content: start; justify-items: center; padding: 2px; }
-.grim-cards .coll-card { width: 54px; height: 54px; }
+.grim-subtabs { display: flex; gap: 3px; flex-wrap: wrap; }
+.grim-subtabs .coll-tab { padding: 2px 7px; font-size: 10.5px; flex: 0 1 auto; }
+.grim-cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; overflow-y: auto; min-height: 120px; flex: 1 1 auto; align-content: start; justify-items: stretch; padding: 2px; }
+.grim-cards .coll-card { width: 100%; height: auto; aspect-ratio: 1; }
 .grim-addable { cursor: pointer; }
 .grim-addable:hover { outline: 2px solid #8fc87f; box-shadow: 0 0 8px #8fc87f66; }
 .grim-dim { opacity: .55; cursor: default; }
