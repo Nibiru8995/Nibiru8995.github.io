@@ -33,6 +33,7 @@ function tickFactionMechanics(dt) {
   } else if (mech === 'formation') {
     /* РИТУАЛЬНАЯ ЭКОНОМИКА — заряд + выплата */
     ritualChargeTick(dt);
+    tickCultistRework(dt); /* v1.10.0: теофании, мутации, кровопускание Оракула */
   }
 }
 
@@ -189,8 +190,17 @@ function tickUndeadRework(dt) {
 следующий ритуал начинается уже заряженным (кап 33%).
 11) ЗАКОНЫ РЕЛИКВИЙ (rkeep/rcap/rpaycap/rchain/router/rform/
  rfirst) — только правила, ни одного множителя.*/
-const RITUAL_AMPS = { c5: 0.2, c8: 0.3, c9: 0.45, c13: 0.25, c10: 0.6, c11: 0.45 };
-const RITUAL_CELL_SPEED = { c0: 0.25, c1: 0.25, c2: 0.30, c3: 0.25, c6: 0.27, c7: 0.33, c12: 0.25 };
+const RITUAL_AMPS = { c5: 0.2, c8: 0.3, c9: 0.45, c13: 0.25, c10: 0.6, c11: 0.45, c43: 0.35, c44: 0.3 };
+const RITUAL_CELL_SPEED = {
+  c0: 0.25, c1: 0.25, c2: 0.30, c3: 0.25, c6: 0.27, c7: 0.33, c12: 0.25,
+  /* v1.10.0: новые Певчие Хора и Ложи */
+  c14: 0.25, c15: 0.26, c16: 0.27, c17: 0.25, c18: 0.28, c19: 0.25,
+  c20: 0.25, c21: 0.25, c22: 0, c23: 0,                       /* Сущности Хора сами не заряжают */
+  c24: 0.26, c25: 0.25, c26: 0.25, c27: 0.25, c28: 0.25, c29: 0.25, c30: 0.25, c31: 0.25,
+  c32: 0, c33: 0,                                              /* Сущности Ложи сами не заряжают */
+  /* Одержимые */
+  c40: 0.45, c41: 0.40, c42: 0.40, c45: 0.50
+};
 const RITUAL_AMP_CHARGE = 0.12; /* усилители заряжают чуть-чуть */
 /* (автор — Ян Ковач): капы внешнего круга подняты — большие
  постройки служителей не должны становиться бесполезными*/
@@ -201,8 +211,172 @@ let RITUAL_ENGINE = { speed: 0, pay: 1, payout: 0, participants: 0, outer: 0, ou
 /* ХРАНИТЕЛИ ЖАРА — какие-то карты культистов «сохраняют» часть
 заряда после прока ритуала, вплоть до капа в 33%: ритуал начинается
  уже немного заряженным. Проценты скрыты в движке — на картах правило.*/
-const RITUAL_RETAIN = { c0: 5, c2: 8, c6: 6, c9: 10, c12: 7 };  // % заряда за участника
+const RITUAL_RETAIN = { c0: 5, c2: 8, c6: 6, c9: 10, c12: 7, c16: 6, c19: 5 };  // % заряда за участника
 const RITUAL_RETAIN_CAP = 33;  // % — потолок сохраняемого жара
+
+/* ======== v1.10.0 РЕВОРК КУЛЬТИСТОВ: ЛОЖА / СОМНЕНИЕ / ТЕОФАНИИ ========
+ХОР — масса участников (заряд/выплата/жар). ЛОЖА — геометрия: оси,
+зеркальные пары, углы — но без медиумов Ложа разваливается (СОМНЕНИЕ).
+ВНЕШНИЕ не ставятся: нисходят теофанией вместо алтаря и мутируют
+участников в Одержимых. Медиумы — стабилизаторы всего этого. */
+let RITUAL_DOUBT = 0;                       /* 0..5 — без медиумов растёт */
+let THEO = { id: null, until: 0, cell: null, heat: 0 };  /* активная теофания */
+let THEO_DOUBT_FREEZE = 0;                  /* «Шёпот За Стеной» (c39) */
+let cultReworkTimer = 0;                    /* накопитель тика Одержимых */
+
+function cultistCardsOf(pred) {
+  const out = [];
+  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
+    const it = grid[r][c]; if (!it) continue;
+    const card = CARDS[it.cardId];
+    if (card.faction !== 'cultist' || card.isBuilding) continue;
+    if (pred(card)) out.push({ r, c, item: it, card });
+  }
+  return out;
+}
+function mediumsOnBoard() { return cultistCardsOf(cd => cd.cat === 'medium').length; }
+function chthonsOnBoard() { return cultistCardsOf(cd => !!RITUAL_SOURCES[cd.id]).length; }
+function hasBoard(id) { return cultistCardsOf(cd => cd.id === id).length > 0; }
+function anyFlawed(id) { return cultistCardsOf(cd => cd.id === id).some(h => possessedFlawActive(h.r, h.c)); }
+/* ИЗЪЯН Одержимого: выключен медиумом в радиусе 2 или благословением мутации */
+function possessedFlawActive(r, c) {
+  const it = grid[r] && grid[r][c];
+  if (!it || it.blessed) return false;
+  for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) {
+    const n = grid[r + dr] && grid[r + dr][c + dc];
+    if (n && CARDS[n.cardId].faction === 'cultist' && CARDS[n.cardId].cat === 'medium') return false;
+  }
+  return true;
+}
+
+/* Геометрия Ложи: оси (колонка источника; Знаменосец переносит; Тень
+Основателя добавляет вторую), зеркальные пары (одна строка, поровну
+от оси по разные стороны), углы (диагональ от источника). */
+function lodgeGeometry() {
+  const G = { axes: [], axisSet: {}, blocked: {}, pairCells: {},
+    axisCount: 0, axisPay: 0, pairCount: 0, pairPay: 0, pairRaw: 0, cornerCount: 0, cornerPay: 0 };
+  if (FACTION_INFO[faction].mechanic !== 'formation') return G;
+  const lodge = cultistCardsOf(cd => cd.subrace === 'lodge');
+  /* Слепой Пророк (c44, изъян): соседи теряют оси/пары/углы */
+  cultistCardsOf(cd => cd.id === 'c44').forEach(h => {
+    if (!possessedFlawActive(h.r, h.c)) return;
+    for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++)
+      G.blocked[(h.r + dr) + ',' + (h.c + dc)] = 1;
+  });
+  if (!lodge.length) return G;
+  const axes = [];
+  cultistCardsOf(cd => cd.id === 'c3').forEach(b => axes.push(b.c));
+  if (INC_CTX.ritualSrc) axes.push(+INC_CTX.ritualSrc.split(',')[1]);
+  cultistCardsOf(cd => cd.id === 'c32').forEach(t => axes.push(t.c));
+  if (!axes.length) return G;
+  G.axes = [...new Set(axes)];
+  G.axes.forEach(a => { G.axisSet[a] = 1; });
+  const axisRate = (hasBoard('c28') || hasBoard('c33')) ? 0.12 : 0.08;
+  const free = L => !G.blocked[L.r + ',' + L.c];
+  /* ОСЕВЫЕ: карта Ложи в колонке оси */
+  lodge.forEach(L => { if (G.axisSet[L.c] && free(L)) { G.axisCount++; G.axisPay += axisRate; } });
+  /* ЗЕРКАЛЬНЫЕ ПАРЫ: одна строка, поровну от оси, по разные стороны (до 3 пар) */
+  const pairMult = hasBoard('c27') ? 2 : 1, pairExtra = hasBoard('c31') ? 0.10 : 0;
+  const byRow = {};
+  lodge.forEach(L => { if (free(L)) (byRow[L.r] = byRow[L.r] || []).push(L); });
+  Object.keys(byRow).forEach(r => {
+    const list = byRow[r];
+    for (let i = 0; i < list.length && G.pairCount < 3; i++) for (let j = i + 1; j < list.length && G.pairCount < 3; j++) {
+      const A = list[i], B = list[j];
+      if (A.c === B.c) continue;
+      const axis = G.axes.find(a => (A.c - a) * (B.c - a) < 0 && Math.abs(A.c - a) === Math.abs(B.c - a));
+      if (axis === undefined) continue;
+      G.pairCount++; G.pairPay += 0.08 * pairMult + pairExtra; G.pairRaw += 0.05 * pairMult;
+      G.pairCells[A.r + ',' + A.c] = 1; G.pairCells[B.r + ',' + B.c] = 1;
+    }
+  });
+  /* УГЛЫ: диагональ от источника (Наугольник чует дальше и платит больше) */
+  if (INC_CTX.ritualSrc) {
+    const [sr, sc] = INC_CTX.ritualSrc.split(',').map(Number);
+    const cornerR = hasBoard('c29') ? 3 : 2, cornerRate = hasBoard('c29') ? 0.12 : 0.06;
+    lodge.forEach(L => {
+      const dr = Math.abs(L.r - sr), dc = Math.abs(L.c - sc);
+      if (dr === dc && dr >= 1 && dr <= cornerR && free(L)) { G.cornerCount++; G.cornerPay += cornerRate; }
+    });
+  }
+  return G;
+}
+
+/* ТЕОФАНИЯ: шанс при завершении ритуала — нисходит OWNED внешний
+на клетку источника на 18с; протокол считается в движке; по истечении
+— мутация участника (ritualMutation). */
+function maybeTheophany(meds) {
+  if (THEO.id || !INC_CTX.ritualSrc) return;
+  const externals = ['c10', 'c11', 'c34', 'c35', 'c36', 'c37', 'c38', 'c39'].filter(id => (collection[id] || 0) > 0);
+  if (!externals.length) return;
+  let chance = 0.08 + 0.05 * Math.min(4, meds || 0) + 0.03 * chthonsOnBoard();
+  chance = Math.min(0.30, chance);
+  if (Math.random() >= chance) return;
+  const id = externals[Math.floor(Math.random() * externals.length)];
+  THEO = { id, until: gameTime + 18, cell: INC_CTX.ritualSrc, heat: id === 'c38' ? 2 : 0 };
+  if (id === 'c39') THEO_DOUBT_FREEZE = gameTime + 78;
+  const [ar, ac] = INC_CTX.ritualSrc.split(',').map(Number);
+  fxAtCell(ar, ac, ['#7030a0', '#c030c0', '#fff0ff'], 10, 'wave');
+  fxFloatFromCell(ar, ac, '🌑 ' + CARDS[id].name.toUpperCase(), '#d0a0ff', 22);
+  toast('🌑 <b>ТЕОФАНИЯ:</b> ' + CARDS[id].name + ' нисходит на алтарь!', 'theo', 30);
+  sfx('relic');
+}
+
+/* МУТАЦИЯ: участник в радиусе 2 от источника становится Одержимым.
+С медиумом — лучший участник и без изъяна (blessed); без — случайный с изъяном. */
+function ritualMutation(srcKey, theoId) {
+  if (!srcKey) return;
+  const [sr, sc] = srcKey.split(',').map(Number);
+  const cands = [];
+  INC_CTX.ritual.forEach(k => {
+    const [r, c] = k.split(',').map(Number);
+    const it = grid[r][c]; if (!it) return;
+    const card = CARDS[it.cardId];
+    if (card.isBuilding || RITUAL_SOURCES[it.cardId] || card.cat === 'medium') return;
+    if (Math.max(Math.abs(r - sr), Math.abs(c - sc)) > 2) return;
+    cands.push({ r, c, it, card });
+  });
+  if (!cands.length) { toast('Нисшедший уходит, не коснувшись никого…', 'theo', 12); return; }
+  const med = mediumsOnBoard() > 0;
+  let chance = 0.25 + (med ? 0.15 : 0);
+  if (theoId === 'c37') chance = Math.min(1, chance * 2);
+  if (Math.random() >= chance) { toast('Нисшедший растворяется — все целы.', 'theo', 12); return; }
+  const victim = med ? cands.slice().sort((a, b) => (b.it.stacks || 1) - (a.it.stacks || 1))[0]
+                     : cands[Math.floor(Math.random() * cands.length)];
+  const MUTANTS = ['c40', 'c41', 'c42', 'c43', 'c44', 'c45'];
+  const nid = MUTANTS[Math.floor(Math.random() * MUTANTS.length)];
+  const oldName = CARDS[victim.it.cardId].name;
+  victim.it.cardId = nid;
+  if (med || theoId === 'c37') victim.it.blessed = 1;
+  const hp = cardHp(CARDS[nid].rarity) * (victim.it.stacks || 1);
+  victim.it.hp = hp; victim.it.maxHp = hp;
+  collectionAdd(nid, 1);
+  fxAtCell(victim.r, victim.c, ['#c030c0', '#700070', '#fff'], 8, 'wave');
+  fxFloatFromCell(victim.r, victim.c, '🩸 МУТАЦИЯ', '#e070e0', 20);
+  toast('🩸 <b>МУТАЦИЯ:</b> ' + oldName + ' → <b>' + CARDS[nid].name + '</b>' +
+    (victim.it.blessed ? ' <small>(медиум направил мутацию — без изъяна)</small>' : ' <small>(без медиума — изъян пробудился)</small>'), 'theo', 30);
+  sfx('relic');
+  computeIncome(); renderGrid(); saveRun();
+}
+
+/* Тик культистов: истечение теофании + кровопускание Оракула (c43) */
+function tickCultistRework(dt) {
+  if (THEO.id && gameTime >= THEO.until) {
+    const id = THEO.id, cell = THEO.cell;
+    THEO.id = null; THEO.cell = null;
+    ritualMutation(cell, id);
+  }
+  cultReworkTimer += dt;
+  if (cultReworkTimer >= 30) {
+    cultReworkTimer = 0;
+    cultistCardsOf(cd => cd.id === 'c43').forEach(h => {
+      if (possessedFlawActive(h.r, h.c) && h.item.maxHp) {
+        h.item.hp = Math.max(h.item.maxHp * 0.25, h.item.hp - h.item.maxHp * 0.05);
+        fxAtCell(h.r, h.c, ['#c03030', '#700000'], 3, 'wave');
+      }
+    });
+  }
+}
 
 function computeRitualEngine() {
   const E = { speed: 0, pay: 1, payout: 0, participants: 0, outer: 0, outerPay: 0, retain: 0, cellSpeed: {}, banner: '', ready: false, capped: false };
@@ -210,14 +384,27 @@ function computeRitualEngine() {
   const B = INC_CTX.bld || { obelisk: {}, wells: 0 };
   /* ЗАКОНЫ реликвий — потолки/насыщение/жар (ни одного множителя) */
   const rel = ritualRuleMods();
+  /* v1.10.0: геометрия Ложи + аура Духа Хора + присутствие внешних */
+  const G = lodgeGeometry();
+  const theoOn = !!THEO.id, extOn = theoOn || chthonsOnBoard() > 0;
+  const aura22 = new Set();
+  cultistCardsOf(cd => cd.id === 'c22').forEach(h => {
+    for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) aura22.add((h.r + dr) + ',' + (h.c + dc));
+  });
   let payBonus = 0, bannerParts = [];
   /* Формационный множитель: 1 + Σ(множитель−1) по всем активным формациям.
  КАРА «Вериг Пустоты» (rcNoForm): формации не ускоряют заряд.*/
   let formMult = 1, forms = 0;
   for (const k in INC_CTX.formActive) { formMult += INC_CTX.formActive[k].formMult - 1; forms++; }
+  /* v1.10.0: Хормастер (c20) — формации +0.5; Архитектор Круга (c30) — формация с ним в клетке +0.3 */
+  if (forms && hasBoard('c20')) formMult += 0.5 * forms;
+  if (hasBoard('c30')) for (const fk in INC_CTX.formActive) {
+    const F = INC_CTX.formActive[fk];
+    if ((F.cells || []).some(cell => grid[cell[0]] && grid[cell[0]][cell[1]] && grid[cell[0]][cell[1]].cardId === 'c30')) formMult += 0.3;
+  }
   if (rel.formFree) { if (forms) bannerParts.push('формации без предела'); }
   else if (rel.rcNoForm) { formMult = 1; if (forms) bannerParts.push('вериги сковывают формации'); }
-  else formMult = Math.min(3.2, formMult);
+  else formMult = Math.min(hasBoard('c20') ? 3.7 : 3.2, formMult);
   if (forms && !rel.formFree && !rel.rcNoForm) bannerParts.push('формации ×' + formMult.toFixed(2));
   /* Участники: культисты в цепи ритуала (здания — не участники) */
   let rawSum = 0;
@@ -243,9 +430,25 @@ function computeRitualEngine() {
       }
       payBonus += 0.10 * Math.min(5, st - 1); /* стаки участника = +10% выплаты каждый (до +50%) */
     }
+    /* v1.10.0: личные правила новых Певчих и Одержимых */
+    if (card.id === 'c14') raw += 0.05 * getNeighbors8(r, c).filter(n => CARDS[n.item.cardId].faction === 'cultist' && CARDS[n.item.cardId].cat === 'chanter').length;
+    if (card.id === 'c15' && st >= 2) raw *= 1.2;
+    if (card.id === 'c17' && INC_CTX.ritualSrc) {
+      const sr17 = +INC_CTX.ritualSrc.split(',')[0], sc17 = +INC_CTX.ritualSrc.split(',')[1];
+      if (Math.max(Math.abs(r - sr17), Math.abs(c - sc17)) <= 3) raw *= 1.08;
+    }
+    if (card.id === 'c19') raw *= 1 + 0.06 * radius2(r, c).filter(n => n.item && CARDS[n.item.cardId].isBuilding).length;
+    if (card.id === 'c24' && G.axisSet[c] && !G.blocked[r + ',' + c]) raw *= 1.10;
+    if (card.id === 'c25' && G.pairCells[r + ',' + c] && !G.blocked[r + ',' + c]) raw *= 1.12;
+    if (card.id === 'c42' && extOn) raw *= 1.10;
+    if (card.id === 'c40' && possessedFlawActive(r, c)) payBonus -= 0.10; /* Пустотелый: соседям хуже */
+    if (card.id === 'c45' && runRituals % 4 === 0) raw = 0; /* Дитя Бездны: каждый 4-й ритуал спит */
+    if (card.cat === 'chanter' && aura22.has(r + ',' + c)) raw *= 1.3; /* Дух Хора (c22): аура скорости */
     /* ХРАНИТЕЛИ ЖАРА: участник сохранит часть заряда после выплаты.
- КАРА «Многоликой Маски» (rcNoRetain): хранители не хранят ничего.*/
-    if (RITUAL_RETAIN[card.id] && !rel.rcNoRetain) E.retain += RITUAL_RETAIN[card.id] * (1 + 0.5 * (st - 1));
+ КАРА «Многоликой Маски» (rcNoRetain): хранители не хранят ничего.
+ v1.10.0: Шепчущая Плоть (c41, изъян) — соседи-Хор не хранят жар.*/
+    const silenced41 = card.subrace === 'choir' && getNeighbors8(r, c).some(n => n.item.cardId === 'c41' && possessedFlawActive(n.r, n.c));
+    if (RITUAL_RETAIN[card.id] && !rel.rcNoRetain && !silenced41) E.retain += RITUAL_RETAIN[card.id] * (1 + 0.5 * (st - 1));
     /* Обелиск: заряд участника в его зоне ×1.25 (кап ×1.5); прикованный Обелиск — ×1.375 */
     const ob = B.obelisk[k] || 0;
     if (ob) raw *= Math.min(1.5, 1 + (B.obeliskM && B.obeliskM[k] ? 0.375 : 0.25) * ob);
@@ -284,6 +487,28 @@ function computeRitualEngine() {
   INC_CTX.ritual.forEach(k => { const it = grid[+k.split(',')[0]][+k.split(',')[1]]; if (it && it.cardId === 'c3') banners++; });
   let bannerMult = 1;
   if (banners) { bannerMult = 1 + Math.min(0.3, 0.10 * banners); bannerParts.push('знамёна +' + Math.round(Math.min(30, 10 * banners)) + '%'); }
+  /* ===== v1.10.0 ЛОЖА: оси / зеркальные пары / углы; Сомнение гасит геометрию ===== */
+  const lm = Math.max(0.25, 1 - 0.15 * RITUAL_DOUBT);
+  const axisImmune = hasBoard('c28') || hasBoard('c33');
+  const lodgeBits = [];
+  if (G.axisCount) {
+    let ap = Math.min(0.40, G.axisPay);
+    if (!axisImmune) ap *= lm;
+    payBonus += ap +
+      (hasBoard('c26') ? Math.min(0.30, 0.06 * G.axisCount) * lm : 0) +
+      (hasBoard('c33') ? 0.10 * Math.min(5, G.axisCount) : 0);
+    lodgeBits.push('осевые +' + Math.round(ap * 100) + '%');
+  }
+  if (G.pairCount) {
+    payBonus += G.pairPay * lm;
+    rawSum += G.pairRaw * lm;
+    lodgeBits.push('пары +' + Math.round(G.pairPay * lm * 100) + '%');
+  }
+  if (G.cornerCount) {
+    payBonus += G.cornerPay * lm;
+    lodgeBits.push('углы +' + Math.round(G.cornerPay * lm * 100) + '%');
+  }
+  if (lodgeBits.length) bannerParts.push('Ложа: ' + lodgeBits.join(' · ') + (RITUAL_DOUBT > 0 ? ' · сомнение ×' + lm.toFixed(2) : ''));
   /* ИТОГОВАЯ СКОРОСТЬ: корень из суммы вкладов — мягкое насыщение
 (каждый новый участник даёт меньше прежнего), потолок 15%/с.
 ЗАКОНЫ: «Вериги Пустоты» снимают насыщение (вклад линейный),
@@ -291,6 +516,7 @@ function computeRitualEngine() {
   const heat = rel.noSatur ? (rawSum + outerRaw) : Math.sqrt(rawSum + outerRaw);
   /* КАРА «Свечи Мученика» (rcSlow): ритуал заряжается на 20% медленнее */
   E.speed = Math.min(rel.capSpeed, 1.2 * heat * formMult * bannerMult * (rel.rcSlow ? 0.8 : 1));
+  if (theoOn && THEO.id === 'c34') E.speed *= 1.6; /* протокол «Спящего между Мирами» */
   E.capped = rawSum + outerRaw > 0 && E.speed >= rel.capSpeed;
   if (E.capped) bannerParts.push('потолок ⚡');
   /* Раскладка скорости по клеткам (для бейджей ⚡ на картах) */
@@ -305,14 +531,23 @@ function computeRitualEngine() {
     payBonus += Math.min(wCap, wPay * wells);
     bannerParts.push('колодцы +' + Math.round(Math.min(wCap * 100, wPay * 100 * wells)) + '%');
   }
-  /* потолок выплаты — закон «Зрачка Бездны» (×4 → ×7) */
-  E.pay = Math.min(rel.capPay, 1 + Math.min(2.5, payBonus));
+  /* потолок выплаты — закон «Зрачка Бездны» (×4 → ×7); Пустотелый (c40) может просадить ниже 1 */
+  E.pay = Math.min(rel.capPay, Math.max(0.5, 1 + Math.min(2.5, payBonus)));
   /* Выплата: привязана к порогу Эпохи — растёт вместе с игрой.
 коэффициент 0.80% — инкам ритуалов чуть приподнят.*/
   E.payout = Math.round(epochThreshold(epoch) * 0.0080 * (0.7 + 0.03 * Math.min(24, E.participants)) * E.pay);
-  /* ЖАР: сохраняемый заряд = хранители + закон «Свечи Мученика», кап 33% */
-  E.retain = Math.min(RITUAL_RETAIN_CAP, Math.round(E.retain) + (rel.keep || 0));
+  /* ЖАР: сохраняемый заряд = хранители + закон «Свечи Мученика»;
+ v1.10.0: Пустотный Серафим (c23) поднимает кап до 50% */
+  const heatCap = hasBoard('c23') ? 50 : RITUAL_RETAIN_CAP;
+  E.retain = Math.min(heatCap, Math.round(E.retain) + (rel.keep || 0));
+  if (E.retain < 0) E.retain = 0;
   if (E.retain > 0) bannerParts.push('жар: +' + E.retain + '% к следующему');
+  /* v1.10.0: протоколы теофании — Пожиратель Формул и Тот, Кто Считает */
+  if (theoOn && (THEO.id === 'c35' || THEO.id === 'c36')) {
+    E.pay = Math.min(rel.capPay * 2, E.pay * (THEO.id === 'c35' ? 2 : 1.6));
+    E.payout = Math.round(epochThreshold(epoch) * 0.0080 * (0.7 + 0.03 * Math.min(24, E.participants)) * E.pay);
+    if (THEO.id === 'c35') E.retain = 0; /* жар съеден */
+  }
   E.banner = bannerParts.join(' · ');
   E.ready = INC_CTX.ritual.size > 0;
   return E;
@@ -350,7 +585,16 @@ function ritualPayout() {
   if (relPay.rcPost3 && runRituals + 1 > 3) { pay = Math.round(pay * 0.5); bloodDry = true; }
   crystals += pay;
   runRituals++; /* счётчик для Сводки Эпохи */
-  const keep = Math.min(RITUAL_RETAIN_CAP, Math.round(E.retain || 0));
+  /* v1.10.0: СОМНЕНИЕ — ритуал без медиумов расшатывает Ложу;
+ Хранительница Очага (c31) блокирует рост, Многоглазый (c42) ускоряет */
+  const meds = mediumsOnBoard();
+  if (meds > 0) RITUAL_DOUBT = Math.max(0, RITUAL_DOUBT - 1);
+  else if (gameTime >= THEO_DOUBT_FREEZE && !hasBoard('c31')) {
+    RITUAL_DOUBT = Math.min(5, RITUAL_DOUBT + (anyFlawed('c42') ? 1.5 : 1));
+  }
+  let keep = Math.round(E.retain || 0);
+  if (THEO.id === 'c38' && THEO.heat > 0) { keep = Math.min((hasBoard('c23') ? 50 : RITUAL_RETAIN_CAP) + 15, keep + 15); THEO.heat--; } /* «Хор Угасших Звёзд»: жар сверх капа */
+  else keep = Math.min(hasBoard('c23') ? 50 : RITUAL_RETAIN_CAP, keep);
   ritualResonance = keep; /* вместо обнуления — сохранённый жар */
   stats.surges = (stats.surges || 0) + 1;
   /* Шоу: золотая волна по клеткам ритуала + текст над источником */
@@ -368,6 +612,7 @@ function ritualPayout() {
     (bloodDry ? ' <b>· КРОВЬ КОНЧИЛАСЬ — ×0.5</b>' : '') +
     (keep ? ' · сохранён жар: +' + keep + '%' : '') +
     (E.banner ? ' <small>(' + E.banner + ')</small>' : ''), 'ritual', 30)) sfx('relic');
+  maybeTheophany(meds); /* v1.10.0: шанс нисхождения Внешнего */
   saveRun(); updateHUD(); checkAchievements();
 }
 

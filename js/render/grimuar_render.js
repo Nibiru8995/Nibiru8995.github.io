@@ -29,6 +29,7 @@ function grimTypeKey(card) {
 const GRIM_TYPE_LABELS = {
   bld: 'Здания',
   thrall: 'Скованные', bearer: 'Несущие волю', necro: 'Некроманты', lord: 'Владыки',
+  chanter: 'Певчие', architect: 'Архитекторы', medium: 'Медиумы', entity: 'Сущности',
   r_builder: 'Строители', r_amplifier: 'Усилители', r_anchor: 'Якоря', r_healer: 'Поддержка',
   r_burst: 'Взрывные', r_predator: 'Хищники', r_flora: 'Флора', r_scav: 'Падальщики'
 };
@@ -168,7 +169,7 @@ function renderGrimCollection() {
       const card = CARDS[id];
       const owned = collection[id];
       const inDeck = deck && deck.race === grimRaceTab ? deckUsedCount(deck, id) : 0;
-      const canAdd = deck && deck.race === grimRaceTab && deckTotal(deck) < deckCap() && inDeck < owned;
+      const canAdd = deck && deck.race === grimRaceTab && deckTotal(deck) < deckCap() && inDeck < owned && !CARDS[id].noPlace;
       return '<div class="coll-card star' + card.rarity + ' f-' + card.faction + (canAdd ? ' grim-addable' : ' grim-dim') + '" data-gid="' + id + '" style="--glow:' + rarityColor(card.rarity) + ';--cardBg:' + rarityBg(card.rarity) + (card.isBuilding ? ';border-style:double' : '') + '">' +
         cardArtHTML(card, 'coll-art', 'coll-glyph') +
         '<span class="faction-dot" style="background:' + FACTION_INFO[card.faction].color + '"></span>' +
@@ -183,6 +184,7 @@ function renderGrimCollection() {
       el.addEventListener('mouseleave', hideTooltip);
       el.addEventListener('click', () => {
         const d = deckById(grimSelDeckId);
+        if (CARDS[id].noPlace) { toast('«' + CARDS[id].name + '» не ставят в колоду — Внешний нисходит сам, достаточно владеть картой'); return; }
         if (!d) { toast('Сначала выберите или создайте колоду справа'); return; }
         if (d.race !== CARDS[id].faction) { toast('Эта колода расы «' + FACTION_INFO[d.race].name + '» — карты других рас в неё не входят'); return; }
         if (deckTotal(d) >= deckCap()) { toast('В колоде уже ' + deckCap() + ' копий — лимит'); return; }

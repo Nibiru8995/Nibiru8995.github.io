@@ -172,13 +172,14 @@ const FORM_DEFS = [
 const RITUAL_SOURCES = { bl_altar: 1, c10: 1, c11: 1 };
 function buildRitualContext() {
   INC_CTX.ritual = new Set(); INC_CTX.ritualOuter = new Set();
-  INC_CTX.formActive = {}; INC_CTX.formCell = {};
+  INC_CTX.formActive = {}; INC_CTX.formCell = {}; INC_CTX.ritualSrc = null;
   const isCult = (r, c) => !!(grid[r] && grid[r][c] && CARDS[grid[r][c].cardId].faction === 'cultist');
   const inB = (r, c) => r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE;
   const altars = [];
   for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++)
     if (grid[r][c] && RITUAL_SOURCES[grid[r][c].cardId]) altars.push([r, c]);
   if (!altars.length) return;
+  INC_CTX.ritualSrc = altars[0][0] + ',' + altars[0][1]; /* для геометрии Ложи */
   const q = altars.slice();
   altars.forEach(([r, c]) => INC_CTX.ritual.add(r + ',' + c));
   for (let i = 0; i < q.length; i++) {
