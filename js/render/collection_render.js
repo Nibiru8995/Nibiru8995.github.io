@@ -155,7 +155,7 @@ function renderRelicTab(cont) {
         '<div class="res">Бафф действует на весь столб Алтаря.</div>' +
         '<div class="btn-row" style="flex-wrap:wrap">' +
         free.map(c => '<button class="btn btn-take" data-col="' + c + '" style="max-width:none;width:auto;min-width:70px">' + (c + 1) + '</button>').join('') +
-        '</div>', 480);
+        '</div>', 700);
       $('relicColPick').querySelectorAll('[data-col]').forEach(b => {
         b.onclick = () => { close_('relicColPick'); placeRelicCol(id, +b.dataset.col); };
       });

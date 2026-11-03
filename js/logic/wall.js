@@ -97,7 +97,7 @@ function wallAskName() {
     '<div class="btn-row" style="gap:8px">' +
     '<button class="btn btn-take" id="wallNameOk">Записать</button>' +
     '<button class="btn btn-take" id="wallNameX">Отмена</button>' +
-    '</div>', 480);
+    '</div>', 700);
   open_('wallNameModal');
   $('wallNameIn').value = supaPlayerName() === 'Аноним' ? '' : supaPlayerName();
   $('wallNameOk').onclick = () => {

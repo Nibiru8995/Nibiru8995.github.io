@@ -115,9 +115,17 @@ function mkFresh(id, html, z) {
 const open_ = id => $(id).classList.add('show');
 const close_ = id => $(id).classList.remove('show');
 
-/* Диалог подтверждения */
+/* Диалог подтверждения — ВСЕГДА на переднем плане:
+   перебираем окно поверх любого модала (Скрижаль z900, Стена, Эпохи…) */
 function ask(text, onYes) {
   mk('dlg', '<div id="dlgT" style="font-size:15px;text-align:center;margin:10px;line-height:1.5"></div><div class="btn-row"><button class="btn btn-take" id="dlgNo">Отмена</button><button class="btn btn-take" id="dlgYes">Да</button></div>', 600);
+  let top = 600;
+  document.querySelectorAll('.modal.show, #tutPanel, #guidePanel').forEach(m => {
+    const z = parseInt(getComputedStyle(m).zIndex, 10);
+    if (!isNaN(z) && z > top) top = z;
+  });
+  const dlg = $('dlg');
+  dlg.style.zIndex = top + 10;
   $('dlgT').textContent = text; open_('dlg');
   $('dlgYes').onclick = () => { close_('dlg'); onYes(); };
   $('dlgNo').onclick = () => close_('dlg');
