@@ -96,7 +96,7 @@ const TUT = [
 
   /* --- АКТ 4: ЭПОХИ (порог, дар, Вознесение) --- */
   { t: 'Порог я оплатил из церковной казны. Листай «Далее» — не заставляй ждать.', pre: () => { crystals += 60000; }, n: 1 },
-  { t: 'Ныне вознесёмся. Жми Эпоху, затем «Дальше» — и избери, кому служить в новом веке. За сие прибавится Душа.', pre: () => { tutB.epoch = epoch; }, hl: () => tutOpen('epochWarn') ? '#ewYes' : tutOpen('factionModal') ? '#factionModal' : tutOpen('deckPickModal') ? '#deckPickModal' : '#epochUpBtn', ok: () => epoch > tutB.epoch },
+  { t: 'Ныне вознесёмся. Жми Эпоху, затем «Дальше» — и возьми свою колоду. За сие прибавится Душа.', pre: () => { tutB.epoch = epoch; }, hl: () => tutOpen('epochWarn') ? '#ewYes' : tutOpen('deckPickModal') ? '#deckPickModal' : '#epochUpBtn', ok: () => epoch > tutB.epoch },
   { t: 'Вот и всё, чадо: колода, Алтарь, Вознесение — круг замкнулся. Отныне ступай настоящим — и десятину не забудь.', n: 1, last: 1 }
 ];
 let tutI = -1, tutTimer = null;

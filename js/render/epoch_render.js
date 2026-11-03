@@ -54,45 +54,29 @@ function confirmEpochUp() {
     '<div class="res">Награда: ' + SOUL_IMG + ' <b>+1 Душа</b> · Эпоха ' + next + ' из бесконечной череды (порог вырастет)</div>' +
     '<div class="warn-cols"><div class="warn-col bad"><b>СБРОСИТСЯ:</b><ul>' + s.reset.map(x => '<li>' + x + '</li>').join('') + '</ul></div>' +
     '<div class="warn-col good"><b>ОСТАНЕТСЯ:</b><ul>' + s.keep.map(x => '<li>' + x + '</li>').join('') + '</ul></div></div>' +
-    '<div class="flavor">Дальше — выбор расы и ОБЯЗАТЕЛЬНЫЙ выбор колоды: забег получит её целиком.</div>' +
+    '<div class="flavor">Дальше — ОБЯЗАТЕЛЬНЫЙ выбор колоды: забег получит её целиком.</div>' +
     '<div class="btn-row"><button class="btn btn-take" id="ewNo">Отмена</button><button class="btn btn-take" id="ewYes" style="background:#4a1010">⚔ ДАЛЬШЕ</button></div>', 600);
   $('ewNo').onclick = () => close_('epochWarn');
   $('ewYes').onclick = () => { close_('epochWarn'); pickFactionAndAscend(); };
   open_('epochWarn');
 }
 
-/* ---------------- Выбор расы + ОБЯЗАТЕЛЬНЫЙ выбор колоды ----------------
-   Расы доступны по покупкам в «Улучшениях» (availFactions). */
+/* ---------------- Выбор колоды (без выбора фракции: раса остаётся ТЕКУЩЕЙ) ----------------
+   Вознесение и рестарт ведут сразу к окну выбора колоды (openDeckPick). */
 function pickFactionAndAscend() {
-  const avail = availFactions();
-  if (avail.length <= 1) { openDeckPick(avail[0], d => doEpochUp(avail[0], d)); return; }
-  mkFresh('factionModal',
-    '<h2>Выберите фракцию Эпохи ' + (epoch + 1) + '</h2>' +
-    '<div class="faction-list">' + avail.map(f => {
-      const info = FACTION_INFO[f];
-      return '<div class="faction-card" data-f="' + f + '" style="border-color:' + info.color + '">' +
-        '<h3 style="color:' + info.color + '">' + info.epochTitle + '</h3>' +
-        '<div class="mech-tag">' + info.mechanicName + '</div>' +
-        '<p>' + info.mechanicDesc + '</p><small>' + info.hierarchy + '</small></div>';
-    }).join('') + '</div>' +
-    '<div class="flavor">Всю Эпоху вы играете ТОЛЬКО картами этой фракции. Затем ОБЯЗАТЕЛЬНО выберете колоду — она выдастся целиком.</div>' +
-    '<div class="btn-row"><button class="btn btn-take" id="fmCancel">Назад</button></div>', 600);
-  $('fmCancel').onclick = () => close_('factionModal');
-  $('factionModal').querySelectorAll('.faction-card').forEach(fc => {
-    fc.onclick = () => { const f = fc.dataset.f; close_('factionModal'); openDeckPick(f, d => doEpochUp(f, d)); };
-  });
-  open_('factionModal');
+  const f = FACTION_KEYS.indexOf(faction) >= 0 ? faction : availFactions()[0];
+  openDeckPick(f, d => doEpochUp(f, d));
 }
 
 /* ---------------- РЕСТАРТ ЭПОХИ ----------------
-   Кнопка над «Меню». Тык → ОБЯЗАТЕЛЬНОЕ подтверждение → выбор фракции
-   ТЕКУЩЕЙ Эпохи → выбор колоды → забег начинается с нуля. */
+   Кнопка над «Меню». Тык → ОБЯЗАТЕЛЬНОЕ подтверждение → выбор колоды
+   ТЕКУЩЕЙ фракции → забег начинается с нуля. */
 function confirmEpochRestart() {
   const s = epochResetSummary();
   mkFresh('epochWarn',
     '<h2>⟲ Рестарт ЭПОХИ ' + epoch + ' «' + epochName(epoch) + '»</h2>' +
     '<div class="res">Эпоха НЕ вырастет — вы начинаете её <b>с самого начала</b>. ' +
-    'Награды Вознесения нет. Фракцию и колоду можно выбрать заново.</div>' +
+    'Награды Вознесения нет. Колоду можно выбрать заново.</div>' +
     '<div class="warn-cols"><div class="warn-col bad"><b>СГОРИТ:</b><ul>' + s.reset.map(x => '<li>' + x + '</li>').join('') + '</ul></div>' +
     '<div class="warn-col good"><b>ОСТАНЕТСЯ:</b><ul>' + s.keep.map(x => '<li>' + x + '</li>').join('') + '</ul></div></div>' +
     '<div class="btn-row"><button class="btn btn-take" id="ewNo">Отмена</button><button class="btn btn-take" id="ewYes" style="background:#4a1010">⟲ НАЧАТЬ ЭПОХУ ' + epoch + ' ЗАНОВО</button></div>', 600);
@@ -101,26 +85,10 @@ function confirmEpochRestart() {
   open_('epochWarn');
 }
 
-/* Выбор фракции на рестарт: по ТЕКУЩЕЙ эпохе (в отличие от Вознесения — epoch + 1) */
+/* Рестарт: сразу выбор колоды — фракция остаётся ТЕКУЩЕЙ */
 function pickFactionForRestart() {
-  const avail = availFactions();
-  if (avail.length <= 1) { openDeckPick(avail[0], d => doEpochRestart(avail[0], d)); return; }
-  mkFresh('factionModal',
-    '<h2>Выберите фракцию Эпохи ' + epoch + '</h2>' +
-    '<div class="faction-list">' + avail.map(f => {
-      const info = FACTION_INFO[f];
-      return '<div class="faction-card" data-f="' + f + '" style="border-color:' + info.color + '">' +
-        '<h3 style="color:' + info.color + '">' + info.epochTitle + '</h3>' +
-        '<div class="mech-tag">' + info.mechanicName + '</div>' +
-        '<p>' + info.mechanicDesc + '</p><small>' + info.hierarchy + '</small></div>';
-    }).join('') + '</div>' +
-    '<div class="flavor">Всю Эпоху вы играете ТОЛЬКО картами этой фракции. Затем ОБЯЗАТЕЛЬНО выберете колоду.</div>' +
-    '<div class="btn-row"><button class="btn btn-take" id="fmCancel">Назад</button></div>', 600);
-  $('fmCancel').onclick = () => close_('factionModal');
-  $('factionModal').querySelectorAll('.faction-card').forEach(fc => {
-    fc.onclick = () => { const f = fc.dataset.f; close_('factionModal'); openDeckPick(f, d => doEpochRestart(f, d)); };
-  });
-  open_('factionModal');
+  const f = FACTION_KEYS.indexOf(faction) >= 0 ? faction : availFactions()[0];
+  openDeckPick(f, d => doEpochRestart(f, d));
 }
 
 /* ---------------- ВЫБОР КОЛОДЫ (обязательный шаг, v1.8.0) ----------------
