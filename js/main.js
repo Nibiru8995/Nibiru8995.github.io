@@ -55,7 +55,7 @@ function tutStartRun() {
   epoch = 1; maxEpoch = Math.max(maxEpoch, epoch);
   gameStarted = true;
   resetRunCommon('undead', d && d.race === 'undead' ? d : null);
-  toast('⚜ Учебная Эпоха · колода «' + (d ? d.name : 'старт-кит') + '» выдана целиком');
+  toast('Учебная Эпоха · колода «' + (d ? d.name : 'старт-кит') + '» выдана целиком');
 }
 /* Ссылка на карту в коллекции (для точечной подсветки) */
 const collSel = id => '.coll-card[data-cid="' + id + '"]';
@@ -215,7 +215,7 @@ function startFreshRun(f, deck) {
   gameStarted = true; noSave = false;
   resetRunCommon(f || 'undead', deck || null); /* колода/старт-кит, deckStacks, runDeck, контракты */
   checkDailyGift(); /* v1.2.9: первый вход за день — Знамение Судьбы */
-  toast('⚜ ' + FACTION_INFO[faction].epochTitle);
+  toast('' + FACTION_INFO[faction].epochTitle);
   queueFeatureGuides(); /* первая Эпоха за фракцию — краткое обучение */
 }
 
@@ -553,7 +553,7 @@ setInterval(() => {
     const upBtn = $('epochUpBtn');
     if (upBtn && !upBtn.classList.contains('flash-once')) {
       upBtn.classList.add('flash-once');
-      toast('⚜ Порог Эпохи достигнут! Жмите кнопку ЭПОХИ над Алтарём');
+      toast('Порог Эпохи достигнут! Жмите кнопку ЭПОХИ над Алтарём');
       setTimeout(() => upBtn.classList.remove('flash-once'), 4000);
     }
   }

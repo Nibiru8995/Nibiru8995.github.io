@@ -66,7 +66,7 @@ function guideOmenDef() {
 function guideFactionDef(f) {
   const i = FACTION_INFO[f];
   const steps = [
-    { t: '⚜ <b>' + i.epochTitle + '</b> · <b>' + i.mechanicName + '</b>. ' + i.mechanicDesc, n: 1 }
+    { t: '<b>' + i.epochTitle + '</b> · <b>' + i.mechanicName + '</b>. ' + i.mechanicDesc, n: 1 }
   ];
   const tips = {
     undead: '🪦 Кладбище уже в коллекции: поставьте его в центр армии.',

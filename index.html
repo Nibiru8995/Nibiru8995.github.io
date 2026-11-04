@@ -7,8 +7,8 @@
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Philosopher:wght@400;700&family=Alegreya:ital,wght@0,400;0,500;0,700;1,400&family=Ruslan+Display&display=swap">
-<link rel="stylesheet" href="css/style.css?v=1.13.1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Philosopher:wght@400;700&family=Alegreya:ital,wght@0,400;0,500;0,700;1,400&display=swap">
+<link rel="stylesheet" href="css/style.css?v=1.13.2">
 </head>
 <body>
 
@@ -46,7 +46,7 @@
     </div>
     <div id="ritualRow">
       <div id="ritualBar" style="display:none">
-        <span class="rb-label">РИТУАЛ</span>
+        <span class="rb-label">Ритуал</span>
         <div class="rb-track"><div class="rb-fill" style="width:0%"></div></div>
         <span class="rb-info"></span>
       </div>
@@ -102,7 +102,7 @@
   </div>
 </div>
 
-<footer id="verFoot">v1.13.1</footer>
+<footer id="verFoot">v1.13.2</footer>
 <div id="toast"></div>
 <canvas id="fxCanvas"></canvas>
 
@@ -110,7 +110,7 @@
 <div class="modal" id="arenaOverlay">
   <div class="modal-card arena-modal-card">
     <div class="arena-head2">
-      <span class="arena-title">✠ КОЛЫБЕЛЬ ВОЙНЫ — ПОЛЕ БОЯ</span>
+      <span class="arena-title">Колыбель Войны — поле боя</span>
       <button class="mini" id="arenaCloseBtn">✕ Закрыть</button>
     </div>
     <div class="arena-main-row">
@@ -122,8 +122,8 @@
       <div class="arena-side">
         <div class="arena-stats"><span>⚔ Атака: <span id="arenaStatAtk" class="hero">0</span></span><span>❤ HP: <span id="arenaStatHp" class="hero">0</span></span><span>⚡ Урон: <span id="arenaStatDmg" class="hero">0</span></span></div>
         <div class="arena-status" id="altarBuff" style="color:#80e0ff"></div>
-        <div class="arena-status" id="arenaStatus">Добавьте бойцов и жмите «В БОЙ».</div>
-        <div id="fightersPanel"><div id="fightersHeader">БОЙЦЫ <span id="fightersTotalDmg">Σ 0</span></div><div id="fightersList"></div></div>
+        <div class="arena-status" id="arenaStatus">Добавьте бойцов и нажмите «В бой».</div>
+        <div id="fightersPanel"><div id="fightersHeader"> Бойцы <span id="fightersTotalDmg">Σ 0</span></div><div id="fightersList"></div></div>
       </div>
     </div>
   </div>
@@ -153,24 +153,24 @@
 <div id="guidePanel"><div id="guideText"></div><div id="guideBtns"><span id="guideStepLbl"></span><button class="mini" id="guideSkip">Пропустить</button><button class="btn btn-take" id="guideNext" style="max-width:120px;padding:5px 10px">Далее</button></div></div>
 <div id="tooltip"></div><div id="selectionBanner"></div>
 
-<div class="modal" id="settingsModal" style="z-index:520"><div class="modal-card"><h2>НАСТРОЙКИ</h2><div class="desc">Игра сохраняется автоматически.</div>
+<div class="modal" id="settingsModal" style="z-index:520"><div class="modal-card"><h2>Настройки</h2><div class="desc">Игра сохраняется автоматически.</div>
   <div class="set-row"><span>⏩ Скорость игры:</span><span><button class="mini speed-btn" data-s="1">×1</button> <button class="mini speed-btn" data-s="2">×2</button> <button class="mini speed-btn" data-s="4">×4</button></span></div>
   <div class="set-row"><span>🔊 Звуковые эффекты:</span><button class="mini" id="sfxToggle">ВКЛ</button></div>
   <div class="set-row"><span>🎵 Музыка:</span><button class="mini" id="musicToggle">ВКЛ</button></div>
   <div class="set-row"><span>✨ Визуальные эффекты:</span><button class="mini" id="fxToggle">ВКЛ</button></div>
-<div class="btn-row"><button class="btn btn-take" id="resetBtn" style="background:#4a1010">СБРОС</button><button class="btn btn-take" id="settingsClose">ЗАКРЫТЬ</button></div></div></div>
+<div class="btn-row"><button class="btn btn-take" id="resetBtn" style="background:#4a1010">Сброс</button><button class="btn btn-take" id="settingsClose">Закрыть</button></div></div></div>
 
 <div class="modal" id="casinoModal">
   <div class="modal-card">
-    <h2>🎰 СЛОТЫ 🎰</h2>
+    <h2>Слоты</h2>
     <div class="slot-machine-container">
       <div class="slot-grid" id="slotGrid"><svg class="paylines-svg" id="paylinesSvg"></svg></div>
       <div class="slot-bet-panel">
-        <div class="slot-bet-label">ВАША СТАВКА: <b id="slotBetAmount">0</b> ТЭ</div>
-        <div class="slot-bet-btns"><button id="betAdd1000">+1000</button><button id="betAdd10000">+10000</button><button id="betAll">ВСЁ</button><button id="betReset">СБРОС</button></div>
+        <div class="slot-bet-label">Ставка: <b id="slotBetAmount">0</b> ТЭ</div>
+        <div class="slot-bet-btns"><button id="betAdd1000">+1000</button><button id="betAdd10000">+10000</button><button id="betAll">Всё</button><button id="betReset">Сброс</button></div>
         <div id="slotResult"></div>
-        <button id="slotLeverBtn">НАЖАТЬ НА РЫЧАГ</button>
-        <button class="slot-close" id="slotCloseBtn">ЗАКРЫТЬ</button>
+        <button id="slotLeverBtn">Крутить</button>
+        <button class="slot-close" id="slotCloseBtn">Закрыть</button>
       </div>
     </div>
   </div>
@@ -198,14 +198,14 @@
 <script src="js/logic/arena.js?v=1.8.0"></script>
 <script src="js/logic/casino_logic.js?v=1.8.0"></script>
 <script src="js/logic/upgrades.js?v=1.13.0"></script>
-<script src="js/logic/epochs.js?v=1.13.0"></script>
+<script src="js/logic/epochs.js?v=1.13.2"></script>
 <script src="js/logic/achievements_logic.js?v=1.8.0"></script>
 <script src="js/logic/events.js?v=1.8.1"></script>
 <script src="js/logic/milestones.js?v=1.8.0"></script>
 <script src="js/logic/contracts.js?v=1.8.0"></script>
   <script src="js/logic/leaderboard.js?v=1.13.1"></script>
   <script src="js/logic/wall.js?v=1.8.0"></script>
-<script src="js/logic/guide.js?v=1.13.1"></script>
+<script src="js/logic/guide.js?v=1.13.2"></script>
 <script src="js/render/hud.js?v=1.13.0"></script>
 <script src="js/render/fx.js?v=1.8.0"></script>
 <script src="js/render/grid_render.js?v=1.12.0"></script>
@@ -213,9 +213,9 @@
 <script src="js/render/arena_render.js?v=1.8.0"></script>
 <script src="js/render/gacha_render.js?v=1.8.0"></script>
 <script src="js/render/casino_render.js?v=1.8.0"></script>
-<script src="js/render/epoch_render.js?v=1.13.0"></script>
+<script src="js/render/epoch_render.js?v=1.13.2"></script>
 <script src="js/render/upgrades_render.js?v=1.13.0"></script>
 <script src="js/render/grimuar_render.js?v=1.12.2"></script>
-<script src="js/main.js?v=1.13.1"></script>
+<script src="js/main.js?v=1.13.2"></script>
 </body>
 </html>

@@ -136,7 +136,7 @@ function doEpochUp(newFaction, deck) {
   fxConfetti(130);
   fxShockwave(window.innerWidth / 2, window.innerHeight / 2, '#e8c060');
   const _runSecsAtEnd = resetRunCommon(newFaction, deck);
-  toast('⚜ ЭПОХА ' + epoch + ' «' + epochName(epoch) + '» · ' + FACTION_INFO[faction].epochTitle + ': ' + SOUL_IMG + ' +' + ASCEND_SOULS + ' Души');
+  toast('ЭПОХА ' + epoch + ' «' + epochName(epoch) + '» · ' + FACTION_INFO[faction].epochTitle + ': ' + SOUL_IMG + ' +' + ASCEND_SOULS + ' Души');
   supaSubmit(_runSecsAtEnd, true); /* Вознесение — гарантированная запись (Эпоха выросла) */
   checkAchievements();
   queueFeatureGuides(); /* онбординг: новая фракция/фичи */

@@ -10,7 +10,7 @@
 /* ---------------- Меню Эпохи ---------------- */
 function openEpochMenu() {
   mk('epochModal',
-    '<h2>⚜ Меню Эпохи</h2><div id="epochBody"></div>' +
+    '<h2>Меню Эпохи</h2><div id="epochBody"></div>' +
     '<div class="btn-row"><button class="btn btn-take" id="epochX">Закрыть</button></div>', 550);
   $('epochX').onclick = () => close_('epochModal');
   renderEpochMenu();
@@ -50,7 +50,7 @@ function confirmEpochUp() {
   const s = epochResetSummary();
   const next = epoch + 1;
   mkFresh('epochWarn',
-    '<h2>⚜ Вознесение: ЭПОХА ' + next + ' «' + epochName(next) + '»</h2>' +
+    '<h2>Вознесение: ЭПОХА ' + next + ' «' + epochName(next) + '»</h2>' +
     '<div class="res">Награда: ' + SOUL_IMG + ' <b>+' + ASCEND_SOULS + ' Души</b> · Эпоха ' + next + ' из бесконечной череды (порог вырастет)</div>' +
     '<div class="warn-cols"><div class="warn-col bad"><b>СБРОСИТСЯ:</b><ul>' + s.reset.map(x => '<li>' + x + '</li>').join('') + '</ul></div>' +
     '<div class="warn-col good"><b>ОСТАНЕТСЯ:</b><ul>' + s.keep.map(x => '<li>' + x + '</li>').join('') + '</ul></div></div>' +
@@ -201,6 +201,6 @@ function renderStats() {
     '<div>📈 Рекорд дохода: <b>' + stats.maxInc.toFixed(1) + '/сек</b></div>' +
     '<div>🎲 Круток всего: <b>' + fmt(stats.rolls) + '</b> (за Эпоху: ' + fmt(runRolls) + ')</div>' +
     '<div>' + SOUL_IMG + ' Душ заработано за всё время: <b>' + fmt(stats.soulsEarned || 0) + '</b></div>' +
-    '<div>⚜ Эпоха: <b>' + epoch + '</b> · рекорд: <b>' + maxEpoch + '</b></div>' +
+    '<div>Эпоха: <b>' + epoch + '</b> · рекорд: <b>' + maxEpoch + '</b></div>' +
     '<div>🧱 Алтарь: <b>' + playableSize + '×' + playableSize + '</b></div>';
 }
