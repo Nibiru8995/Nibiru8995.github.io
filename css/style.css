@@ -387,12 +387,12 @@ body { font-family: 'Alegreya', 'Georgia', 'Times New Roman', serif; }
 @keyframes bp { 50% { box-shadow: 0 0 4px #d3bd7a; } }
 .btn:disabled { opacity: .4; cursor: not-allowed; }
 
-#tooltip { position: fixed; pointer-events: none; z-index: 1000; background: #121214; border: 1px solid var(--border2); border-radius: 2px; padding: 10px 12px; max-width: 320px; display: none; font-size: 11px; line-height: 1.4; color: var(--ink); box-shadow: 0 4px 14px #000000cc; }
+#tooltip { position: fixed; pointer-events: none; z-index: 1000; background: #121214; border: 1px solid var(--border2); border-radius: 2px; padding: 10px 12px; max-width: 320px; display: none; font-size: 12.5px; line-height: 1.45; color: var(--ink); box-shadow: 0 4px 14px #000000cc; }
 #tooltip.show { display: block; }
 #tooltip .tt-name { font-size: 15px; font-weight: bold; color: #d8d2c4; margin-bottom: 2px; text-align: center; font-family: 'Philosopher', 'Georgia', serif; }
 #tooltip .tt-stars { color: var(--gold); font-size: 13px; margin-bottom: 6px; text-align: center; }
-#tooltip .tt-income { color: #94c77c; font-size: 13px; font-weight: bold; margin-bottom: 8px; text-align: center; }
-#tooltip .tt-synergy { color: #a9bcc8; font-size: 11px; margin-bottom: 6px; text-align: left; }
+#tooltip .tt-income { color: #94c77c; font-size: 14.5px; font-weight: bold; margin-bottom: 8px; text-align: left; }
+#tooltip .tt-synergy { color: #a9bcc8; font-size: 12.5px; margin-bottom: 6px; text-align: left; }
 #tooltip .tt-role { color: #b8c4cc; font-size: 11px; margin: 2px 0 6px; text-align: left; }
 #tooltip .tt-meta { color: #b8a888; font-size: 11.5px; text-align: left; }
 #tooltip .tt-meta + .tt-meta { margin-top: 2px; }
@@ -400,28 +400,28 @@ body { font-family: 'Alegreya', 'Georgia', 'Times New Roman', serif; }
 #tooltip .tt-div::before, #tooltip .tt-div::after { content: ''; flex: 1 1 auto; height: 1px; }
 #tooltip .tt-div::before { background: linear-gradient(90deg, transparent, #8a6a3a99); }
 #tooltip .tt-div::after { background: linear-gradient(270deg, transparent, #8a6a3a99); }
-#tooltip .tt-synergy-title { color: var(--gold); font-size: 10px; text-transform: uppercase; margin-bottom: 2px; font-weight: bold;}
+#tooltip .tt-synergy-title { color: var(--gold); font-size: 11px; text-transform: uppercase; margin-bottom: 2px; font-weight: bold;}
 #tooltip .tt-good { color: #94c77c; }
 #tooltip .tt-bad { color: #cf8a80; font-weight: bold; }
-#tooltip .tt-flavor { font-style: italic; color: #a39e92; font-size: 11px; border-top: 1px solid #26262a; padding-top: 6px; margin-top: 6px; text-align: left; }
+#tooltip .tt-flavor { font-style: italic; color: #a39e92; font-size: 12.5px; border-top: 1px solid #26262a; padding-top: 6px; margin-top: 6px; text-align: left; }
 /* Тултип ГРИМУАРА — по эскизу: арт слева, «подраса»/«тип» между линиями,
    блоки «Бонусы» и «Синергии» с линией под заголовком, флейвор внизу.
    Пустой блок не рендерится — вместе со своей линией. */
-#tooltip.gtt { flex-direction: row; gap: 12px; width: 470px; max-width: 470px; max-height: calc(100vh - 16px); overflow: hidden; padding: 12px; }
+#tooltip.gtt { flex-direction: row; gap: 12px; width: 560px; max-width: 560px; max-height: calc(100vh - 16px); overflow-y: auto; padding: 14px; }
 #tooltip.gtt.show { display: flex; }
-#tooltip.gtt .gtt-art { flex: 0 0 150px; width: 150px; height: 150px; border: 1px solid #2c2c30; border-radius: 4px; background: #0a0a0c; box-shadow: inset 0 0 18px #000000aa; overflow: hidden; display: flex; align-items: center; justify-content: center; align-self: flex-start; }
+#tooltip.gtt .gtt-art { flex: 0 0 160px; width: 160px; height: 160px; border: 1px solid #2c2c30; border-radius: 4px; background: #0a0a0c; box-shadow: inset 0 0 18px #000000aa; overflow: hidden; display: flex; align-items: center; justify-content: center; align-self: flex-start; }
 #tooltip.gtt .gtt-img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; image-rendering: crisp-edges; }
-#tooltip.gtt .gtt-glyph { font-size: 60px; line-height: 1; }
+#tooltip.gtt .gtt-glyph { font-size: 64px; line-height: 1; }
 #tooltip.gtt .gtt-body { flex: 1 1 auto; min-width: 0; }
-#tooltip.gtt .gtt-name { display: flex; align-items: baseline; gap: 8px; font-size: 15.5px; font-weight: bold; color: #d8d2c4; font-family: 'Philosopher', 'Georgia', serif; line-height: 1.25; }
-#tooltip.gtt .gtt-stars { color: var(--gold); font-size: 12px; font-style: normal; white-space: nowrap; flex: 0 0 auto; }
-#tooltip.gtt .gtt-field { display: flex; align-items: center; gap: 8px; margin: 4px 0 0; color: #b8a888; font-size: 11px; }
+#tooltip.gtt .gtt-name { display: flex; align-items: baseline; gap: 8px; font-size: 17px; font-weight: bold; color: #d8d2c4; font-family: 'Philosopher', 'Georgia', serif; line-height: 1.25; }
+#tooltip.gtt .gtt-stars { color: var(--gold); font-size: 13.5px; font-style: normal; white-space: nowrap; flex: 0 0 auto; }
+#tooltip.gtt .gtt-field { display: flex; align-items: center; gap: 8px; margin: 4px 0 0; color: #b8a888; font-size: 12.5px; }
 #tooltip.gtt .gtt-field::before, #tooltip.gtt .gtt-field::after { content: ''; flex: 1 1 auto; height: 1px; }
 #tooltip.gtt .gtt-field::before { background: linear-gradient(90deg, #3a332588, #8a6a3a66); }
 #tooltip.gtt .gtt-field::after { background: linear-gradient(270deg, #3a332588, #8a6a3a66); }
-#tooltip.gtt .gtt-h { color: var(--gold); font-size: 10px; font-weight: bold; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 1px solid #8a6a3a55; padding-bottom: 2px; margin: 10px 0 5px; }
-#tooltip.gtt .gtt-line { color: #a9bcc8; font-size: 11px; margin: 0 0 5px; }
-#tooltip.gtt .tt-flavor { margin-top: 8px; }
+#tooltip.gtt .gtt-h { color: var(--gold); font-size: 11.5px; font-weight: bold; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 1px solid #8a6a3a55; padding-bottom: 2px; margin: 10px 0 5px; }
+#tooltip.gtt .gtt-line { color: #a9bcc8; font-size: 12.5px; margin: 0 0 5px; }
+#tooltip.gtt .gtt-flavor { font-style: italic; color: #a39e92; font-size: 12.5px; margin-top: 8px; }
 
 .modal { position: fixed; inset: 0; background: radial-gradient(circle at 50% 50%, #17171aaa, #000000ee); display: flex; align-items: center; justify-content: center; z-index: 100; opacity: 0; pointer-events: none; transition: opacity .3s; }
 .modal.show { opacity: 1; pointer-events: auto; }
@@ -744,6 +744,13 @@ img.rico { width: 18px; height: 18px; vertical-align: -4px; image-rendering: pix
   animation: deckUpPulse 1.6s ease-in-out infinite;
 }
 .deck-up:hover { background: linear-gradient(160deg, #3c2150, #241336); color: #e2b7ff; box-shadow: 0 0 12px #b060ff88, inset 0 0 6px #b060ff55; }
+/* v1.11.1: ⏫ — стак записи сразу до максимума (золотая, справа от ▲) */
+.deck-up.deck-max {
+  animation: none; margin-left: 0;
+  background: linear-gradient(160deg, #3a2d10, #241a08); color: #e8c860; border-color: #a8842a; text-shadow: 0 0 6px #d8b040cc;
+  box-shadow: 0 0 8px #d8b04044, inset 0 0 5px #d8b04033;
+}
+.deck-up.deck-max:hover { background: linear-gradient(160deg, #4a3a14, #2c2008); color: #ffe090; box-shadow: 0 0 12px #d8b04088, inset 0 0 6px #d8b04055; }
 @keyframes deckUpPulse { 0%,100% { box-shadow: 0 0 6px #b060ff33, inset 0 0 4px #b060ff22; } 50% { box-shadow: 0 0 12px #b060ff77, inset 0 0 7px #b060ff55; } }
 
 /* --- v1.7.0: метка застакованной карты в коллекции забега --- */

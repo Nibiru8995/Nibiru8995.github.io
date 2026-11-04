@@ -92,12 +92,13 @@ function pickFactionForRestart() {
 /* ---------------- ВЫБОР КОЛОДЫ (обязательный шаг, v1.8.0) ----------------
    При выборе расы на Эпоху игрок обязан выбрать колоду этой расы —
    забег получит её целиком (включая застакованные карты).
+   v1.11.1: колоды БОЛЬШЕ НЕ СОЗДАЮТСЯ АВТОМАТОМ — показываем только
+   то, что игрок собрал сам; нет колод — кнопка «Открыть Гримуар».
    onPick(dek) — что делать дальше (doEpochUp / doEpochRestart / startFreshRun). */
 function openDeckPick(race, onPick) {
   /* race == null → показываем колоды ВСЕХ открытых рас (значок расы в строке),
      race != null → только колоды этой расы. */
   const races = race ? [race] : availFactions();
-  races.forEach(ensureStarterDeck);
   const list = decks.filter(k => races.indexOf(k.race) >= 0);
   mkFresh('deckPickModal',
     '<h2>ВЫБЕРИТЕ КОЛОДУ</h2>' +
@@ -111,7 +112,9 @@ function openDeckPick(race, onPick) {
       '<span class="gdr-count">' + deckTotal(d) + '/' + deckCap() + '</span>' +
       '</div>').join('') : '<div class="fighter-empty">Колод нет — соберите их в Гримуаре.</div>') +
     '</div>' +
-    '<div class="btn-row"><button class="btn btn-take" id="dpCancel" style="max-width:none;width:auto;min-width:110px">Закрыть</button></div>', 600);
+    '<div class="btn-row">' +
+    (list.length ? '' : '<button class="btn btn-take" id="dpGrim" style="max-width:none;width:auto;min-width:110px">📖 Открыть Гримуар</button>') +
+    '<button class="btn btn-take" id="dpCancel" style="max-width:none;width:auto;min-width:110px">Закрыть</button></div>', 600);
   const pickIt = id => {
     const d = deckById(id);
     if (!d) return;
@@ -125,6 +128,8 @@ function openDeckPick(race, onPick) {
   $('deckPickModal').querySelectorAll('.deckpick-row').forEach(row => {
     row.onclick = () => pickIt(row.dataset.dk);
   });
+  const pg = $('dpGrim');
+  if (pg) pg.onclick = () => { close_('deckPickModal'); openGrimuar(); };
   $('dpCancel').onclick = () => close_('deckPickModal');
   open_('deckPickModal');
 }

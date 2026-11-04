@@ -88,10 +88,11 @@ function collectionFree(id) {
 }
 
 /* ---------------- КОЛОДЫ (записи {id, n}) ----------------
-   Лимит копий — deckCap() из logic/upgrades.js (страницы Гримуара:
-   9 → 25 → 49 → 81). */
-/* Суммарное число копий в колоде */
-function deckTotal(deck) { return deck ? deck.cards.reduce((s, e) => s + (e.n || 1), 0) : 0; }
+   Лимит КОЛОДЫ — deckCap() из logic/upgrades.js (страницы Гримуара:
+   9 → 25 → 49 → 81). v1.11.1: лимит считает БЛОКИ-ЗАПИСИ — застакованная
+   карта (запись ×N) считается ЗА ОДНУ; копии стака лимит не тратят. */
+/* Число карт-блоков в колоде (стак ×N — одна карта) */
+function deckTotal(deck) { return deck ? deck.cards.length : 0; }
 function deckById(id) { return decks.find(k => k.id === id) || null; }
 function activeDeckFor(race) {
   const d = deckById(activeDeck[race]);
@@ -102,12 +103,14 @@ function deckUsedCount(deck, cardId) {
   return deck.cards.reduce((s, e) => s + (e.id === cardId ? (e.n || 1) : 0), 0);
 }
 /* v1.8.0: можно ли поднять стак записи idx (+1 копия из коллекции):
-   стак записи не полон и в коллекции есть свободные копии */
+   стак записи не полон и в коллекции есть свободные копии.
+   v1.11.1: стак НЕ добавляет новый блок, поэтому допустим и при
+   полном блочном лимите (deckTotal == deckCap) — лимит он не тратит. */
 function canStackEntry(deck, idx) {
   if (!deck || !deck.cards[idx]) return false;
   const id = deck.cards[idx].id;
   return (deck.cards[idx].n || 1) < deckStackMax() &&
-    deckTotal(deck) < deckCap() &&
+    deckTotal(deck) <= deckCap() &&
     deckUsedCount(deck, id) < collectionFree(id);
 }
 /* Клик по карте коллекции ГРИМУАРА → добавить копию как ДУБЛИКАТ
@@ -153,15 +156,15 @@ function deleteDeck(id) {
   saveMeta();
   return true;
 }
-/* Стартовая колода расы: старт-кит (механика + здание + пара ★3).
-   Создаётся, если у расы ещё нет ни одной колоды. */
-function ensureStarterDeck(race) {
-  if (!FACTION_KEYS.includes(race)) return null;
-  if (decks.some(k => k.race === race)) return deckById(activeDeck[race]) || decks.find(k => k.race === race);
-  const d = createDeck(race, 'Колода ' + FACTION_INFO[race].name);
+/* v1.11.1: старт-НАБОР КАРТ расы — без создания колоды.
+   Колоды игрок создаёт сам (авто-добавление колод убрано).
+   Набор (механика + здание + пара ★3) выдаётся в коллекцию ОДИН РАЗ —
+   только пока у расы в коллекции нет ни одной карты (обучение и
+   первый Призыв должны с чего-то начинаться). */
+function ensureStarterCards(race) {
+  if (!FACTION_KEYS.includes(race)) return;
+  if (Object.keys(collection).some(id => CARDS[id].faction === race)) return;
   const startR1 = POOL_3.filter(id => CARDS[id].faction === race);
-  drawDistinct(startR1, 2).concat(startKitFor(race)).forEach(id => { collectionAdd(id, 1); d.cards.push({ id, n: 1 }); });
-  if (!activeDeck[race]) activeDeck[race] = d.id;
+  drawDistinct(startR1, 2).concat(startKitFor(race)).forEach(id => collectionAdd(id, 1));
   saveMeta();
-  return d;
 }

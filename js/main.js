@@ -455,8 +455,10 @@ function wireEvents() {
   $('menuNew').onclick = () => {
     const go = () => {
       try { localStorage.removeItem(SAVE_RUN); } catch (e) { }
-      /* v1.8.0: обязательный выбор колоды перед стартом */
-      openDeckPick('undead', d => { startFreshRun('undead', d); hideMenu(); });
+      /* v1.8.0: обязательный выбор колоды перед стартом.
+         v1.11.1: колоды ВСЕХ открытых рас (была только нежить) —
+         раса забега = раса выбранной колоды. */
+      openDeckPick(null, d => { startFreshRun(d.race, d); hideMenu(); });
     };
     if (hasRunSave() || gameStarted) ask('Начать заново? Прогресс текущей Эпохи будет сброшен. Достижения и Улучшения останутся.', go);
     else go();

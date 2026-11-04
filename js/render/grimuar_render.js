@@ -50,8 +50,9 @@ function grimSquareRows() {
 }
 
 function openGrimuar() {
-  /* Первая колода — стартовая (создастся, если колод ещё нет) */
-  ensureStarterDeck('undead');
+  /* v1.11.1: колоды автоматом НЕ создаём — только старт-НАБОР КАРТ,
+     если коллекция расы пуста (для обучения/первого Призыва). */
+  ensureStarterCards('undead');
   if (!grimSelDeckId || !deckById(grimSelDeckId)) {
     const act = deckById(activeDeck[faction]) || decks[0];
     grimSelDeckId = act ? act.id : null;
@@ -100,6 +101,13 @@ function grimUnlocked() { return availFactions(); }
 
 function renderGrimuar() {
   if (!$('grimModal') || !$('grimModal').classList.contains('show')) return;
+  /* v1.11.1: при ставке/стаке карт список перерисовывается целиком —
+   ПРОКРУТКА должна оставаться на месте (прежде «уезжала вверх»). */
+  const keepScroll = {};
+  ['#grimCards', '#grimDecks', '#grimDeckView .deck-list'].forEach(sel => {
+    const el = document.querySelector(sel);
+    if (el) keepScroll[sel] = el.scrollTop;
+  });
   renderGrimHead();
   renderGrimTabs();
   renderGrimSubTabs();
@@ -107,6 +115,10 @@ function renderGrimuar() {
   renderGrimDecks();
   renderGrimDeckView();
   renderGrimGacha();
+  Object.keys(keepScroll).forEach(sel => {
+    const el = document.querySelector(sel);
+    if (el) el.scrollTop = keepScroll[sel];
+  });
 }
 
 function renderGrimHead() {
@@ -189,7 +201,7 @@ function renderGrimCollection() {
         if (CARDS[id].noPlace) { toast('«' + CARDS[id].name + '» не ставят в колоду — Внешний нисходит сам, достаточно владеть картой'); return; }
         if (!d) { toast('Сначала выберите или создайте колоду справа'); return; }
         if (d.race !== CARDS[id].faction) { toast('Эта колода расы «' + FACTION_INFO[d.race].name + '» — карты других рас в неё не входят'); return; }
-        if (deckTotal(d) >= deckCap()) { toast('В колоде уже ' + deckCap() + ' копий — лимит'); return; }
+        if (deckTotal(d) >= deckCap()) { toast('Лимит колоды: ' + deckCap() + ' карт-блоков (стак не тратит лимит)'); return; }
         if (deckUsedCount(d, id) >= collectionFree(id)) { toast('Свободных копий «' + CARDS[id].name + '» больше нет — сделайте Призыв'); return; }
         addToDeck(d, id); /* v1.8.0: клик — добавить как ДУБЛИКАТ (новый блок) */
         sfx('click');
@@ -325,12 +337,17 @@ function renderGrimDeckView() {
         const card = CARDS[en.id];
         const n = en.n || 1;
         const canStack = canStackEntry(d, idx);
+        /* v1.11.1: ⏫ — стак ЭТОЙ записи сразу до максимума, доступного сейчас:
+           либо по числу свободных копий в коллекции, либо по капу стака */
+        const freeLeft = collectionFree(en.id) - deckUsedCount(d, en.id);
+        const maxN = Math.min(dsm, n + Math.max(0, freeLeft));
         return '<div class="deck-row star' + card.rarity + '" data-rm="' + idx + '" style="--glow:' + rarityColor(card.rarity) + ';--cardBg:' + rarityBg(card.rarity) + '" title="' + card.name + ' — клик: убрать копию из колоды">' +
           cardArtHTML(card, 'deck-art', 'deck-glyph') +
           '<div class="deck-info"><span class="deck-name">' + card.name + ' <i>' + starsOf(card.rarity) + '</i></span>' +
           '<span class="deck-sub">' + FACTION_INFO[card.faction].name + (n >= dsm ? ' · стак полон ×' + n : '') + '</span></div>' +
           (n > 1 ? '<span class="deck-count">×' + n + '</span>' : '<span class="deck-count dim">×1</span>') +
           (canStack ? '<button class="deck-up" data-up="' + idx + '" title="Застакать ЭТУ копию: +1 из коллекции (×' + (n + 1) + ')">▲</button>' : '') +
+          (canStack ? '<button class="deck-up deck-max" data-upmax="' + idx + '" title="Стак до максимума: ×' + n + ' → ×' + maxN + ' (кап ' + dsm + ', свободно ' + Math.max(0, freeLeft) + ')">⏫</button>' : '') +
           '</div>';
       }).join('');
     } else {
@@ -366,6 +383,18 @@ function renderGrimDeckView() {
       if (!canStackEntry(d, idx)) return;
       if (!stackUpEntry(d, idx)) { toast('Свободных копий «' + CARDS[d.cards[idx].id].name + '» больше нет — сделайте Призыв'); return; }
       sfx('place');
+      renderGrimuar();
+    });
+  });
+  /* v1.11.1: ⏫ — стак записи сразу до максимума (пока можно) */
+  if (d) el.querySelectorAll('[data-upmax]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const idx = +btn.dataset.upmax;
+      if (!d.cards[idx]) return;
+      let k = 0;
+      while (canStackEntry(d, idx) && k < 99) { if (!stackUpEntry(d, idx)) break; k++; }
+      if (k) { sfx('place'); toast('▲ «' + CARDS[d.cards[idx].id].name + '» застакована до ×' + (d.cards[idx].n || 1)); }
       renderGrimuar();
     });
   });

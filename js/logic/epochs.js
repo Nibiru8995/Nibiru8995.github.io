@@ -98,9 +98,10 @@ function resetRunCommon(newFaction, deck) {
 
   /* ВЫДАЁМ КОЛОДУ (v1.6.0): выбранная колода расы забега — в инвентарь сразу.
      v1.8.0: записи {id, n} → очереди deckStacks; runDeck-снапшот.
-     Пусто → старт-кит фракции, как раньше. */
+     v1.11.1: пустой/чужой колоды больше НЕ создаём (авто-колоды убраны) —
+     фолбэк на старт-кит фракции, как и обещает окно выбора колоды. */
   let deckTitle = '';
-  const src = (deck && deck.cards.length) ? deck : ensureStarterDeck(faction);
+  const src = (deck && deck.cards.length) ? deck : null;
   if (src && src.cards.length) {
     deckTitle = handOutDeck(src);
   } else {
