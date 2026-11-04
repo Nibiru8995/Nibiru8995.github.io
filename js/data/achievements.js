@@ -13,7 +13,7 @@ const ACHIEVEMENTS = [
   { id: 'roll_1000',    name: 'Палец Тьмы',           desc: 'Сделать 1000 круток за Эпоху',          check: () => runRolls >= 1000 },
   { id: 'place_15',     name: 'Гид по могилам',           desc: 'Поставить 15 карт на Алтарь за Эпоху',  check: () => stats.placed >= 15 },
   { id: 'grid_25',      name: 'Застройщик',               desc: 'Иметь 25 карт на Алтаре одновременно',  check: () => cardsOnGrid() >= 25 },
-  { id: 'altar_5',      name: 'Расширитель',              desc: 'Расширить Алтарь до 5×5 (Улучшения)',   check: () => fieldLv >= 1 },
+  { id: 'altar_5',      name: 'Расширитель',              desc: 'Расширить Алтарь до 7×7 (Улучшения)',   check: () => fieldLv >= 2 },
   { id: 'rich_1m',      name: 'Магнат Тьмы',       desc: 'Иметь 1 000 000 Тёмной энергии разом',              check: () => crystals >= 1e6 },
   { id: 'rich_100m',    name: 'Скупой рыцарь',            desc: 'Иметь 100 000 000 Тёмной энергии разом',            check: () => crystals >= 1e8 },
   { id: 'first_death',  name: 'Первый в очереди на смерть', desc: 'Потерять бойца на Арене',             check: () => stats.arenaDeaths >= 1 },

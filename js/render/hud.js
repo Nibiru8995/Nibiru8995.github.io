@@ -170,7 +170,7 @@ function updateHUD(now) {
     upBtn.disabled = false;
     if (!upBtn.classList.contains('ready')) { upBtn.classList.remove('notready'); upBtn.classList.add('ready'); }
     hudSet('epPct', upBtn, 'pct', '100%');
-    hudSet('epCost', upBtn.querySelector('.cost'), 'text', 'Начать Эпоху ' + (epoch + 1) + ' «' + epochName(epoch + 1) + '» → +1 Душа');
+    hudSet('epCost', upBtn.querySelector('.cost'), 'text', 'Начать Эпоху ' + (epoch + 1) + ' «' + epochName(epoch + 1) + '» → +' + ASCEND_SOULS + ' Души');
   } else {
     upBtn.disabled = false;
     if (!upBtn.classList.contains('notready')) { upBtn.classList.remove('ready'); upBtn.classList.add('notready'); }

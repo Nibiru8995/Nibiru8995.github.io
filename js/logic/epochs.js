@@ -3,7 +3,7 @@
    ЛОГИКА: ЭПОХИ (logic/epochs.js) — v1.8.0 «Вечная Эпоха»
    Прогресс, переход, сброс. ЭПОХИ БЕСКОНЕЧНЫ и ничего не
    открывают (все покупки — за Души в «Улучшениях»); порог растёт
-   множителем ×4 (data/epochs.js). Поле задаётся купленными
+   множителем ×3 (data/epochs.js). Поле задаётся купленными
    расширениями (fieldSize()), от Эпохи не растёт.
    ============================================================ */
 
@@ -130,13 +130,13 @@ function doEpochUp(newFaction, deck) {
   epoch++;
   maxEpoch = Math.max(maxEpoch, epoch);
   /* СМЕНА ЭПОХИ ПЛАТИТ ДУШОЙ — источник Призыва и Улучшений №1 */
-  gainSouls(1);
+  gainSouls(ASCEND_SOULS);
   /* Шоу Эпохи */
   sfx('epoch');
   fxConfetti(130);
   fxShockwave(window.innerWidth / 2, window.innerHeight / 2, '#e8c060');
   const _runSecsAtEnd = resetRunCommon(newFaction, deck);
-  toast('⚜ ЭПОХА ' + epoch + ' «' + epochName(epoch) + '» · ' + FACTION_INFO[faction].epochTitle + ': ' + SOUL_IMG + ' +1 Душа');
+  toast('⚜ ЭПОХА ' + epoch + ' «' + epochName(epoch) + '» · ' + FACTION_INFO[faction].epochTitle + ': ' + SOUL_IMG + ' +' + ASCEND_SOULS + ' Души');
   supaSubmit(_runSecsAtEnd, true); /* Вознесение — гарантированная запись (Эпоха выросла) */
   checkAchievements();
   queueFeatureGuides(); /* онбординг: новая фракция/фичи */

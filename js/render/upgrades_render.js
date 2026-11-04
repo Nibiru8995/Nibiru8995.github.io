@@ -138,21 +138,7 @@ function renderUpgrades() {
   });
   html += '</div></div>';
 
-  /* ============ СЛУГИ ============ */
-  html += '<div class="upg-group-title"><span class="line"></span><span>' + UPG_CATS[3].title + '</span><span class="line"></span></div>';
-  html += '<div class="upg-group">';
-  const openFacs = availFactions();
-  if (openFacs.indexOf(upgStaffTab) < 0) upgStaffTab = openFacs[0];
-  html += '<div class="upg-tabs">' + openFacs.map(f =>
-    '<div class="upg-tab' + (f === upgStaffTab ? ' cur' : '') + '" data-fac="' + f + '">' + FACTION_INFO[f].name + '</div>').join('') + '</div>';
-  UPG_STAFF.filter(s => s.fac === upgStaffTab).forEach(s => {
-    const owned = !!staffLv[s.id];
-    const afford = souls >= s.cost;
-    const cls = owned ? 'avail done' : (afford ? '' : 'avail need');
-    if (upgHidden(owned ? 'done' : '')) return;
-    html += upgRowHTML(s.icon, s.name, s.desc, owned ? upgOwnedMsg() : upgCost(s.cost), cls, owned ? null : 'st:' + s.id);
-  });
-  html += '</div>';
+  /* v1.13.0: группа «Слуги» скрыта — там были одни заглушки «Тест» */
 
   list.innerHTML = html;
 
@@ -167,9 +153,5 @@ function renderUpgrades() {
       else if (a.indexOf('st:') === 0) buyUpgradeStaff(a.slice(3));
       else buyUpgradeOnce(a);
     };
-  });
-  list.querySelectorAll('.upg-tab').forEach(tab => {
-    tab.style.cursor = 'pointer';
-    tab.onclick = () => { upgStaffTab = tab.dataset.fac; renderUpgrades(); };
   });
 }

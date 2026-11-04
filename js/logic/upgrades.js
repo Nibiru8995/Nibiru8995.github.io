@@ -16,12 +16,12 @@ function featOwned(k) { return feats.indexOf(k) >= 0; }
 function factionOwned(f) { return f === 'undead' || factionsOwned.indexOf(f) >= 0; }
 function availFactions() { return ['undead'].concat(factionsOwned); }
 /* Поле: размер = купленные расширения (больше НЕ растёт от Эпох):
-   fieldLv 0..3 → 3×3 / 5×5 / 7×7 / 9×9 */
+   fieldLv 1..3 → 5×5 / 7×7 / 9×9 (v1.13.0: 5×5 — со старта) */
 const FIELD_SIZES = [3, 5, 7, 9];
 function fieldSize() { return FIELD_SIZES[clamp(Math.floor(fieldLv) || 0, 0, 3)]; }
 function fieldMaxSize() { return 9; }
 /* Лимит КОЛОДЫ (количество карт, суммарно): страницы Гримуара.
-   deckLv 0..3 → 9 / 25 / 49 / 81. */
+   deckLv 1..3 → 25 / 49 / 81 (v1.13.0: 25 — со старта). */
 const DECK_CAPS = [9, 25, 49, 81];
 function deckCap() { return DECK_CAPS[clamp(Math.floor(deckLv) || 0, 0, DECK_CAPS.length - 1)]; }
 /* Максимальный стак карты в КОЛОДЕ (улучшение «Зодчего») */

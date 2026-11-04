@@ -44,6 +44,7 @@ let stats = {
   omens: 0,       // собранных Знамений
   speedUsed: 0    // играл на ускорении > ×1
 };
+const ASCEND_SOULS = 3; // v1.13.0: Души за каждое Вознесение (было 1)
 /* Единая точка начисления Душ (v1.8.0): заодно копим вечную статистику */
 function gainSouls(n) {
   souls += n;
@@ -60,8 +61,8 @@ function gainSouls(n) {
    factionsOwned — купленные фракции: cultist, beast, demon.
    Печати 🔱 («эссенция») УДАЛЕНЫ из игры — всё платит Душами. */
 let upgLv = { rich: 0, greed: 0, impulse: 0, arch: 0, fate: 0 };
-let fieldLv = 0;
-let deckLv = 0;
+let fieldLv = 1;   // v1.13.0: старт сразу с 5×5
+let deckLv = 1;    // v1.13.0: старт сразу с колодой на 25 карт
 let feats = [];
 let factionsOwned = [];
 let staffLv = {};
@@ -112,7 +113,7 @@ let faction = 'undead';      // фракция текущей Эпохи
    от Эпохи больше НЕ растёт. */
 const GRID_SIZE = 9;
 let grid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
-let playableSize = 3;        // сторона открытого квадрата (3..9)
+let playableSize = 5;        // сторона открытого квадрата (3..9)
 let playableMask = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(false));
 
 /* --- Коллекция --- */
@@ -244,7 +245,7 @@ function loadRun() {
     epoch = d.epoch ?? 1; faction = d.faction ?? 'undead';
     grid = d.grid ?? grid;
     /* v1.8.0: потолок размера поля — купленные расширения (не Эпоха) */
-    playableSize = clamp(d.playableSize ?? 3, 3, typeof fieldSize === 'function' ? fieldSize() : 9);
+    playableSize = clamp(d.playableSize ?? 5, 3, typeof fieldSize === 'function' ? fieldSize() : 9);
     inventory = d.inventory ?? {};
     /* v1.8.0: снапшот стартовой колоды для req-требований контрактов */
     runDeck = Array.isArray(d.runDeck) ? d.runDeck.filter(id => CARDS[id]) : [];
@@ -338,8 +339,8 @@ function loadMeta() {
        (ключ sealLv — бывший магазин печатей, уровни сохраняются). */
     const lvSrc = d.upgLv || d.sealLv || {};
     upgLv = { rich: lvSrc.rich || 0, greed: lvSrc.greed || 0, impulse: lvSrc.impulse || 0, arch: lvSrc.arch || 0, fate: lvSrc.fate || 0 };
-    fieldLv = clamp(Math.floor(d.fieldLv ?? 0), 0, 3);
-    deckLv = clamp(Math.floor(d.deckLv ?? 0), 0, (typeof UPG_DECK !== 'undefined' ? UPG_DECK.length : 0));
+    fieldLv = clamp(Math.floor(d.fieldLv ?? 1), 1, 3);
+    deckLv = clamp(Math.floor(d.deckLv ?? 1), 1, (typeof UPG_DECK !== 'undefined' ? UPG_DECK.length : 1));
     feats = Array.isArray(d.feats) ? d.feats.filter(k => UPG_ONCE && UPG_ONCE[k]) : [];
     factionsOwned = Array.isArray(d.factionsOwned) ? d.factionsOwned.filter(f => FACTION_KEYS.includes(f)) : [];
     staffLv = (d.staffLv && typeof d.staffLv === 'object') ? d.staffLv : {};

@@ -92,7 +92,7 @@ const TUT = [
   { t: 'Кликни карту, затем — свободную клетку Алтаря. Так мы сеем.', pre: () => { tutStartRun(); renderCollection(); }, hl: () => placingMode ? '#grid' : collSel(Object.keys(inventory)[0]), ok: () => cardsOnGrid() > 0 },
   { t: 'Поставь «Кладбище» к картам: нежить, что всплывёт, прикормит соседей. Между нами — я не мешаю.', pre: () => { if (!inventory.bl_grave) TUT_GIVE([['bl_grave', 1]]); }, hl: () => (placingMode && pendingCard === 'bl_grave') ? '#grid' : collSel('bl_grave'), ok: () => gridHas('bl_grave') },
   { t: 'Поставь Скелета — встанет стопкой. Покойники в обозе ездят плотно, бережливо.', pre: () => { if (!inventory.u0) { inventory.u0 = 3; discovered.add('u0'); } deckStacks['u0'] = deckStacks['u0'] || [3]; renderCollection(); }, hl: () => (placingMode && pendingCard === 'u0') ? '#grid' : collSel('u0'), ok: () => { const it = grid.flat().find(x => x && x.cardId === 'u0'); return !!(it && it.stacks >= 2); } },
-  { t: 'Рыцаря — рядом со Скелетом, и вспыхнет нить промеж них. Но чем чаще плетёшь одну и ту же пару, тем скупее плата.', pre: () => TUT_GIVE([['u4', 2]]), hl: () => (placingMode && pendingCard === 'u4') ? '#grid' : collSel('u4'), ok: () => pairLinkCount('u0', 'u4') > 0 },
+  { t: 'Рыцаря — рядом со Скелетом, и между ними вспыхнет нить: это синергия.', pre: () => TUT_GIVE([['u4', 2]]), hl: () => (placingMode && pendingCard === 'u4') ? '#grid' : collSel('u4'), ok: () => pairLinkCount('u0', 'u4') > 0 },
 
   /* --- АКТ 4: ЭПОХИ (порог, дар, Вознесение) --- */
   { t: 'Порог я оплатил из церковной казны. Листай «Далее» — не заставляй ждать.', pre: () => { crystals += 60000; }, n: 1 },

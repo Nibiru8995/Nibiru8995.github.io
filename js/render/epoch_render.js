@@ -25,9 +25,9 @@ function renderEpochMenu() {
     '<div class="goal"><span>Прогресс: ' + fmtShort(p.earned) + ' / ' + fmtShort(p.threshold) + ' ' + DE_IMG + '</span><i style="width:' + Math.floor(p.pct * 100) + '%"></i><em>' + Math.floor(p.pct * 100) + '%</em></div>' +
     '<div class="up"><b>🧱 Поле Алтаря: ' + playableSize + '×' + playableSize + '</b><br><small>Размер поля задаётся покупками в «Улучшениях» — от Эпохи больше не растёт.</small></div>' +
     milHtml() +
-    '<div class="flavor">Эпохи БЕСКОНЕЧНЫ: за переход платим Душой (' + SOUL_IMG + ' +1), пороги растут ×4. Разблокировок больше нет — фичи, поле, ★4/★5 и фракции покупаются Душами в «Улучшениях» (Меню → Улучшения).</div>' +
+    '<div class="flavor">Эпохи БЕСКОНЕЧНЫ: за переход платим Душами (' + SOUL_IMG + ' +' + ASCEND_SOULS + '), пороги растут ×3. Разблокировок больше нет — фичи, поле, ★4/★5 и фракции покупаются Душами в «Улучшениях» (Меню → Улучшения).</div>' +
     '<div class="btn-row"><button class="btn btn-take" id="epochGoBtn" style="max-width:none" ' + (canEpochUp() ? '' : 'disabled') + '>' +
-    (canEpochUp() ? '⚔ НАЧАТЬ ЭПОХУ ' + next + ' «' + epochName(next) + '» → +' + SOUL_IMG + ' 1 Душа' : 'Порог не достигнут (' + Math.floor(p.pct * 100) + '%)') + '</button></div>';
+    (canEpochUp() ? '⚔ НАЧАТЬ ЭПОХУ ' + next + ' «' + epochName(next) + '» → +' + SOUL_IMG + ' ' + ASCEND_SOULS + ' Души' : 'Порог не достигнут (' + Math.floor(p.pct * 100) + '%)') + '</button></div>';
 
   const go = $('epochGoBtn');
   if (go && canEpochUp()) go.onclick = () => { close_('epochModal'); confirmEpochUp(); };
@@ -51,7 +51,7 @@ function confirmEpochUp() {
   const next = epoch + 1;
   mkFresh('epochWarn',
     '<h2>⚜ Вознесение: ЭПОХА ' + next + ' «' + epochName(next) + '»</h2>' +
-    '<div class="res">Награда: ' + SOUL_IMG + ' <b>+1 Душа</b> · Эпоха ' + next + ' из бесконечной череды (порог вырастет)</div>' +
+    '<div class="res">Награда: ' + SOUL_IMG + ' <b>+' + ASCEND_SOULS + ' Души</b> · Эпоха ' + next + ' из бесконечной череды (порог вырастет)</div>' +
     '<div class="warn-cols"><div class="warn-col bad"><b>СБРОСИТСЯ:</b><ul>' + s.reset.map(x => '<li>' + x + '</li>').join('') + '</ul></div>' +
     '<div class="warn-col good"><b>ОСТАНЕТСЯ:</b><ul>' + s.keep.map(x => '<li>' + x + '</li>').join('') + '</ul></div></div>' +
     '<div class="flavor">Дальше — ОБЯЗАТЕЛЬНЫЙ выбор колоды: забег получит её целиком.</div>' +
