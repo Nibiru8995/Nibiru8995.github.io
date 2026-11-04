@@ -237,7 +237,7 @@ function lbInit() {
 async function lbFetch() {
   const rows = $('lbRows');
   if (!rows) return;
-  rows.innerHTML = '<div class="wall-empty">Читаем в Тьму…</div>';
+  rows.innerHTML = '<div class="wall-empty">Загрузка…</div>';
   try {
     /* Топ Эпохи по инкаму: берём 40 свежайших строк вкладки и дедупим
 игрока-Лучший, потому что UPDATE-ов в базе нет — история роста

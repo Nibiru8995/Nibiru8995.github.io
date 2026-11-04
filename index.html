@@ -8,22 +8,22 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Philosopher:wght@400;700&family=Alegreya:ital,wght@0,400;0,500;0,700;1,400&family=Ruslan+Display&display=swap">
-<link rel="stylesheet" href="css/style.css?v=1.12.2">
+<link rel="stylesheet" href="css/style.css?v=1.13.1">
 </head>
 <body>
 
 <div id="topBar">
   <span id="brand"><b>Гача-Гриндер 2</b><small>Тёмное Наследие</small></span>
   <div id="hudCenter">
-    <span class="res-chip" title="Тёмная энергия: доход Алтаря, порог Эпохи, казино"><span class="crystal-icon"></span><span id="crystals">2500</span></span>
+    <span class="res-chip" title="Тёмная энергия: копится с дохода, нужна для новой Эпохи"><span class="crystal-icon"></span><span id="crystals">2500</span></span>
     <span id="rate">+0/сек</span>
-    <span class="res-chip" id="soulsChip" title="Души: валюта Призыва и Улучшений (старт 30, смена Эпохи, каждые 5 этажей Арены, контракты)"><span class="soul-icon"></span><span id="soulsTop">30</span></span>
+    <span class="res-chip" id="soulsChip" title="Души: тратятся на призыв и улучшения"><span class="soul-icon"></span><span id="soulsTop">30</span></span>
   </div>
 </div>
 
 <div id="main">
   <div id="leftCol">
-    <div id="subraceBar" style="display:none" title="Живая композиция подрас на поле"></div>
+    <div id="subraceBar" style="display:none" title="Состав подрас на поле"></div>
     <div id="collection">
       <div id="collectionTitle">Колода</div>
       <div id="collectionHead">
@@ -73,7 +73,7 @@
       <button class="move-tool-btn" id="moveToolBtn"><svg class="ic" viewBox="0 0 24 24"><path d="M4 8h13M14 5l3 3-3 3M20 16H7M10 13l-3 3 3 3"/></svg>Переместить</button>
       <button class="delete-tool-btn" id="deleteToolBtn"><svg class="ic" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>Удалить</button>
       <button class="settings-btn" id="settingsBtn"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg>Настройки</button>
-      <button id="epochRestartBtn" title="Сжечь забег и начать ТЕКУЩУЮ Эпоху заново — с выбором фракции и колоды. Вознесением не считается."><svg class="ic" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>Рестарт Эпохи</button>
+      <button id="epochRestartBtn" title="Начать текущую Эпоху заново (с выбором фракции и колоды)"><svg class="ic" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>Рестарт Эпохи</button>
       <button id="menuBtn">Меню</button>
     </div>
     <div id="arenaDock" style="display:none">
@@ -102,7 +102,7 @@
   </div>
 </div>
 
-<footer id="verFoot">v1.13.0</footer>
+<footer id="verFoot">v1.13.1</footer>
 <div id="toast"></div>
 <canvas id="fxCanvas"></canvas>
 
@@ -134,17 +134,17 @@
 <div class="btn-row"><button class="btn btn-take" id="menuGrim" style="max-width:none">Гримуар</button><button class="btn btn-take" id="menuUpgrades" style="max-width:none">Улучшения</button></div>
 <button class="btn btn-take" id="menuTut" style="width:100%;max-width:none">Обучение</button>
 <div id="lbBox">
-  <div id="lbHead"><span>СКРИЖАЛИ ТЬМЫ</span><span id="lbRefresh" title="Обновить">⟳</span></div>
+  <div id="lbHead"><span>РЕЙТИНГ</span><span id="lbRefresh" title="Обновить">⟳</span></div>
   <div id="lbTabs"></div>
-  <div id="lbRows"><div class="wall-empty">Читаем в Тьму…</div></div>
+  <div id="lbRows"><div class="wall-empty">Загрузка…</div></div>
 <div id="lbFoot"></div>
 </div>
 <div id="wallBox">
-  <div id="wallHead"><span>СТЕНА ТЛЕННЫХ ШЁПОТОВ</span><span id="wallRefresh" title="Обновить">⟳</span></div>
-  <div id="wallRows"><div class="wall-empty">Слушаем Тьму…</div></div>
+  <div id="wallHead"><span>ЧАТ</span><span id="wallRefresh" title="Обновить">⟳</span></div>
+  <div id="wallRows"><div class="wall-empty">Загрузка…</div></div>
   <div id="wallSendRow">
     <span id="wallName" title="Сменить имя">Аноним</span>
-    <input id="wallIn" maxlength="200" placeholder="Слово во Тьму…" autocomplete="off">
+    <input id="wallIn" maxlength="200" placeholder="Сообщение…" autocomplete="off">
     <button id="wallGo" title="Отправить">➤</button>
   </div>
 </div>
@@ -153,10 +153,10 @@
 <div id="guidePanel"><div id="guideText"></div><div id="guideBtns"><span id="guideStepLbl"></span><button class="mini" id="guideSkip">Пропустить</button><button class="btn btn-take" id="guideNext" style="max-width:120px;padding:5px 10px">Далее</button></div></div>
 <div id="tooltip"></div><div id="selectionBanner"></div>
 
-<div class="modal" id="settingsModal" style="z-index:520"><div class="modal-card"><h2>НАСТРОЙКИ</h2><div class="desc">Игра сохраняется автоматически каждые 5 секунд.</div>
-  <div class="set-row"><span>⏩ Скорость игры (для нетерпеливых и показов):</span><span><button class="mini speed-btn" data-s="1">×1</button> <button class="mini speed-btn" data-s="2">×2</button> <button class="mini speed-btn" data-s="4">×4</button></span></div>
+<div class="modal" id="settingsModal" style="z-index:520"><div class="modal-card"><h2>НАСТРОЙКИ</h2><div class="desc">Игра сохраняется автоматически.</div>
+  <div class="set-row"><span>⏩ Скорость игры:</span><span><button class="mini speed-btn" data-s="1">×1</button> <button class="mini speed-btn" data-s="2">×2</button> <button class="mini speed-btn" data-s="4">×4</button></span></div>
   <div class="set-row"><span>🔊 Звуковые эффекты:</span><button class="mini" id="sfxToggle">ВКЛ</button></div>
-  <div class="set-row"><span>🎵 Тёмный эмбиент:</span><button class="mini" id="musicToggle">ВКЛ</button></div>
+  <div class="set-row"><span>🎵 Музыка:</span><button class="mini" id="musicToggle">ВКЛ</button></div>
   <div class="set-row"><span>✨ Визуальные эффекты:</span><button class="mini" id="fxToggle">ВКЛ</button></div>
 <div class="btn-row"><button class="btn btn-take" id="resetBtn" style="background:#4a1010">СБРОС</button><button class="btn btn-take" id="settingsClose">ЗАКРЫТЬ</button></div></div></div>
 
@@ -178,12 +178,12 @@
 
 <script src="js/utils.js?v=1.8.0"></script>
 <script src="js/sound.js?v=1.8.1"></script>
-<script src="js/data/factions.js?v=1.13.0"></script>
+<script src="js/data/factions.js?v=1.13.1"></script>
 <script src="js/data/cards.js?v=1.12.2"></script>
 <script src="js/data/buildings.js?v=1.8.0"></script>
 <script src="js/data/relics.js?v=1.12.0"></script>
 <script src="js/data/synergies.js?v=1.13.0"></script>
-<script src="js/data/upgrades.js?v=1.13.0"></script>
+<script src="js/data/upgrades.js?v=1.13.1"></script>
 <script src="js/data/epochs.js?v=1.13.0"></script>
 <script src="js/data/contracts.js?v=1.8.1"></script>
 <script src="js/data/contracts_undead.js?v=1.8.1"></script>
@@ -203,9 +203,9 @@
 <script src="js/logic/events.js?v=1.8.1"></script>
 <script src="js/logic/milestones.js?v=1.8.0"></script>
 <script src="js/logic/contracts.js?v=1.8.0"></script>
-  <script src="js/logic/leaderboard.js?v=1.8.0"></script>
+  <script src="js/logic/leaderboard.js?v=1.13.1"></script>
   <script src="js/logic/wall.js?v=1.8.0"></script>
-<script src="js/logic/guide.js?v=1.13.0"></script>
+<script src="js/logic/guide.js?v=1.13.1"></script>
 <script src="js/render/hud.js?v=1.13.0"></script>
 <script src="js/render/fx.js?v=1.8.0"></script>
 <script src="js/render/grid_render.js?v=1.12.0"></script>
@@ -216,6 +216,6 @@
 <script src="js/render/epoch_render.js?v=1.13.0"></script>
 <script src="js/render/upgrades_render.js?v=1.13.0"></script>
 <script src="js/render/grimuar_render.js?v=1.12.2"></script>
-<script src="js/main.js?v=1.13.0"></script>
+<script src="js/main.js?v=1.13.1"></script>
 </body>
 </html>
