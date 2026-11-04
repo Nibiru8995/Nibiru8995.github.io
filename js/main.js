@@ -78,7 +78,7 @@ const TUT = [
 
   /* --- АКТ 1: ГРИМУАР (колода: создать, наполнить, стак, крутка) --- */
   { t: 'Войско из молитвы не родится. Открой Гримуар — там я нанимаю и крещу души.', hl: '#menuGrim', ok: () => tutOpen('grimModal') },
-  { t: 'Заведи свою колоду. Жми «Создать» — впишу тебя в списки.', hl: '.grim-newdeck', pre: () => { tutB.decks = decks.length; const cd = deckById(grimSelDeckId); tutDeckId = (cd && cd.race === 'undead') ? cd.id : (((activeDeckFor('undead') || decks[0]) || {}).id || null); }, ok: () => decks.length > tutB.decks },
+  { t: 'Заведи свою колоду. Жми «Создать» — впишу тебя в списки.', hl: '.grim-newdeck', aux: '#grimNewDeckModal', pre: () => { tutB.decks = decks.length; const cd = deckById(grimSelDeckId); tutDeckId = (cd && cd.race === 'undead') ? cd.id : (((activeDeckFor('undead') || decks[0]) || {}).id || null); }, ok: () => decks.length > tutB.decks },
   { t: 'Кликни карту — и впишем её в колоду. Пустой список — пустая паства.', pre: () => { const d = tutActiveDeck(); tutB.t = d ? deckTotal(d) : 0; }, hl: '#grimCards', ok: () => { const d = tutActiveDeck(); return !!(d && deckTotal(d) > tutB.t); } },
   { t: 'Стрелка ▲ множит копии. В походе такая карта встанет стопкой, как покойники в телеге.', pre: () => { if (collectionFree('u0') - (deckUsedCount(tutActiveDeck() || { cards: [] }, 'u0') || 0) < 1) collectionAdd('u0', 2); const d = tutActiveDeck(); if (d && !deckUsedCount(d, 'u0')) addToDeck(d, 'u0'); tutB.st = tutStackCount(); renderGrimuar(); }, hl: '.deck-up', ok: () => tutStackCount() > tutB.st },
   { t: 'Отдай Душу за «1 призыв» — и получишь то, что мне задолжали. Душа — монета честная: за неё и паства.', pre: () => { souls += 12; tutB.rolls = stats.rolls || 0; renderGrimuar(); }, hl: '#grimGacha .gg-roll[data-race="undead"][data-n="1"]', ok: () => (stats.rolls || 0) > tutB.rolls },
@@ -116,12 +116,28 @@ function tutTarget() {
   if (el && el.matches('.modal')) el = el.querySelector('.modal-card') || el;
   return el;
 }
+/* v1.12.3: «вспомогательное окно» шага — модалка, которую шаг ОЖИДАЕТ
+   (например, окно создания колоды на шаге «Заведи свою колоду»).
+   Она открывается кликом по цели и обязана жить, пока игрок её заполняет:
+   tutEnsure не смеет её закрывать, tutLock — блокировать её кнопки. */
+function tutAux() {
+  const st = TUT[tutI];
+  if (!st || !st.aux) return null;
+  const sel = typeof st.aux === 'function' ? st.aux() : st.aux;
+  return sel ? document.querySelector(sel) : null;
+}
 function tutEnsure(t) {
   if (!t) return; /* без цели (обзорные шаги) окна не трогаем */
-  qsa('.modal.show').forEach(m => { if (!(t && m.contains(t))) m.classList.remove('show'); });
+  const aux = tutAux();
+  qsa('.modal.show').forEach(m => {
+    if (t && m.contains(t)) return;
+    if (aux && (aux === m || m.contains(aux))) return; /* v1.12.3: окно шага не закрываем */
+    m.classList.remove('show');
+  });
   if (t && !t.closest('.modal.show')) { const m = t.closest('.modal'); if (m) m.classList.add('show'); }
 }
 function tutLock(t) {
+  const aux = tutAux(); /* v1.12.3: содержимое вспомогательного окна шага — свободно */
   document.querySelectorAll('[data-tutdis]').forEach(e => {
     e.disabled = e.getAttribute('data-tutwas') === '1';
     e.removeAttribute('data-tutdis'); e.removeAttribute('data-tutwas');
@@ -130,6 +146,7 @@ function tutLock(t) {
   document.querySelectorAll('button, input, select, .coll-card, .cell, .faction-card, .deckpick-row').forEach(el => {
     if (el.closest('#tutPanel')) return;
     if (t && (t === el || t.contains(el) || el.contains(t))) return;
+    if (aux && (aux === el || aux.contains(el))) return; /* v1.12.3: окно шага не блокируем */
     if (el.tagName === 'BUTTON' || el.tagName === 'INPUT' || el.tagName === 'SELECT') {
       if (!el.hasAttribute('data-tutdis')) { if (el.disabled) el.setAttribute('data-tutwas', '1'); el.setAttribute('data-tutdis', '1'); }
       el.disabled = true;
