@@ -64,6 +64,17 @@ body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-i
 .rsr-img { width: 58%; height: 58%; object-fit: contain; image-rendering: pixelated; }
 .rsr-note { display: none; }
 
+/* ===== v1.12.2: SUBRACE COMPOSITION WIDGET (left column, above the deck). Flat HUD-style chip row: title + subrace counters (color = mechanic) + warning hints. ===== */
+#subraceBar { display: none; flex-wrap: wrap; align-items: center; gap: 4px;
+  width: fit-content; max-width: 100%; padding: 4px 8px;
+  background: #121214; border: 1px solid var(--border); border-radius: 2px; }
+#subraceBar .sb-title { font-family: 'Philosopher', 'Georgia', serif; font-size: 11px;
+  font-weight: bold; letter-spacing: 1px; color: var(--gold-hi); margin-right: 2px; }
+#subraceBar .sb-chip { font-size: 10.5px; line-height: 1.1; padding: 2px 6px;
+  border: 1px solid; border-radius: 10px; background: #0c0c0e; white-space: nowrap; }
+#subraceBar .sb-hint { font-size: 10.5px; line-height: 1.2; color: #e08a8a;
+  background: #17100f; border: 1px solid #4a2a26; border-radius: 10px; padding: 2px 6px; white-space: nowrap; }
+
 /* ===== ШКАЛА РИТУАЛА (Резец Тьмы: плоская, без шиммера и пульса) ===== */
 #ritualBar { display: flex; align-items: center; gap: 8px; align-self: stretch; padding: 4px 10px;
   background: #121214; border: 1px solid var(--border); border-radius: 2px; box-shadow: none; }

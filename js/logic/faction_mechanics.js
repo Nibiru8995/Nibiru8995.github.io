@@ -317,12 +317,26 @@ function lodgeGeometry() {
 — мутация участника (ritualMutation). */
 function maybeTheophany(meds) {
   if (THEO.id || !INC_CTX.ritualSrc) return;
-  const externals = ['c10', 'c11', 'c34', 'c35', 'c36', 'c37', 'c38', 'c39'].filter(id => (collection[id] || 0) > 0);
+  const EXT_IDS = ['c10', 'c11', 'c34', 'c35', 'c36', 'c37', 'c38', 'c39'];
+  const externals = EXT_IDS.filter(id => (collection[id] || 0) > 0);
   if (!externals.length) return;
-  let chance = 0.08 + 0.05 * Math.min(4, meds || 0) + 0.03 * chthonsOnBoard();
-  chance = Math.min(0.30, chance);
+  /* v1.12.2: Внешних разрешено держать в АКТИВНОЙ колоде культиста.
+     Каждое внешнее в колоде усиливает шанс нисхождения (+2%, до +12%) —
+     паства сама готовит «окно» для гостя извне */
+  let deckExtCount = 0;
+  const cultDeck = deckById(activeDeck['cultist']);
+  if (cultDeck) cultDeck.cards.forEach(e => { if (EXT_IDS.includes(e.id)) deckExtCount += (e.n || 1); });
+  let chance = 0.08 + 0.05 * Math.min(4, meds || 0) + 0.03 * chthonsOnBoard() + 0.02 * Math.min(6, deckExtCount);
+  chance = Math.min(0.42, chance);
   if (Math.random() >= chance) return;
-  const id = externals[Math.floor(Math.random() * externals.length)];
+  /* v1.12.2: взвешенный мешок — внешнее из колоды попадает в него дважды
+     (паства призывает ТЕХ, кого держит «на помине») */
+  const bag = [];
+  externals.forEach(id => {
+    bag.push(id);
+    if (cultDeck && cultDeck.cards.some(e => e.id === id)) bag.push(id);
+  });
+  const id = bag[Math.floor(Math.random() * bag.length)];
   THEO = { id, until: gameTime + 18, cell: INC_CTX.ritualSrc, heat: id === 'c38' ? 2 : 0 };
   stats.theos = (stats.theos || 0) + 1; /* для ачивки «Гость из-за Стены» */
   if (id === 'c39') THEO_DOUBT_FREEZE = gameTime + 78;
@@ -420,6 +434,14 @@ function computeRitualEngine() {
   /* Участники: культисты в цепи ритуала (здания — не участники) */
   let rawSum = 0;
   const rawCell = {};
+  const c18Cells = []; /* v1.12.2: клетки Дьячков — пост-правка по внешним кругам */
+  /* v1.12.2: предсчёт участников ритуала (для «Канона в 900 строк» Стихаря) */
+  let totalParticipants = 0;
+  INC_CTX.ritual.forEach(k => {
+    const [r0, c0] = k.split(',').map(Number);
+    const it0 = grid[r0] && grid[r0][c0];
+    if (it0 && !CARDS[it0.cardId].isBuilding && it0.cardId !== 'bl_altar') totalParticipants++;
+  });
   INC_CTX.ritual.forEach(k => {
     const [r, c] = k.split(',').map(Number);
     const it = grid[r][c]; if (!it) return;
@@ -444,10 +466,9 @@ function computeRitualEngine() {
     /* v1.10.0: личные правила новых Певчих и Одержимых */
     if (card.id === 'c14') raw += 0.05 * getNeighbors8(r, c).filter(n => CARDS[n.item.cardId].faction === 'cultist' && CARDS[n.item.cardId].cat === 'chanter').length;
     if (card.id === 'c15' && st >= 2) raw *= 1.2;
-    if (card.id === 'c17' && INC_CTX.ritualSrc) {
-      const sr17 = +INC_CTX.ritualSrc.split(',')[0], sc17 = +INC_CTX.ritualSrc.split(',')[1];
-      if (Math.max(Math.abs(r - sr17), Math.abs(c - sc17)) <= 3) raw *= 1.08;
-    }
+    /* v1.12.2: Канон Стихаря (c17) — паства кормит проповедь; Дьячков собираем на пост-правку */
+    if (card.id === 'c17') raw *= 1 + 0.02 * Math.min(10, totalParticipants);
+    if (card.id === 'c18') c18Cells.push(k);
     if (card.id === 'c19') raw *= 1 + 0.06 * radius2(r, c).filter(n => n.item && CARDS[n.item.cardId].isBuilding).length;
     if (card.id === 'c24' && G.axisSet[c] && !G.blocked[r + ',' + c]) raw *= 1.10;
     if (card.id === 'c25' && G.pairCells[r + ',' + c] && !G.blocked[r + ',' + c]) raw *= 1.12;
@@ -459,7 +480,13 @@ function computeRitualEngine() {
  КАРА «Многоликой Маски» (rcNoRetain): хранители не хранят ничего.
  v1.10.0: Шепчущая Плоть (c41, изъян) — соседи-Хор не хранят жар.*/
     const silenced41 = card.subrace === 'choir' && getNeighbors8(r, c).some(n => n.item.cardId === 'c41' && possessedFlawActive(n.r, n.c));
-    if (RITUAL_RETAIN[card.id] && !rel.rcNoRetain && !silenced41) E.retain += RITUAL_RETAIN[card.id] * (1 + 0.5 * (st - 1));
+    if (RITUAL_RETAIN[card.id] && !rel.rcNoRetain && !silenced41) {
+      E.retain += RITUAL_RETAIN[card.id] * (1 + 0.5 * (st - 1));
+      /* v1.12.2 Кадильный дым (c16): Хранители Жара в его дыму хранят ещё +3% */
+      if (card.id !== 'c16' && radius2(r, c).some(n => n.item && n.item.cardId === 'c16')) {
+        E.retain += 3 * (1 + 0.5 * (st - 1));
+      }
+    }
     /* Обелиск: заряд участника в его зоне ×1.25 (кап ×1.5); прикованный Обелиск — ×1.375 */
     const ob = B.obelisk[k] || 0;
     if (ob) raw *= Math.min(1.5, 1 + (B.obeliskM && B.obeliskM[k] ? 0.375 : 0.25) * ob);
@@ -520,6 +547,14 @@ function computeRitualEngine() {
     lodgeBits.push('углы +' + Math.round(G.cornerPay * lm * 100) + '%');
   }
   if (lodgeBits.length) bannerParts.push('Ложа: ' + lodgeBits.join(' · ') + (RITUAL_DOUBT > 0 ? ' · сомнение ×' + lm.toFixed(2) : ''));
+  /* v1.12.2 Правки Дьячка (c18): внешние круги подсчитаны — каждый даёт +2% к его вкладу */
+  if (E.outer && c18Cells.length) {
+    c18Cells.forEach(k => {
+      const d = rawCell[k] * 0.02 * E.outer;
+      rawCell[k] += d;
+      rawSum += d;
+    });
+  }
   /* ИТОГОВАЯ СКОРОСТЬ: корень из суммы вкладов — мягкое насыщение
 (каждый новый участник даёт меньше прежнего), потолок 15%/с.
 ЗАКОНЫ: «Вериги Пустоты» снимают насыщение (вклад линейный),
@@ -915,6 +950,7 @@ function computeGrounds() {
         if (inAura('b38', q.r, q.c)) return;                  // Сияние: не дичь вовсе
         if (laws[q.c] && laws[q.c].apex && q.c !== p.c) return; // Ошейник: чужим не видно
         let val = 1;
+        if (q.card.id === 'b0') val *= 2;                    // v1.12.2: Стайная мелочь — домашняя дичь Стаи (трофей ×2)
         if (HARD_PREY[q.card.id]) val *= 0.5;
         if (shelter[qk]) {
           const petr = inAura('b8', q.r, q.c);
@@ -989,8 +1025,9 @@ function computeGrounds() {
         if (covered('b43')) g += 0.04;                        // Тень Ивы
         if (covered('b35')) g += 0.10;                        // Пастырь Лось
         if (covered('b55')) g += 0.12;                        // Рогатая Мать
+        if (!g) g = 0.12;                                     // v1.12.2: Свободный выпас — вольный луг, стадо живёт и без Чащи
         let cap = R.GRAZE_CAP;
-        if (covered('b17') || covered('b37') || p.card.id === 'b55') cap = 9.99; // Колосс/Мамонт
+        if (covered('b17') || p.card.id === 'b55') cap = 9.99; // Колосс (кап снят) / Рогатая Мать
         if (covered('b5')) g = 0;                             // Токсичный надел: выпаса нет
         bonus += Math.min(cap, g);
         /* Споры Гриба и Вольер: выпас ×1.5 (если есть чем) */
@@ -1003,8 +1040,20 @@ function computeGrounds() {
         const predNear = beasts.some(x => x.pred && !x.frozen && dist(x, p) <= Math.max(p.rad, x.rad));
         bonus += predNear ? -0.12 : 0.12;
       }
-      if ((p.card.id === 'b2' || p.card.id === 'b28') &&
+      if ((p.card.id === 'b28') &&
           beasts.some(x => x.pred && !x.frozen && dist(x, p) <= p.rad)) bonus += 0.12; // держит удар
+      /* v1.12.2: Кабан роется у построек (+8% за здание в угодьях); Мамонт умножает стадо */
+      if (p.card.id === 'b2') {
+        let bldNear = 0;
+        for (let dr = -p.rad; dr <= p.rad; dr++) for (let dc = -p.rad; dc <= p.rad; dc++) {
+          const nr2 = p.r + dr, nc2 = p.c + dc;
+          if (nr2 < 0 || nr2 >= GRID_SIZE || nc2 < 0 || nc2 >= GRID_SIZE) continue;
+          const gi = grid[nr2][nc2];
+          if (gi && CARDS[gi.cardId].isBuilding) bldNear++;
+        }
+        bonus += Math.min(0.24, 0.08 * bldNear);
+      }
+      if (covered('b37')) m *= 1.25;                          // Эпоха: стадо в угодьях Мамонта — доход ×1.25
       if (p.card.id === 'b32') bonus += Math.min(0.24, 0.08 * beasts.filter(x => x.pred && !x.frozen && dist(x, p) <= 2).length);
       if (p.card.id === 'b36') bonus += Math.min(0.30, 0.10 * beasts.filter(x => x.pred && !x.frozen && dist(x, p) <= p.rad).length);
       if (p.card.id === 'b12') bonus += Math.min(0.20, 0.05 * beasts.filter(x => x.herb && x !== p && overlap(x, p)).length);
@@ -1071,6 +1120,8 @@ function computeGrounds() {
         if (p.card.id === 'b20') bonus += Math.min(0.40, 0.08 * n); // Оппортунист
         else bonus += Math.min(R.SCAV_CAP, R.SCAV_PCT * n * sm);
       }
+      /* v1.12.2: Падаль смеха Гиены — компания падальщиков в общих угодьях */
+      if (p.card.id === 'b19') bonus += Math.min(0.30, 0.05 * beasts.filter(x => x.scav && x !== p && overlap(x, p)).length);
       if (covered('b45')) bonus -= 0.10;                      // Колючки
       if (law && law.savagePain) m *= 0.5;                    // кара Рога
     }
@@ -1232,6 +1283,8 @@ function demonEmberTick() {
     if (doomHere && card.subrace === 'dark') accel *= 1.2;                        /* Погибель Света: Мраки ×1.2 */
     if (inForm && r2d.some(n => n.item.cardId === 'd44')) accel *= 1.2;           /* Знаменосец: строй рад.2 ×1.2 */
     if (inForm) accel *= 1.25;                                                    /* Строй: угли ×1.25 */
+    /* v1.12.2 Дым — кузнечный мех (d17): тлеющие (3+) в рад.2 копят угли ×1.2 */
+    if ((it.embers || 0) >= 3 && r2d.some(n => n.item.cardId === 'd17')) accel *= 1.2;
     /* КАРА «Пентакля Алчности» (chaosSlow): угли копятся ВДВОЕ МЕДЛЕННЕЕ.
        Дробный прирост копится в emberAcc — целые угли уходят на карту. */
     let fgain = gain * accel * (eng && eng.chaosSlow ? 0.5 : 1);
@@ -1312,10 +1365,12 @@ function demonEmberTick() {
         const zephyr = r2d.some(n => n.item.cardId === 'd20');
         const sigh = nb1.some(n => n.item.cardId === 'd30');
         if (glacier || zephyr || sigh || doomHere || faceCols[c]) {
-          it.mutBuff = Math.min(4, (it.mutBuff || 1) * 1.15);
+          /* v1.12.2: Вздох (d30) остужает сильнее всех — ×1.35 */
+          const chillVal = sigh ? 1.35 : 1.15;
+          it.mutBuff = Math.min(4, (it.mutBuff || 1) * chillVal);
           fxFloatFromCell(r, c, 'ТИХИЙ БАФФ ×' + it.mutBuff.toFixed(2), '#c0e0ff');
           const why = glacier ? '❄️ Ледник остудил взрыв' : zephyr ? '🌬️ Золовка остудила взрыв' :
-            sigh ? '💭 Вздох погасил взрыв' : doomHere ? '🌚 Сумрак погасил взрыв' : '😈 Личина удержала жар';
+            sigh ? '💭 Вздох превратил взрыв в прохладу' : doomHere ? '🌚 Сумрак погасил взрыв' : '😈 Личина удержала жар';
           toast(why + ' ' + card.name + ': ×' + it.mutBuff.toFixed(2), 'demon', 25);
         } else {
           /* Перегрев: угли сгорают в чистую мощь (под Кошмаром — ×2.5) */

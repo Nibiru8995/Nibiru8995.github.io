@@ -138,6 +138,14 @@ function onCellClick(r, c) {
   if (placingMode && pendingCard) {
     if (!playableMask[r][c] || (inventory[pendingCard] || 0) <= 0) return;
     const card = CARDS[pendingCard];
+    /* v1.12.2 ТЕОФАНИЯ: Внешние (noPlace) можно держать в колоде,
+       но НЕ ставить на грид — они нисходят сами (Хтони c10/c11 не
+       считаются: у них нет noPlace, они встают на место Алтаря) */
+    if (card.noPlace) {
+      toast('🌑 «' + card.name + '» нельзя поставить: Внешний нисходит САМ из-за Стены, когда паства готова');
+      cancelSelection();
+      return;
+    }
     /* v1.4.0 КАРА СТОЛБА: реликвия запрещает ставить эту карту в её столб */
     if (!cardAllowedInCol(pendingCard, c)) {
       const rel = banRelicAtCol(c);

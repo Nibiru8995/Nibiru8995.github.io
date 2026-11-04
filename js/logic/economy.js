@@ -375,7 +375,7 @@ function factionMult(r, c, card, item) {
     if (card.id === 'd4') m *= 1 + 0.12 * nb.filter(n => CARDS[n.item.cardId].subrace === 'dark' && isDemon(n)).length;      /* Соблазн */
     if (card.id === 'd7' && inForm) m *= 1.10;                                                                                /* В ногу */
     if (card.id === 'd16') m *= 1 + 0.12 * nb.filter(n => CARDS[n.item.cardId].subrace === 'ash' && isDemon(n)).length;       /* Искры */
-    if (card.id === 'd17') m *= 1 + 0.10 * radius2(r, c).filter(n => (n.item.embers || 0) >= 3 && isDemon(n)).length;         /* Дымовая завеса */
+    if (card.id === 'd17') m *= 1 + 0.05 * radius2(r, c).filter(n => (n.item.embers || 0) >= 3 && isDemon(n)).length;         /* v1.12.2 Дымовая завеса: главная сила — ускорение тления (×1.2 в faction_mechanics), аура ослаблена до 5% */
     if (card.id === 'd18') m *= 1 + 0.10 * nb.filter(n => (n.item.embers || 0) >= 3 && isDemon(n)).length;                    /* Чуйка */
     if (card.id === 'd20') m *= 1 + 0.08 * nb.filter(n => CARDS[n.item.cardId].subrace === 'ash' && isDemon(n)).length;       /* Зыбь */
     if (card.id === 'd24') m *= 1 + 0.10 * nb.filter(n => CARDS[n.item.cardId].subrace === 'ash' && isDemon(n)).length;       /* Держит жар */

@@ -46,11 +46,107 @@ function hudSet(key, el, prop, val) {
   else el.textContent = val;
 }
 
+/* v1.12.2: ВИДЖЕТ КОМПОЗИЦИИ ПОДРАС — живая шпаргалка левой колонки.
+   Счётчики подрас/ролей на поле (не-здания, стак = N живых) + предупреждающие
+   подсказки о «одиноких» механиках. Перерисовка — по сигнатуре (из heavy-блока). */
+const SUBRACE_BAR_INFO = {
+  beast: {
+    title: '🌿 Лес',
+    chips: [
+      { key: 'pred',  icon: '🩸', name: 'хищники',    color: '#e08a5a' },
+      { key: 'herb',  icon: '🦌', name: 'стадо',      color: '#8fc87f' },
+      { key: 'scav',  icon: '🪶', name: 'падальщики', color: '#b0a060' },
+      { key: 'flora', icon: '🌳', name: 'флора',      color: '#5ab05a' },
+    ],
+    hints: (c) => {
+      const h = [];
+      if (c.pred && !c.herb) h.push('⚠ хищники живут без дичи — трофея нет');
+      if (c.herb && !c.flora) h.push('⚠ стадо без флоры — вольный луг +12%');
+      if (c.scav && !c.pred) h.push('⚠ падальщикам нужен охотник (чужие акты)');
+      return h;
+    },
+  },
+  demon: {
+    title: '🔥 Легион',
+    chips: [
+      { key: 'ash',    icon: '🌋', name: 'Пепел',   color: '#ff9060' },
+      { key: 'dark',   icon: '🌑', name: 'Мрак',    color: '#b080ff' },
+      { key: 'legion', icon: '🛡️', name: 'Легион', color: '#e0c060' },
+    ],
+    hints: (c) => {
+      const h = [];
+      if (c.dark) h.push('💭 Мраку нужен чужой взрыв (Пир хаоса)');
+      if (c.legion && !(INC_CTX.legionForm && Object.keys(INC_CTX.legionForm).length)) h.push('⚠ Легион ждёт строя — 2+ рядом');
+      return h;
+    },
+  },
+  undead: {
+    title: '💀 Обоз',
+    chips: [
+      { key: 'skeleton', icon: '🦴', name: 'Кости',   color: '#d8d8d8' },
+      { key: 'ghost',    icon: '👻', name: 'Духи',    color: '#a0d0ff' },
+      { key: 'vampire',  icon: '🔴', name: 'Вампиры', color: '#ff6080' },
+    ],
+    hints: (c, e) => {
+      const h = [];
+      if (c.vampire && !e.thrall) h.push('⚠ вампирам нужны Скованные (корм живой крови)');
+      return h;
+    },
+  },
+  cultist: {
+    title: '🔯 Паства',
+    chips: [
+      { key: 'choir',  icon: '🎤', name: 'Хор',     color: '#e8c060' },
+      { key: 'lodge',  icon: '📐', name: 'Ложа',    color: '#80c0e0' },
+      { key: 'outer',  icon: '🌑', name: 'Внешние', color: '#d0a0ff' },
+    ],
+    hints: (c, e) => {
+      const h = [];
+      if (c.lodge && !e.medium) h.push('⚠ Ложе накапливает Сомнение — нужен Медиум');
+      const dk = (typeof deckById === 'function' && deckById(activeDeck['cultist'])) || null;
+      if (dk && dk.cards.some(x => CARDS[x.id] && CARDS[x.id].subrace === 'outer')) h.push('🌑 Внешние в колоде усиливают нисхождение');
+      return h;
+    },
+  },
+};
+let _subraceSig = '';
+function renderSubraceBar() {
+  const bar = $('subraceBar');
+  if (!bar) return;
+  const info = SUBRACE_BAR_INFO[faction];
+  if (!info) { if (bar.style.display !== 'none') bar.style.display = 'none'; _subraceSig = ''; return; }
+  const cnt = {};
+  let total = 0, thrallCnt = 0, mediumCnt = 0;
+  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
+    const it = grid[r] && grid[r][c]; if (!it) continue;
+    const card = CARDS[it.cardId];
+    if (card.isBuilding) continue;
+    total += (it.stacks || 1);
+    if (card.cat === 'thrall') thrallCnt += (it.stacks || 1);
+    if (card.cat === 'medium') mediumCnt += (it.stacks || 1);
+    /* звери группируются по РОЛИ (диета), остальные — по подрасе */
+    const key = card.faction === 'beast' ? (card.diet || 'other') : (card.subrace || 'other');
+    cnt[key] = (cnt[key] || 0) + (it.stacks || 1);
+  }
+  const hints = info.hints(cnt, { total, thrall: thrallCnt, medium: mediumCnt });
+  const sig = total + '|' + Object.keys(cnt).map(k => k + cnt[k]).join('.') + '|' + hints.join('§');
+  if (sig === _subraceSig && bar.style.display !== 'none') return;
+  _subraceSig = sig;
+  if (!total) { bar.style.display = 'none'; return; }
+  bar.style.display = '';
+  bar.innerHTML = '<span class="sb-title">' + info.title + '</span>' +
+    info.chips.map(ch => cnt[ch.key]
+      ? '<span class="sb-chip" style="border-color:' + ch.color + ';color:' + ch.color + '">' + ch.icon + ' ' + ch.name + ' ×' + cnt[ch.key] + '</span>' : '').join('') +
+    hints.map(h => '<span class="sb-hint">' + h + '</span>').join('');
+}
+
 function updateHUD(now) {
   const heavy = now === undefined || (now - hudHeavyLast) >= 200;
   if (heavy) {
     if (now !== undefined) hudHeavyLast = now;
     applyFeatureLocks();
+    /* v1.12.2: живой виджет композиции подрас (левая колонка) */
+    if (typeof renderSubraceBar === 'function') renderSubraceBar();
   }
   hudSet('cr', $('crystals'), 'text', fmt(crystals));
   /* v1.6.0: Души — мета-валюта Призыва и Улучшений */

@@ -183,7 +183,8 @@ function renderGrimCollection() {
       const card = CARDS[id];
       const owned = collection[id];
       const inDeck = deck && deck.race === grimRaceTab ? deckUsedCount(deck, id) : 0;
-      const canAdd = deck && deck.race === grimRaceTab && deckTotal(deck) < deckCap() && inDeck < owned && !CARDS[id].noPlace;
+      /* v1.12.2: Внешних (noPlace) РАЗРЕШЕНО класть в колоду — они нисходят сами */
+      const canAdd = deck && deck.race === grimRaceTab && deckTotal(deck) < deckCap() && inDeck < owned;
       return '<div class="coll-card star' + card.rarity + ' f-' + card.faction + (canAdd ? ' grim-addable' : ' grim-dim') + '" data-gid="' + id + '" style="--glow:' + rarityColor(card.rarity) + ';--cardBg:' + rarityBg(card.rarity) + (card.isBuilding ? ';border-style:double' : '') + '">' +
         cardArtHTML(card, 'coll-art', 'coll-glyph') +
         '<span class="faction-dot" style="background:' + FACTION_INFO[card.faction].color + '"></span>' +
@@ -198,7 +199,9 @@ function renderGrimCollection() {
       el.addEventListener('mouseleave', hideTooltip);
       el.addEventListener('click', () => {
         const d = deckById(grimSelDeckId);
-        if (CARDS[id].noPlace) { toast('«' + CARDS[id].name + '» не ставят в колоду — Внешний нисходит сам, достаточно владеть картой'); return; }
+        /* v1.12.2: Внешних (noPlace) можно класть в колоду — из колоды они
+           усиливают Теофанию (+шанс, взвешенный мешок); ставить их на грид
+           нельзя (grid.js), нисходят сами */
         if (!d) { toast('Сначала выберите или создайте колоду справа'); return; }
         if (d.race !== CARDS[id].faction) { toast('Эта колода расы «' + FACTION_INFO[d.race].name + '» — карты других рас в неё не входят'); return; }
         if (deckTotal(d) >= deckCap()) { toast('Лимит колоды: ' + deckCap() + ' карт-блоков (стак не тратит лимит)'); return; }
@@ -344,7 +347,8 @@ function renderGrimDeckView() {
         return '<div class="deck-row star' + card.rarity + '" data-rm="' + idx + '" style="--glow:' + rarityColor(card.rarity) + ';--cardBg:' + rarityBg(card.rarity) + '" title="' + card.name + ' — клик: убрать копию из колоды">' +
           cardArtHTML(card, 'deck-art', 'deck-glyph') +
           '<div class="deck-info"><span class="deck-name">' + card.name + ' <i>' + starsOf(card.rarity) + '</i></span>' +
-          '<span class="deck-sub">' + FACTION_INFO[card.faction].name + (n >= dsm ? ' · стак полон ×' + n : '') + '</span></div>' +
+          /* v1.12.2: у Внешних в колоде — пометка «нисходит сам» */
+          '<span class="deck-sub">' + FACTION_INFO[card.faction].name + (card.noPlace ? ' · не ставится — нисходит сам 🌑' : (n >= dsm ? ' · стак полон ×' + n : '')) + '</span></div>' +
           (n > 1 ? '<span class="deck-count">×' + n + '</span>' : '<span class="deck-count dim">×1</span>') +
           (canStack ? '<button class="deck-up" data-up="' + idx + '" title="Застакать ЭТУ копию: +1 из коллекции (×' + (n + 1) + ')">▲</button>' : '') +
           (canStack ? '<button class="deck-up deck-max" data-upmax="' + idx + '" title="Стак до максимума: ×' + n + ' → ×' + maxN + ' (кап ' + dsm + ', свободно ' + Math.max(0, freeLeft) + ')">⏫</button>' : '') +
