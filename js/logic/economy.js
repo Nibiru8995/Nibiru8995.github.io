@@ -879,7 +879,7 @@ function computeIncome() {
     total += val;
   }
   /* v1.3.1 ТЗ: надбавка за уникальные пары УБРАНА — только печати Эпохи */
-  total *= sealMult;
+  total *= sealMult * (FACTION_INCOME_MULT[faction] || 1);
   /* Временный буст всего дохода: ЖАТВА (Гора костей), вехи, Ускорение */
   total *= activeAltBuff().mult;
   incomeCache = { total, uniquePairs, perCell, pairUsage: usage, armyBest, armyCap, armyMultOf: INC_CTX.armyMult,

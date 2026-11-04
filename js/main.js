@@ -89,9 +89,9 @@ const TUT = [
   { t: 'Нажмите «Продолжить», чтобы начать забег с вашей колодой.', hl: '#menuContinue', ok: () => !tutOpen('menu') },
 
   /* --- АКТ 3: АЛТАРЬ (карта, здание, стак, звено) --- */
-  { t: 'Выберите карту в списке, затем нажмите на свободную клетку Алтаря.', pre: () => { tutStartRun(); renderCollection(); }, hl: () => placingMode ? '#grid' : collSel(Object.keys(inventory)[0]), ok: () => cardsOnGrid() > 0 },
+  { t: 'Выберите карту в списке, затем нажмите на свободную клетку Алтаря.', pre: () => { tutStartRun(); renderCollection(); }, hl: () => placingMode ? '#grid' : collSel(Object.keys(inventory).find(id => CARDS[id] && !CARDS[id].noPlace && !String(id).startsWith('bl_')) || Object.keys(inventory)[0]), ok: () => cardsOnGrid() > 0 },
   { t: 'Поставьте «Кладбище» к картам: это здание усиливает соседей.', pre: () => { if (!inventory.bl_grave) TUT_GIVE([['bl_grave', 1]]); }, hl: () => (placingMode && pendingCard === 'bl_grave') ? '#grid' : collSel('bl_grave'), ok: () => gridHas('bl_grave') },
-  { t: 'Поставьте Скелета. Копии из колоды встанут одной стопкой.', pre: () => { if (!inventory.u0) { inventory.u0 = 3; discovered.add('u0'); } deckStacks['u0'] = deckStacks['u0'] || [3]; renderCollection(); }, hl: () => (placingMode && pendingCard === 'u0') ? '#grid' : collSel('u0'), ok: () => { const it = grid.flat().find(x => x && x.cardId === 'u0'); return !!(it && it.stacks >= 2); } },
+  { t: 'Поставьте Скелета. Копии из колоды встанут одной стопкой.', pre: () => { inventory.u0 = Math.max(inventory.u0 || 0, 3); discovered.add('u0'); deckStacks['u0'] = [3]; renderCollection(); }, hl: () => (placingMode && pendingCard === 'u0') ? '#grid' : collSel('u0'), ok: () => grid.some(row => row.some(x => x && x.cardId === 'u0' && x.stacks >= 2)) },
   { t: 'Поставьте Рыцаря рядом со Скелетом: между ними появится нить. Это синергия.', pre: () => TUT_GIVE([['u4', 2]]), hl: () => (placingMode && pendingCard === 'u4') ? '#grid' : collSel('u4'), ok: () => pairLinkCount('u0', 'u4') > 0 },
 
   /* --- АКТ 4: ЭПОХИ (порог, дар, Вознесение) --- */
@@ -99,7 +99,7 @@ const TUT = [
   { t: 'Нажмите кнопку Эпохи, подтвердите и выберите колоду. За каждую новую Эпоху вы получаете Души.', pre: () => { tutB.epoch = epoch; }, hl: () => tutOpen('epochWarn') ? '#ewYes' : tutOpen('deckPickModal') ? '#deckPickModal' : '#epochUpBtn', ok: () => epoch > tutB.epoch },
   { t: 'Готово! Колода, Алтарь, новая Эпоха — вот и вся игра. Удачи!', n: 1, last: 1 }
 ];
-let tutI = -1, tutTimer = null;
+let tutI = -1, tutTimer = null, tutT0 = 0;
 /* --- Механика обучения v2.1 ---
    ЦЕЛЬ шага подсвечена; жать можно ТОЛЬКО её (чужие кнопки —
    disabled/.tut-lock). Окно, где лежит цель, авто-держится открытым,
@@ -181,7 +181,7 @@ function tutSync() {
   else tutLock(null);
 }
 function tutGo(i) {
-  tutI = i;
+  tutI = i; tutT0 = Date.now();
   const st = TUT[i];
   if (st.pre) st.pre();
   $('tutText').innerHTML = st.t;
@@ -204,7 +204,15 @@ function startTutorial() {
   $('tutExit').onclick = () => location.reload();
   window.addEventListener('resize', tutSync);
   tutGo(0);
-  tutTimer = setInterval(() => { const st = TUT[tutI]; if (st && st.ok && st.ok()) tutGo(tutI + 1); else tutSync(); }, 400);
+  tutTimer = setInterval(() => {
+    const st = TUT[tutI];
+    if (st && st.ok && st.ok()) { tutGo(tutI + 1); return; }
+    tutSync();
+    /* страховка от тупика: шаг не выполнен 20 секунд — даём пропустить */
+    if (st && !st.n && Date.now() - tutT0 > 20000 && tutI < TUT.length - 1) {
+      const nb = $('tutNext'); nb.style.display = ''; nb.textContent = 'Пропустить шаг';
+    }
+  }, 400);
 }
 
 /* ---------------- Новая игра ----------------
