@@ -235,8 +235,10 @@ function showCardTooltip(e, card, income, r, c) {
   if (card.faction === 'cultist' && !card.isBuilding) effects += cultistTooltipHTML(card, r, c);
   if (card.diet && DIET_INFO[card.diet]) effects += '<div class="gtt-line"><b style="color:' + DIET_INFO[card.diet].color + '">Роль в лесу: ' + DIET_INFO[card.diet].name + '.</b> ' + DIET_INFO[card.diet].desc + '</div>';
   /* --- Синергии (возможные звенья) — КАЖДАЯ С НОВОЙ СТРОКИ (v1.11.1) --- */
-  const ps = pairsForCard(card);
-  const syn = ps.length ? '<div class="gtt-line">' + ps.map(p => '<span class="tt-good">' + p.text + '</span>').join('<br>') + '</div>' : '';
+  const ps = pairsForCard(card).filter(p => !p.generic);
+  const ruleTxt = (card.faction === 'undead' && !card.isBuilding && typeof UNDEAD_SUB_RULE !== 'undefined' && UNDEAD_SUB_RULE[card.subrace]) ? '<span class="tt-good">' + UNDEAD_SUB_RULE[card.subrace] + '</span>' : '';
+  const synLines = (ruleTxt ? [ruleTxt] : []).concat(ps.map(p => '<span class="tt-good">' + p.text + '</span>'));
+  const syn = synLines.length ? '<div class="gtt-line">' + synLines.join('<br>') + '</div>' : '';
   /* --- Прирост клетки / вклад в ритуал --- */
   let incLine;
   if (FACTION_INFO[faction].mechanic === 'formation' && card.faction === 'cultist' && !card.isBuilding) {
@@ -304,7 +306,7 @@ function showCardTooltip(e, card, income, r, c) {
     '<div class="gtt-body">' +
     '<div class="gtt-name"><span>' + card.name + '</span>' + (card.isBuilding ? '' : '<i class="gtt-stars">' + starsOf(card.rarity) + '</i>') + '</div>' +
     (card.subrace && SUBRACE_INFO[card.subrace] ? '<div class="gtt-field"><span>подраса: ' + SUBRACE_INFO[card.subrace] + '</span></div>' : '') +
-    (card.cat && CAT_INFO[card.cat] ? '<div class="gtt-field"><span>тип: ' + CAT_INFO[card.cat].name + '</span></div>' : '') +
+    (card.cat && CAT_INFO[card.cat] && card.faction !== 'undead' ? '<div class="gtt-field"><span>тип: ' + CAT_INFO[card.cat].name + '</span></div>' : '') +
     incLine +
     /* v1.11.1: забавное описание — ПОД РИСУНКОМ (сразу после шапки), а не в самом низу */
     '<div class="gtt-flavor">«' + card.flavor + '»</div>' +

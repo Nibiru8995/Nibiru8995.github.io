@@ -495,7 +495,7 @@ function specialActive(card, item, r, c) {
     case 'u31': case 'u33': case 'u34': case 'u37': /* каналы: есть связанная Скованная */
       return { active: nb.some(n => !!findPair(card, CARDS[n.item.cardId]) && CARDS[n.item.cardId].cat === 'thrall') };
     case 'u32': /* Дуэль: связанная Скованная связана ТОЛЬКО с ней */
-      return { active: livePartners(r, c, card).some(p => p.card.cat === 'thrall' && liveLinkCount(p.r, p.c, p.card) === 1) };
+      return { active: livePartners(r, c, card).some(p => p.card.cat === 'thrall' && liveLinkCount(p.r, p.c, p.card) <= 2) };
     case 'u35': /* Обет: есть Скованные в ауре */
       return { active: r2.some(n => CARDS[n.item.cardId].cat === 'thrall') };
     case 'u36': return { active: (item.midnightUntil || 0) > gameTime };

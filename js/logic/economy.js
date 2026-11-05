@@ -260,7 +260,7 @@ function factionMult(r, c, card, item) {
     if (card.id === 'u0') pm *= 1 + 0.15 * radius2(r, c).filter(n => CARDS[n.item.cardId].rarity === 5).length;   /* Гарнизон */
     if (card.id === 'u1' && item.growBuff) pm *= 1 + item.growBuff;                                                /* Рост */
     if (card.id === 'u2') pm *= 1 + 0.15 * radius2(r, c).filter(n => n.item.hp < n.item.maxHp - 0.01).length;    /* Жажда */
-    if (card.id === 'u13') pm *= liveLinkCount(r, c, card) === 1 ? 1.2 : 1;                                       /* Рывок */
+    if (card.id === 'u13') pm *= liveLinkCount(r, c, card) <= 2 ? 1.2 : 1;                                       /* Рывок */
     if (card.id === 'u15') pm *= 1 + 0.10 * Math.min(8, emptyAround(r, c));                                       /* Блуждающий свет */
     if (card.id === 'u17') {                                                                                      /* Дремота */
       const friends = livePartners(r, c, card);
@@ -287,7 +287,7 @@ function factionMult(r, c, card, item) {
         else if (p.card.id === 'u20') m *= 1 + 0.12 * Math.min(8, emptyAround(r, c)); /* Фонарь: простор вокруг Скованной */
         else if (p.card.id === 'u21' && (p.item.bellUntil || 0) > gameTime) m *= 1.5; /* Звон (пульс 10с) */
         else if (p.card.id === 'u31') m *= 1.18;                                      /* Дань крови */
-        else if (p.card.id === 'u32' && liveLinks === 1) m *= 1.25;                   /* Дуэль: только её звено */
+        else if (p.card.id === 'u32' && liveLinks <= 2) m *= 1.25;                   /* Дуэль: только её звено */
         else if (p.card.id === 'u33') m *= 1 + 0.06 * radiusN(r, c, 3).filter(n => { const q = CARDS[n.item.cardId]; return q.subrace === 'vampire' && !q.isBuilding; }).length; /* Родословная */
         else if (p.card.id === 'u37') m *= 1.15;                                      /* Великий Договор */
       });
@@ -315,9 +315,10 @@ function factionMult(r, c, card, item) {
         radius2(r, c).some(n => n.item.cardId === 'u38')) m *= 1.10;
     /* Кладбище: +12% нежити в зоне; прикованное Кладбище — +18% */
     const ga = B.grave[r + ',' + c] || 0;
-    if (ga) m *= 1 + 0.12 * (B.graveM[r + ',' + c] ? 1.5 : 1) * Math.min(3, ga);
+    const skelB = card.subrace === 'skeleton' ? 1.5 : 1; /* v1.14.0: Скелеты — опора зданий */
+    if (ga) m *= 1 + 0.12 * skelB * (B.graveM[r + ',' + c] ? 1.5 : 1) * Math.min(3, ga);
     /* Гора костей: +3% за каждую нежить; прикованная — +4.5% */
-    if (B.mound > 0) m *= 1 + (B.moundChained ? 0.045 : 0.03) * INC_CTX.undeadCount;
+    if (B.mound > 0) m *= 1 + (B.moundChained ? 0.045 : 0.03) * skelB * INC_CTX.undeadCount;
     return m;
   }
   if (mech === 'formation') {
@@ -857,7 +858,7 @@ function computeIncome() {
     let flat = 0, mult = 1;
     (cellActs[r + ',' + c] || []).forEach(a => {
       const v = a.pair.value * a.amp; /* Знамение Владыки: звено цепи ×1.25 */
-      if (a.pair.kind === 'flat') flat += v * it.stacks * a.factor;
+      if (a.pair.kind === 'flat' || a.pair.kind === 'royal' || a.pair.kind === 'chain') flat += v * it.stacks * a.factor; /* v1.14.0: royal/chain — плоские, как и написано в тексте (раньше ×2.5 за каждое звено) */
       else mult *= 1 + (v - 1) * a.factor;
     });
     /* ЗАКОНЫ СТОЛБА v1.4.0: кары и Корона Тлена */
