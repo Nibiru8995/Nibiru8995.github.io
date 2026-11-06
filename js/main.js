@@ -54,7 +54,9 @@ function tutStartRun() {
   if (d && !d.cards.some(e => (e.n || 1) >= 2)) { collectionAdd('u0', 3); d.cards.push({ id: 'u0', n: 3 }); }
   epoch = 1; maxEpoch = Math.max(maxEpoch, epoch);
   gameStarted = true;
-  resetRunCommon('undead', d && d.race === 'undead' ? d : null);
+  /* noDeploy: учебное поле стартует ПУСТЫМ — дальнейшие шаги обучения
+     сами ставят карту, здание и стопку (иначе раскладка всё расставила бы). */
+  resetRunCommon('undead', d && d.race === 'undead' ? d : null, true);
   toast('Учебная Эпоха · колода «' + (d ? d.name : 'старт-кит') + '» выдана целиком');
 }
 /* Ссылка на карту в коллекции (для точечной подсветки) */

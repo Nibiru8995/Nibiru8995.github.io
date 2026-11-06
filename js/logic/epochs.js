@@ -47,6 +47,55 @@ function handOutDeck(deck) {
   return deck.name;
 }
 
+/* v1.15.0 «Старт с раскладкой»: забег начинается с РАЗЛОЖЕННЫМ полем —
+   все здания из колоды (здания НЕ входят в проценты) + десятая часть
+   пула карт (округление вниз). Заготовка под механику «тягать карты
+   из колоды»: колода — барабан, поле — разыгранная рука.
+   Раскладка спиралью от центра: соседи сразу получают звенья,
+   у центра — базовое здание фракции (featOwned 'ground').
+   Структурно повторяет ручную постановку (grid.js onCellClick):
+   стек-очереди deckStacks расходуются так же, застакованная запись
+   приходит готовым юнитом ×N; без sfx/тостов/статистики — это
+   «выкладка сцены», а не действие игрока. */
+function autoDeployStart() {
+  /* Пул раскладки — записи колоды (runDeck-снапшот), каждая запись = блок. */
+  const placeable = runDeck.filter(id => CARDS[id] && !CARDS[id].noPlace && (inventory[id] || 0) > 0);
+  /* Здания — вне процентов: ставим ВСЕ. Остальные карты — floor(10%). */
+  const list = placeable.filter(id => CARDS[id].rarity === 'B');
+  const units = placeable.filter(id => CARDS[id].rarity !== 'B');
+  list.push(...units.slice(0, Math.floor(units.length * 0.1)));
+  if (!list.length) return;
+  /* Свободные клетки по playableMask, спиралью от центра поля. */
+  const g0 = gridStart(), mid = Math.floor(playableSize / 2);
+  const cr = g0 + mid, cc = g0 + mid;
+  const cells = [];
+  for (let r = g0; r < g0 + playableSize; r++)
+    for (let c = g0; c < g0 + playableSize; c++)
+      if (playableMask[r][c] && !grid[r][c])
+        cells.push([Math.abs(r - cr) + Math.abs(c - cc), r, c]);
+  cells.sort((A, B) => A[0] - B[0] || A[1] - B[1] || A[2] - B[2]);
+  const place = (r, c, id) => {
+    const q = deckStacks[id];
+    const hp = cardHp(CARDS[id].rarity);
+    const stackN = Math.min((q && q.length ? q[0] : 1), inventory[id] || 1);
+    if (!inventory[id] || stackN < 1) return false;
+    grid[r][c] = { cardId: id, stacks: stackN, hp: hp * stackN, maxHp: hp * stackN,
+      predBuff: 0, mutBuff: 1, embers: 0, hunger: 1, graze: 0, floraBuff: 0, scavBuff: 0, boomUntil: 0, petrCount: 0 };
+    if (id === 'd3') grid[r][c].embers = 1;
+    inventory[id] -= stackN;
+    if (inventory[id] <= 0) delete inventory[id];
+    if (q && q.length) { q.shift(); if (!q.length || (q.length === 1 && q[0] <= 1)) delete deckStacks[id]; }
+    return true;
+  };
+  let li = 0;
+  for (const [, r, c] of cells) {
+    if (li >= list.length) break;
+    while (li < list.length && !place(r, c, list[li])) li++;
+    if (li < list.length) li++;
+    else break;
+  }
+}
+
 /* ---------------- Общий сброс забега (v1.4.3) ----------------
    Единая правда для Вознесения (doEpochUp) и Рестарта Эпохи (doEpochRestart).
    ВАЖНО: вызывать ПОСЛЕ epoch++/назначения эпохи и уже с НОВОЙ фракцией.
@@ -56,8 +105,10 @@ function handOutDeck(deck) {
    целиком (обязательный выбор колоды при выборе расы — v1.8.0).
    Нет колоды (чит-режим) — фолбэк на классический старт-кит.
    v1.8.0: записи {id, n} → очереди deckStacks; контракты
-   инициализируются ПОСЛЕ выдачи колоды (req сверяется с runDeck). */
-function resetRunCommon(newFaction, deck) {
+   инициализируются ПОСЛЕ выдачи колоды (req сверяется с runDeck).
+   v1.15.0: третий параметр noDeploy — BOOLEAN, выключает стартовую
+   авто-раскладку (обучение: шаг «поставьте карту» требует пустое поле). */
+function resetRunCommon(newFaction, deck, noDeploy) {
   const _runSecsAtEnd = runTime;
   faction = newFaction;
   applyFactionTheme(); /* новая фракция — новая тема (фон/палитра) */
@@ -116,6 +167,10 @@ function resetRunCommon(newFaction, deck) {
   /* v1.8.0: контракты ПОСЛЕ выдачи колоды — 4 случайных, выполнимых
      с той колодой, с которой начата Эпоха */
   contractsInit();
+
+  /* v1.15.0: стартовая авто-раскладка — ВСЕ здания из колоды +
+     floor(10%) пула карт, спиралью от центра. */
+  if (!noDeploy) autoDeployStart();
 
   computeIncome();
   saveMeta(); saveRun();
