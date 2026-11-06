@@ -15,6 +15,10 @@
            со Склепом И Некромантом звенья на ДЛИНЕ 2 от Лича не слабеют
            (зелено-золотые линии).
    ФАЗА 3: факторы затухания, активации, Хор разнообразия.
+   v1.16.0: связи нежити — ПО КАТЕГОРИЯМ (Скованный ⇄ Несущий волю ⇄
+   Некромант, генератор в synergies.js); Гора костей «улучшает»
+   Скелетов-Скованных/Несущих в радиусе 1 (INC_CTX.moundBoost —
+   эффективные стопки в perCell).
    v1.3.1: надбавка за уникальные пары убрана; «Плачущий Камень» (slowfade).
    Кары реликвий (nailPain/skullDeath/chorSorrow/urnGreed/heartDrain/
    bannerDiscipline) и бафф «Короны Тлена» (crownLord ×2) — здесь.
@@ -515,7 +519,7 @@ function computeIncome() {
   /* РЕЛИКВИИ 4.0: движок законов и кар по столбцам */
   rebuildRelicEngine();
   const skullUse = {};        // pairIndex -> сколько звеньев пары уже под Черепом Владыки
-  const cryptUse = {};        // pairIndex -> звенья под Склепом (кап 2, прикованный — 3)
+  const cryptUse = {};        // pairIndex -> звенья под Склепом (кап 2, прикованный — 4)
   /* Глобальные кары забега (скан до фазы звеньев): «Сердце Пустоты» высасывает силу, «Штандарт» требует строя */
   let heartDrainOn = false, bannerOn = false;
   if (epoch >= RELIC_SLOT_EPOCH) for (const k in relicSlots) {
@@ -530,6 +534,9 @@ function computeIncome() {
   const INC_B = INC_CTX.bld;
   const cryptZone = buildCryptZone();
   const cryptChainedZone = INC_CTX.cryptChainedZone || new Set();
+  /* v1.16.0 (5.3): «улучшение» Горы костей — Скелеты-Скованные/Несущие
+     в радиусе 1 отдают как стопка на 1 больше (⛓ прикованная Гора — на 2) */
+  INC_CTX.moundBoost = buildMoundBoost();
   /* v1.9.0: ауры Некромантов (Туман u23 / Кровавый обет u35) */
   INC_CTX.necro = buildNecroAuras();
   /* v1.11.0: СТРОЙ ЛЕГИОНА — множество клеток «в строю» (читают economy
@@ -855,10 +862,13 @@ function computeIncome() {
     const it = grid[r][c];
     if (!it) { continue; }
     const card = CARDS[it.cardId];
+    /* v1.16.0 (5.3): «улучшенная» Горой костей карта отдаёт как стопка
+       на 1 больше (⛓ прикованная Гора — на 2): и звенья, и базовый X */
+    const ef = it.stacks + ((INC_CTX.moundBoost || {})[r + ',' + c] || 0);
     let flat = 0, mult = 1;
     (cellActs[r + ',' + c] || []).forEach(a => {
       const v = a.pair.value * a.amp; /* Знамение Владыки: звено цепи ×1.25 */
-      if (a.pair.kind === 'flat' || a.pair.kind === 'royal' || a.pair.kind === 'chain') flat += v * it.stacks * a.factor; /* v1.14.0: royal/chain — плоские, как и написано в тексте (раньше ×2.5 за каждое звено) */
+      if (a.pair.kind === 'flat' || a.pair.kind === 'royal' || a.pair.kind === 'chain') flat += v * ef * a.factor; /* v1.14.0: royal/chain — плоские, как и написано в тексте (раньше ×2.5 за каждое звено) */
       else mult *= 1 + (v - 1) * a.factor;
     });
     /* ЗАКОНЫ СТОЛБА v1.4.0: кары и Корона Тлена */
@@ -874,7 +884,7 @@ function computeIncome() {
     }
     /* КАРА «Штандарта Легиона»: нежить вне крупнейшей армии −20% */
     if (bannerOn && mech === 'chain' && card.faction === 'undead' && !INC_CTX.armyBestSet.has(r + ',' + c)) colMult *= 0.8;
-    const val = (card.baseRate * it.stacks * mult + flat) * factionMult(r, c, card, it) * formation(r, c) *
+    const val = (card.baseRate * ef * mult + flat) * factionMult(r, c, card, it) * formation(r, c) *
       (INC_CTX.armyMult[r + ',' + c] || 1) * colMult;
     perCell[r + ',' + c] = val;
     total += val;

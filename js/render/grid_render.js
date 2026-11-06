@@ -43,7 +43,17 @@ function buildAuraMap() {
   const map = {};
   for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
     const it = grid[r][c]; if (!it) continue;
-    const R = auraRadiusOf(it.cardId); if (!R) continue;
+    let R = auraRadiusOf(it.cardId); if (!R) continue;
+    if (it.cardId === 'bl_crypt') {
+      /* v1.16.0: радиус Склепа ИНДИВИДУАЛЬНЫЙ — 1 + по Некроманту
+         за каждого ортососеда; ⛓ прикованный Склеп — радиус ×2 */
+      R = 1;
+      getNeighbors(r, c).forEach(n => {
+        const m = CARDS[n.item.cardId];
+        if (m && m.faction === 'undead' && m.cat === 'necro' && !m.isBuilding) R++;
+      });
+      if (getNeighbors(r, c).some(n => n.item.cardId === 'u11')) R *= 2;
+    }
     const color = FACTION_INFO[CARDS[it.cardId].faction].color;
     for (let dr = -R; dr <= R; dr++) for (let dc = -R; dc <= R; dc++) {
       if (Math.max(Math.abs(dr), Math.abs(dc)) > R) continue;
@@ -342,7 +352,7 @@ function renderGrid() {
     if (card.id === 'd31') badges += '<span class="cd-badge" data-cd="zav"></span>';
     if (card.id === 'd41') badges += '<span class="cd-badge" data-cd="trub"></span>';
     if (card.id === 'u1') badges += '<span class="cd-badge" data-cd="grow" data-r="' + r + '" data-c2="' + c + '"></span>';
-    if (card.id === 'bl_grave') badges += '<span class="cd-badge" data-cd="grave"></span>';
+    if (card.id === 'bl_grave') badges += '<span class="cd-badge" data-cd="grave" data-r="' + r + '" data-c2="' + c + '"></span>';
     if (card.id === 'bl_gates') badges += '<span class="cd-badge" data-cd="gates"></span>';
     /* ДЕМОНЫ: угли Хаоса (0..5) — оранжевые ромбы */
     if (emberN)
@@ -971,8 +981,12 @@ function updateCooldownBadges() {
         const pct = Math.round((it.growBuff || 0) * 100);
         txt = '🧟 +' + pct + '% · ' + Math.max(0, Math.ceil(GROW_STEP - (it.growT || 0))) + 'с';
       }
-    } else if (el.dataset.cd === 'grave' && typeof bldGraveTimer !== 'undefined') {
-      txt = '🪦 ' + Math.max(0, Math.ceil(12 - bldGraveTimer)) + 'с';
+    } else if (el.dataset.cd === 'grave') {
+      /* v1.16.0: у каждого Кладбища свой таймер (it.graveCD/graveNeed) */
+      const r = +el.dataset.r, c = +el.dataset.c2;
+      const it = grid[r] && grid[r][c];
+      if (it && it.cardId === 'bl_grave' && typeof it.graveCD !== 'undefined')
+        txt = '🪦 ' + Math.max(0, Math.ceil((it.graveNeed || 60) - (it.graveCD || 0))) + 'с';
     } else if (el.dataset.cd === 'gates' && typeof bldGatesTimer !== 'undefined') {
       txt = '🚪 ' + Math.max(0, Math.ceil(25 - bldGatesTimer)) + 'с';
     }

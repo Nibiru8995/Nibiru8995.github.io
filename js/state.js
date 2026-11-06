@@ -169,6 +169,13 @@ let deckStacks = {};
    выполнимым с той колодой, с которой игрок начал Эпоху. --- */
 let runDeck = [];
 
+/* --- v1.16.0: БАРАБАН КОЛОДЫ (deckQueue) ---
+   Очередь копий колоды (id по каждому экземпляру, копии каждого
+   блока — обратно к единице). Кладбища раз в минуту снимают ВЕРХНИЙ
+   экземпляр и выдают игроку ИХ КОПИЮ в инвентарь (см. tickBuildings).
+   Колода исчерпана → Кладбище превращается в Гору костей. --- */
+let deckQueue = [];
+
 /* --- Скорость игры (настройка, мета): ×1 / ×2 / ×4 --- */
 let speedMult = 1;
 
@@ -208,11 +215,12 @@ let busy = 0; // активный раунд казино (блокирует в
 let incomeCache = { total: 0, uniquePairs: 0, perCell: {}, pairUsage: {}, linkFactors: {}, linkRoyal: {}, linkLich: {}, lichZone: [] };
 
 /* ================== СОХРАНЕНИЕ ==================
-   v1.8.0: deckStacks — очереди стаков, runDeck — снапшот стартовой колоды. */
+   v1.8.0: deckStacks — очереди стаков, runDeck — снапшот стартовой колоды,
+   deckQueue — барабан колоды (v1.16.0, для выдач Кладбищ). */
 function buildRunSave() {
   return {
     t: Date.now(), crystals, epoch, faction, grid,
-    playableSize, inventory, deckStacks, runDeck, fighters, fighterHpState,
+    playableSize, inventory, deckStacks, runDeck, deckQueue, fighters, fighterHpState,
     arena: { floor: arenaState.floor, room: arenaState.room, cleared: arenaState.cleared, fallen: arenaState.fallen },
     arenaStreak,
     runRolls, runEarned, runTime,
@@ -249,6 +257,9 @@ function loadRun() {
     inventory = d.inventory ?? {};
     /* v1.8.0: снапшот стартовой колоды для req-требований контрактов */
     runDeck = Array.isArray(d.runDeck) ? d.runDeck.filter(id => CARDS[id]) : [];
+    /* v1.16.0: барабан колоды; старые сейвы — миграция из runDeck (все копии ×1) */
+    deckQueue = Array.isArray(d.deckQueue) ? d.deckQueue.filter(id => CARDS[id]) : [];
+    if (!deckQueue.length && runDeck.length) deckQueue = runDeck.slice();
     /* v1.8.0: deckStacks — ОЧЕРЕДИ стаков {id: [n≥2, …]}, сортировка по убыванию */
     deckStacks = {};
     if (d.deckStacks && typeof d.deckStacks === 'object') for (const k in d.deckStacks) {

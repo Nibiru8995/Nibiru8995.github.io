@@ -30,20 +30,24 @@ function epochResetSummary() {
    Отдельные записи ×1 приходят одиночками — игрок сам решает в
    Гримуаре, что застакать (фиолетовая стрелка ▲ — та запись, на
    которую кликнули), а что оставить развёрнутым.
-   Снапшот runDeck — для req-требований контрактов. */
+   Снапшот runDeck — для req-требований контрактов; v1.16.0: deckQueue —
+   барабан колоды (копия на каждый экземпляр) для выдач Кладбищ. */
 function handOutDeck(deck) {
   deckStacks = {};
   runDeck = [];
+  deckQueue = [];
   if (!deck || !deck.cards.length) return '';
-  const q = {};
+  const q = {}, bar = [];
   deck.cards.forEach(en => {
     const id = en.id, n = en.n || 1;
     inventory[id] = (inventory[id] || 0) + n;
     runDeck.push(id);
     if (n >= 2) (q[id] = q[id] || []).push(n);
+    for (let i = 0; i < n; i++) bar.push(id);
     discovered.add(id);
   });
   Object.keys(q).forEach(id => { q[id].sort((a, b) => b - a); deckStacks[id] = q[id]; });
+  deckQueue = bar.reverse(); /* барабан: выдаём с «верха колоды» */
   return deck.name;
 }
 
@@ -156,7 +160,7 @@ function resetRunCommon(newFaction, deck, noDeploy) {
   if (src && src.cards.length) {
     deckTitle = handOutDeck(src);
   } else {
-    deckStacks = {}; runDeck = [];
+    deckStacks = {}; runDeck = []; deckQueue = [];
     const startR1 = POOL_3.filter(id => CARDS[id].faction === faction);
     const gift = drawDistinct(startR1, 2).concat(startKitFor(faction));
     gift.forEach(id => { inventory[id] = (inventory[id] || 0) + 1; discovered.add(id); runDeck.push(id); });

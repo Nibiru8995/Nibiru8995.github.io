@@ -16,19 +16,22 @@ const BUILDING_AURA = {
   bl_pit: 2, bl_gates: 2, bl_glacier: 2
 };
 
-/* Периодические эффекты (секунды): Кладбище/Врата — призыв, Гора — Жатва */
-const BLD_TIMER = { bl_grave: 12, bl_gates: 25, bl_mound: 30 };
+/* Периодические эффекты (секунды): Кладбище — выдача из барабана колоды
+   (v1.16.0, раз в минуту; за каждую связь со Скованным −10с до минимума 10),
+   Врата — призыв, Гора — ЖАТВА */
+const BLD_TIMER = { bl_grave: 60, bl_gates: 25, bl_mound: 30 };
 
-/* Списки бесплатного призыва (базовые карты фракции) */
+/* Списки бесплатного призыва (базовые карты фракции).
+   v1.16.0: Кладбище больше НЕ призывает — выдаёт карты из барабана колоды
+   (deckQueue), поэтому его пула больше нет. */
 const BLD_SUMMON_POOL = {
-  bl_grave: ['u0', 'u1', 'u2', 'u3'],
   bl_gates: ['d0', 'd1', 'd2', 'd3']
 };
 
 /* Радиусы туманных зон — ТОЛЬКО у зданий : у здания зона
-настоящая механика с радиусом (Кладбище призывает, Склеп защищает
-звенья, Обелиск ускоряет, Вольер щитит), подсветка показывает клетки
-под эффектом. У карт-юнитов аур НЕТ вообще — ни у Лича, ни у демонов,
+настоящая механика с радиусом (Кладбище выдаёт карты из колоды и усиливает,
+Склеп защищает звенья, Обелиск ускоряет, Вольер щитит), подсветка показывает
+клетки под эффектом. У карт-юнитов аур НЕТ вообще — ни у Лича, ни у демонов,
 зверей и Хтони.
  Подсказки юнитов живут в тултипах ✦, а не в тумане на клетках.*/
 function auraRadiusOf(cardId) {
@@ -81,15 +84,24 @@ function buildBuildingAuras() {
   return bld;
 }
 
-/* Зона Склепа (звенья нежити в радиусе 2 от каждого Склепа не слабеют) +
- зона ПРИКОВАННОГО Склепа (защищает до 4 звеньев пары — мощность ×2)*/
+/* Зона Склепа (звенья нежити в радиусе НЕ СЛАБЕЮТ) +
+ зона ПРИКОВАННОГО Склепа (радиус ×2 — защищает до 4 звеньев пары — мощность ×2).
+ v1.16.0: базовый радиус 1, за каждого ПРИВЯЗАННОГО Некроманта
+ (ортососед-Некромант — Склеп связывается с Некромантами) +1. */
 function buildCryptZone() {
   const zone = new Set();
   const chained = new Set();
   for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
     const it = grid[r][c]; if (!it || it.cardId !== 'bl_crypt') continue;
     const isChained = getNeighbors(r, c).some(n => n.item.cardId === 'u11');
-    for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) {
+    const near = getNeighbors(r, c);
+    let R = 1;
+    near.forEach(n => {
+      const nc = CARDS[n.item.cardId];
+      if (nc && nc.faction === 'undead' && nc.cat === 'necro' && !nc.isBuilding) R++;
+    });
+    if (isChained) R *= 2;
+    for (let dr = -R; dr <= R; dr++) for (let dc = -R; dc <= R; dc++) {
       const nr = r + dr, nc = c + dc;
       if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE) {
         zone.add(nr + ',' + nc);
@@ -101,11 +113,37 @@ function buildCryptZone() {
   return zone;
 }
 
-/* Тик периодических зданий: призыв и Жатва.
-⛓ ПРИКОВАННЫЕ ЗДАНИЯ (Прикованный Страж рядом): абилка больше НЕ
-дублируется — КУЛДАУН между срабатываниями ВДВОЕ КОРОЧЕ:
- Кладбище 12с → 6с, Врата Ада 25с → 12.5с, ЖАТВА Горы 30с → 15с.*/
-let bldGraveTimer = 0, bldGatesTimer = 0, bldMoundTimer = 0;
+/* v1.16.0 (5.3) «УЛУЧШЕНИЕ ГОРЫ КОСТЕЙ»: Скелеты-Скованные и Несущие волю,
+   стоящие в радиусе 1 от Горы, считаются УЛУЧШЕННЫМИ на один X — отдача
+   как у юнита на стопку больше (Скелет ×7 даёт как ×8). Доход считается
+   в economy.js (INC_CTX.moundBoost). ⛓ Прикованная Гора (4.2) —
+   «улучшает связанных ЕЩЁ на один X» (итого +2). */
+function buildMoundBoost() {
+  const map = {};
+  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
+    const it = grid[r][c]; if (!it || it.cardId !== 'bl_mound') continue;
+    const chained = getNeighbors(r, c).some(n => n.item.cardId === 'u11');
+    const boost = chained ? 2 : 1;
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+      if (!dr && !dc) continue;
+      const nr = r + dr, nc = c + dc;
+      if (nr < 0 || nr >= GRID_SIZE || nc < 0 || nc >= GRID_SIZE) continue;
+      const cit = grid[nr][nc]; if (!cit) continue;
+      const meta = UNDEAD_META[cit.cardId]; if (!meta) continue;
+      if ((meta.cat === 'thrall' || meta.cat === 'bearer') && meta.subrace === 'skeleton') {
+        const k = nr + ',' + nc;
+        if (!(map[k] > boost)) map[k] = boost;
+      }
+    }
+  }
+  return map;
+}
+
+/* Тик периодических зданий: выдача из колоды (Кладбище), призыв (Врата), ЖАТВА (Гора).
+⛓ ПРИКОВАННЫЕ ЗДАНИЯ (Прикованный Страж рядом):
+ Кладбище выдаёт за раз ДВЕ карты (вместо одной),
+ Врата Ада 25с → 12.5с, ЖАТВА Горы 30с → 15с (кд вдвое короче).*/
+let bldGatesTimer = 0, bldMoundTimer = 0; /* v1.16.0: таймер Кладбищ — ПО-ИНДИВИДУАЛЬНО (grid-item), не глобальный */
 /* в момент срабатывания способности здание
 получает fxUntil — renderGrid даст карте класс fx-live (вспышка-каст),
  а buildAuraMap оживит туман её ауры. Пока здание молчит — всё стоит тихо.*/
@@ -129,17 +167,54 @@ function tickBuildings(dt) {
       });
     }
   }
-  /* Кладбище: бесплатная нежить каждые 12с (⛓ прикованное — каждые 6с) */
-  if (hasCard('bl_grave')) {
-    bldGraveTimer += dt;
-    const graveChained = chainedIds.has('bl_grave');
-    if (bldGraveTimer >= BLD_TIMER.bl_grave * (graveChained ? 0.5 : 1)) {
-      bldGraveTimer = 0;
-      const id = pick(BLD_SUMMON_POOL.bl_grave);
+  /* -- Кладбище (v1.16.0, 5.1) --
+     Способность: раз в минуту выдаёт ИГРОКУ карту из барабана колоды
+     (deckQueue из state.js: по копии за раз).
+     • За каждую связь со Скелетом-Скованным (звено) КД −10с (мин 10с).
+     • ⛓ Прикованное Стражем: срабатывает ДВАЖДЫ за раз (две карты).
+     • НЕ синхронно: у каждого Кладбища свой таймер прямо на клетке
+       (it.graveCD), стартовый сдвиг — по координатам клетки.
+     • Барабан исчерпан → Кладбище превращается в Гору костей,
+       ВНЕ зависимости от содержимого колоды. */
+  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
+    const it = grid[r][c];
+    if (!it || it.cardId !== 'bl_grave') continue;
+    if (it.graveCD === undefined) it.graveCD = (r * GRID_SIZE + c) % BLD_TIMER.bl_grave; /* десинхронизация кладбищ */
+    it.graveCD += dt;
+    /* звено со Скованным: каждый орто-сосед-Скелет-Скованный — минус 10с */
+    const links = getNeighbors(r, c).filter(n => {
+      const m = CARDS[n.item.cardId];
+      return !!(m && m.faction === 'undead' && !m.isBuilding && UNDEAD_META[n.item.cardId] &&
+        UNDEAD_META[n.item.cardId].cat === 'thrall' && UNDEAD_META[n.item.cardId].subrace === 'skeleton');
+    }).length;
+    const graveNeed = Math.max(10, BLD_TIMER.bl_grave - 10 * links);
+    it.graveNeed = graveNeed; /* для бейджа перезарядки */
+    if (it.graveCD < graveNeed) continue;
+    it.graveCD = 0;
+    const chainedHere = getNeighbors(r, c).some(n => n.item.cardId === 'u11');
+    const take = chainedHere ? 2 : 1;
+    let given = 0;
+    while (given < take && deckQueue.length) {
+      const id = deckQueue.pop();
+      if (!CARDS[id]) continue;
       inventory[id] = (inventory[id] || 0) + 1; discovered.add(id);
-      stats.summons = (stats.summons || 0) + 1; /* для контрактов */
-      fxMarkBuildings('bl_grave', 3); /* кладбищенский туман оживает на 3с */
-      toast('🪦 Кладбище подняло: <b>' + CARDS[id].name + '</b> (в коллекции)' + (graveChained ? ' ⛓' : ''), 'summon', 45);
+      stats.summons = (stats.summons || 0) + 1; /* контракты «получите карты от зданий» */
+      given++;
+      changed = true;
+    }
+    it.fxUntil = gameTime + 3; /* кладбищенский туман оживает на 3с */
+    if (given) {
+      toast('🪦 Кладбище выдало из колоды: <b>' + given + ' карт(ы)</b>' + (chainedHere ? ' ⛓' : ''), 'summon', 45);
+      changed = true;
+    }
+    /* колода вычерпана → Гора костей (вне зависимости от колоды) */
+    if (!deckQueue.length) {
+      it.cardId = 'bl_mound';
+      const hp = cardHp(CARDS.bl_mound.rarity);
+      it.stacks = 1; it.hp = hp; it.maxHp = hp;
+      delete it.graveCD; delete it.graveNeed;
+      fxMarkBuildings('bl_mound', 5);
+      toast('🪦→🗿 Колода вычерпана: Кладбище стало <b>Горой костей</b>!', 'summon', 60);
       changed = true;
     }
   }
