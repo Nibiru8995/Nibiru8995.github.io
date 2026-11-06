@@ -98,13 +98,13 @@ const SUBRACE_BAR_INFO = {
     chips: [
       { key: 'choir',  icon: '🎤', name: 'Хор',     color: '#e8c060' },
       { key: 'lodge',  icon: '📐', name: 'Ложа',    color: '#80c0e0' },
-      { key: 'outer',  icon: '🌑', name: 'Внешние', color: '#d0a0ff' },
+      { key: 'outer',  icon: '🌑', name: 'Бездна',  color: '#d0a0ff' },
     ],
     hints: (c, e) => {
       const h = [];
-      if (c.lodge && !e.medium) h.push('⚠ Ложе накапливает Сомнение — нужен Медиум');
+      if (c.lodge) h.push('📐 Ложа платит больше в колонке Алтаря');
       const dk = (typeof deckById === 'function' && deckById(activeDeck['cultist'])) || null;
-      if (dk && dk.cards.some(x => CARDS[x.id] && CARDS[x.id].subrace === 'outer')) h.push('🌑 Внешние в колоде усиливают нисхождение');
+      if (c.outer) h.push('🌑 Каждая карта Бездны в круге повышает выплату');
       return h;
     },
   },
@@ -236,7 +236,8 @@ function showCardTooltip(e, card, income, r, c) {
   if (card.diet && DIET_INFO[card.diet]) effects += '<div class="gtt-line"><b style="color:' + DIET_INFO[card.diet].color + '">Роль в лесу: ' + DIET_INFO[card.diet].name + '.</b> ' + DIET_INFO[card.diet].desc + '</div>';
   /* --- Синергии (возможные звенья) — КАЖДАЯ С НОВОЙ СТРОКИ (v1.11.1) --- */
   const ps = pairsForCard(card).filter(p => !p.generic);
-  const ruleTxt = (card.faction === 'undead' && !card.isBuilding && typeof UNDEAD_SUB_RULE !== 'undefined' && UNDEAD_SUB_RULE[card.subrace]) ? '<span class="tt-good">' + UNDEAD_SUB_RULE[card.subrace] + '</span>' : '';
+  const subRules = card.faction === 'undead' ? (typeof UNDEAD_SUB_RULE !== 'undefined' ? UNDEAD_SUB_RULE : null) : (card.faction === 'cultist' ? (typeof CULTIST_SUB_RULE !== 'undefined' ? CULTIST_SUB_RULE : null) : null);
+  const ruleTxt = (subRules && !card.isBuilding && subRules[card.subrace]) ? '<span class="tt-good">' + subRules[card.subrace] + '</span>' : '';
   const synLines = (ruleTxt ? [ruleTxt] : []).concat(ps.map(p => '<span class="tt-good">' + p.text + '</span>'));
   const syn = synLines.length ? '<div class="gtt-line">' + synLines.join('<br>') + '</div>' : '';
   /* --- Прирост клетки / вклад в ритуал --- */
@@ -306,7 +307,7 @@ function showCardTooltip(e, card, income, r, c) {
     '<div class="gtt-body">' +
     '<div class="gtt-name"><span>' + card.name + '</span>' + (card.isBuilding ? '' : '<i class="gtt-stars">' + starsOf(card.rarity) + '</i>') + '</div>' +
     (card.subrace && SUBRACE_INFO[card.subrace] ? '<div class="gtt-field"><span>подраса: ' + SUBRACE_INFO[card.subrace] + '</span></div>' : '') +
-    (card.cat && CAT_INFO[card.cat] && card.faction !== 'undead' ? '<div class="gtt-field"><span>тип: ' + CAT_INFO[card.cat].name + '</span></div>' : '') +
+    (card.cat && CAT_INFO[card.cat] && card.faction !== 'undead' && card.faction !== 'cultist' ? '<div class="gtt-field"><span>тип: ' + CAT_INFO[card.cat].name + '</span></div>' : '') +
     incLine +
     /* v1.11.1: забавное описание — ПОД РИСУНКОМ (сразу после шапки), а не в самом низу */
     '<div class="gtt-flavor">«' + card.flavor + '»</div>' +
