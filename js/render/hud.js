@@ -236,7 +236,7 @@ function showCardTooltip(e, card, income, r, c) {
   if (card.diet && DIET_INFO[card.diet]) effects += '<div class="gtt-line"><b style="color:' + DIET_INFO[card.diet].color + '">Роль в лесу: ' + DIET_INFO[card.diet].name + '.</b> ' + DIET_INFO[card.diet].desc + '</div>';
   /* --- Синергии (возможные звенья) — КАЖДАЯ С НОВОЙ СТРОКИ (v1.11.1) --- */
   const ps = pairsForCard(card).filter(p => !p.generic);
-  const subRules = card.faction === 'undead' ? (typeof UNDEAD_SUB_RULE !== 'undefined' ? UNDEAD_SUB_RULE : null) : (card.faction === 'cultist' ? (typeof CULTIST_SUB_RULE !== 'undefined' ? CULTIST_SUB_RULE : null) : null);
+  const subRules = card.faction === 'undead' ? (typeof UNDEAD_SUB_RULE !== 'undefined' ? UNDEAD_SUB_RULE : null) : (card.faction === 'cultist' ? (typeof CULTIST_SUB_RULE !== 'undefined' ? CULTIST_SUB_RULE : null) : (card.faction === 'beast' ? (typeof BEAST_SUB_RULE !== 'undefined' ? BEAST_SUB_RULE : null) : null));
   const ruleTxt = (subRules && !card.isBuilding && subRules[card.subrace]) ? '<span class="tt-good">' + subRules[card.subrace] + '</span>' : '';
   const synLines = (ruleTxt ? [ruleTxt] : []).concat(ps.map(p => '<span class="tt-good">' + p.text + '</span>'));
   const syn = synLines.length ? '<div class="gtt-line">' + synLines.join('<br>') + '</div>' : '';
@@ -281,18 +281,6 @@ function showCardTooltip(e, card, income, r, c) {
         ctx += '<div class="gtt-h">Угли Хаоса</div><div class="gtt-line">' + st + '</div>';
       }
     }
-    /* v1.12.0: статус угодий зверя на поле */
-    if (card.faction === 'beast' && !card.isBuilding && FACTION_INFO[faction].mechanic === 'grounds') {
-      const bg = (typeof BEAST_GROUNDS !== 'undefined') ? BEAST_GROUNDS : null;
-      if (bg && bg.alpha && bg.alpha[r + ',' + c]) {
-        const a = bg.alpha[r + ',' + c];
-        ctx += '<div class="gtt-h">👑 Стая</div><div class="gtt-line">' +
-          (a.isAlpha
-            ? (a.dual ? '<span style="color:#ffd34d">СПОРНАЯ КОРОНА: двоевластие — трофеи ×1.125, стая +10%</span>'
-                      : '<span style="color:#ffd34d">АЛЬФА: трофеи ×1.25, вся стая +10%</span>')
-            : 'В стае из ' + a.size + ' хищников (альфа даёт +10%)') + '</div>';
-      }
-    }
     /* v1.4.0: ЗАКОН И КАРА столба (реликвия в этом столбце) */
     if (epoch >= RELIC_SLOT_EPOCH) {
       const rel = relicAtCol(c);
@@ -307,7 +295,7 @@ function showCardTooltip(e, card, income, r, c) {
     '<div class="gtt-body">' +
     '<div class="gtt-name"><span>' + card.name + '</span>' + (card.isBuilding ? '' : '<i class="gtt-stars">' + starsOf(card.rarity) + '</i>') + '</div>' +
     (card.subrace && SUBRACE_INFO[card.subrace] ? '<div class="gtt-field"><span>подраса: ' + SUBRACE_INFO[card.subrace] + '</span></div>' : '') +
-    (card.cat && CAT_INFO[card.cat] && card.faction !== 'undead' && card.faction !== 'cultist' ? '<div class="gtt-field"><span>тип: ' + CAT_INFO[card.cat].name + '</span></div>' : '') +
+    (card.cat && CAT_INFO[card.cat] && card.faction !== 'undead' && card.faction !== 'cultist' && card.faction !== 'beast' ? '<div class="gtt-field"><span>тип: ' + CAT_INFO[card.cat].name + '</span></div>' : '') +
     incLine +
     /* v1.11.1: забавное описание — ПОД РИСУНКОМ (сразу после шапки), а не в самом низу */
     '<div class="gtt-flavor">«' + card.flavor + '»</div>' +
@@ -391,6 +379,6 @@ function roleText(card) {
     burst: '💥 Взрывной — крупный доход в правильной связке',
     predator: '🦁 Хищник — берёт ТРОФЕЙ с дичи в своих угодьях, ходит в стае',
     flora: '🌳 Чаща — укрывает дичь, кормит стадо выпасом, собирает поросль',
-    scav: '🦅 Падальщик — жиреет с чужих актов охоты'
+    scav: '🦅 Падальщик — жиреет с чужой охоты'
   }[card.role] || '—';
 }

@@ -905,7 +905,7 @@ function updateGridStats() {
   }
   /* v1.12.0: сводка угодий зверей (до сигнатуры) */
   if (FACTION_INFO[faction].mechanic === 'grounds' && typeof BEAST_GROUNDS !== 'undefined' && BEAST_GROUNDS) {
-    extra += ' · Акты охоты: <b>' + BEAST_GROUNDS.acts + '</b>' +
+    extra += ' · Охот: <b>' + BEAST_GROUNDS.acts + '</b>' +
       (BEAST_GROUNDS.packs ? ' · стай: <b>' + BEAST_GROUNDS.packs + '</b> (крупнейшая <b>' + BEAST_GROUNDS.packBest + '</b>)' : '');
   }
   const sig = 'gs|' + countLinks() + '|' + currentDiversity() + '|' + inc.toFixed(2) + '|' + extra;

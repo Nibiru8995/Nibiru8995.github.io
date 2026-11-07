@@ -599,49 +599,33 @@ function trumpeterTick() {
   if (changed) { toast('📯 Трубач Пекла: строй раскалился — по угольку каждому', 'trump', 30); computeIncome(); renderGrid(); updateHUD(); }
 }
 
-/* ================= ЗВЕРИ: ДИКИЕ УГОДЬЯ (v1.12.0) =================
-Тиков больше нет: каждый зверь очерчивает УГОДЬЯ (чебышевский
-радиус 1, ★4/★5 и духи — 2), и вся связь карт живёт в пересечении
-зон. Полный пересчёт — computeGrounds() при каждом пересчёте дохода
-(economy.js), поле перестало дёргаться каждые 2.5с.
-Экономика зон (капы и ставки — GROUNDS_RULES):
-- ТРОФЕЙ: +12% за дичь в угодьях (кап +36%); твёрдая дичь ×0.5;
-  УКРЫТИЕ (флора/Вольер/нора) прячет дичь — трофей не берётся,
-  Хитрость (Лисица/Кот) и Клык Альфы берут вполсилы, Взгляд
-  Василиска и Царская охота Грифона пробивают укрытие целиком.
-- ВЫПАС: дичь +8% за флору в угодьях (кап +32%); ПОРОСЛЬ: флора
-  +8% за соседнюю зелень (кап +24%); кормление флоры +4%/дичь.
-- СТАЯ: хищники с пересекающимися угодьями — союзники (+4%,
-  кап +20%); АЛЬФА (старший) — корона: трофеи ×1.25, стая +10%;
-  двоевластие (две карты топ-ранга) — обе короны ×0.5.
-- ПАДАЛЬ: +10% за каждый чужой АКТ ОХОТЫ рядом (кап +40%).
-- Ауры Тотемов (b8/b38/b49/b51/b52) — на радиус, от угодий не зависят.
-- УХОД В ЧАЩУ: за накопленные акты охоты зрелый лес (стая ≥3,
-  стадо ≥3, чаща ≥2) иногда провожает старшего зверя в лес —
-  на его месте встаёт Дух Леса (b54–b59, вне гачи). */
+/* ================= ЗВЕРИ: «ЛЕС» (v1.18.0) =================
+ Каждый зверь очерчивает УГОДЬЯ (радиус 1; ★4/★5 — 2; Жадный прыжок — 3).
+ Всё держится на трёх простых связях и трёх родах:
+  • СТАЯ (хищники, падальщики): ТРОФЕЙ — +12% за каждую дичь в угодьях
+    (кап +36%); хищники с пересекающимися угодьями — союзники, +4% за каждого;
+    падальщики идут за охотой: +10% за каждого охотящегося хищника рядом;
+  • СТАДО (дичь): ВЫПАС — +8% за каждую зелень в угодьях (кап +32%);
+    без зелени — вольный луг, +12%;
+  • ЧАЩА (флора): РОСТ — +4% за каждую дичь в угодьях и +8% за соседнюю
+    зелень.
+ Убраны: укрытие дичи, твёрдая дичь, хитрецы, штрафы от шипов и колючек,
+ короны альф, случайный «Уход в Чащу». Реликвии закрыты, законов нет. */
 const GROUNDS_RULES = {
   TROPHY_PCT: 0.12, TROPHY_CAP: 0.36,
   GRAZE_PCT: 0.08, GRAZE_CAP: 0.32,
   FEED_PCT: 0.04, FEED_CAP: 0.40,
   POR_PCT: 0.08, POR_CAP: 0.24,
-  PACK_PCT: 0.04, PACK_CAP: 0.20, ALPHA_CROWN: 1.25, ALPHA_PACK: 0.10, DUAL_CROWN: 0.5,
+  PACK_PCT: 0.04, PACK_CAP: 0.20,
   SCAV_PCT: 0.10, SCAV_CAP: 0.40,
-  PEN_GRAZE: 1.5, POLE_TROPHY: 1.5, POLE_SCAV: 1.5, SPRING_POR: 2,
-  SPIRIT_EVERY: 25, SPIRIT_CHANCE: 0.10, SPIRIT_COOLDOWN: 480
+  PEN_GRAZE: 1.5, POLE_TROPHY: 1.5, POLE_SCAV: 1.5, SPRING_POR: 2
 };
-/* Твёрдая дичь: трофей с неё ×0.5 (Кабан, Буйвол, Колосс, Тур, Зубр,
-Носорог, Черепаха, Мамонт) */
-const HARD_PREY = { b2: 1, b13: 1, b17: 1, b28: 1, b29: 1, b32: 1, b36: 1, b37: 1 };
-/* Сами себе укрытие: Кролик (нора), Бобр (запруда), Черепаха (панцирь) */
-const SELF_SHELTER = { b25: 1, b31: 1, b36: 1 };
-/* Хитрецы: берут трофей и с укрытой дичи (×0.5) */
-const SNEAKY = { b6: 1, b21: 1 };
 /* Ауры Тотемов (радиусы) — от угодий не зависят */
 const AURA_TOTEM = { b8: 2, b38: 2, b49: 2, b51: 3, b52: 2 };
 
-/* Радиус угодий карты: ★4/★5 и духи — 2, рядовые — 1; Лютоволк — 3.
-Здания зон не имеют (их ауры — BUILDING_AURA). Законы/Солончик/Хозяин
-Троп добавляют +1 уже в computeGrounds. */
+/* Радиус угодий карты: ★4/★5 — 2, рядовые — 1; Жадный прыжок — 3.
+Здания зон не имеют (их ауры — BUILDING_AURA). Хозяин Троп и Солончик
+добавляют +1 уже в computeGrounds. */
 function groundRadius(card) {
   if (card.isBuilding || !card.diet) return 0;
   if (card.id === 'b4') return 3;
@@ -650,20 +634,10 @@ function groundRadius(card) {
 
 /* Результат последнего расчёта угодий (читают экономика, рендер, тултипы) */
 let BEAST_GROUNDS = { mults: {}, active: {}, acts: 0, packs: 0, packBest: 0, alpha: {}, packEdges: [], zones: [] };
-/* Уход в Чащу: накопленные акты до ролла + кулдаун (транзиентные) */
-let spiritProgress = 0, lastSpiritAt = -1e9;
 
 function computeGrounds() {
   const R = GROUNDS_RULES;
   const out = { mults: {}, active: {}, acts: 0, packs: 0, packBest: 0, alpha: {}, packEdges: [], zones: [] };
-  /* законы звериных реликвий по столбцам (id и kind прежние — семантика v1.12.0) */
-  const laws = {};
-  if (epoch >= RELIC_SLOT_EPOCH) for (const k in relicSlots) {
-    const rel = relicById(relicSlots[k]);
-    if (!rel || rel.faction !== 'beast') continue;
-    const eng = RELIC_KIND_ENGINE[rel.kind]; if (!eng) continue;
-    laws[+k] = eng;
-  }
   const B = INC_CTX.bld || { pen: {}, pole: {}, spring: {} };
 
   /* --- сбор зверей на поле --- */
@@ -673,22 +647,17 @@ function computeGrounds() {
     const card = CARDS[it.cardId];
     if (card.faction !== 'beast' || card.isBuilding) continue;
     beasts.push({ r, c, it, card, rad: groundRadius(card),
-      pred: card.diet === 'pred' && !card.spirit,
-      herb: card.diet === 'herb' && !card.spirit,
-      flora: card.diet === 'flora' && !card.spirit,
-      scav: card.diet === 'scav' && !card.spirit,
-      frozen: false, trophyN: 0 });
+      pred: card.diet === 'pred' && card.id !== 'b59',   /* Хозяин Троп сам не охотит */
+      herb: card.diet === 'herb',
+      flora: card.diet === 'flora',
+      scav: card.diet === 'scav' });
   }
-  /* b59 Хозяин Троп: угодья ВСЕХ зверей поля +1 радиус */
+  /* b59 Хозяин Троп: угодья ВСЕХ зверей поля +1 радиус; Солончик: флоре в его зоне +1 */
   if (beasts.some(x => x.card.id === 'b59')) beasts.forEach(x => { if (x.rad) x.rad++; });
-  /* Мшистый Тотем (закон range): столб угодий +1; Солончик: флоре в его зоне +1 */
-  beasts.forEach(x => {
-    if (!x.rad) return;
-    if (laws[x.c] && laws[x.c].range) x.rad++;
-    if (x.card.diet === 'flora' && (B.spring[x.r + ',' + x.c] || 0) > 0) x.rad++;
-  });
+  beasts.forEach(x => { if (x.rad && x.flora && (B.spring[x.r + ',' + x.c] || 0) > 0) x.rad++; });
   const dist = (a, b) => Math.max(Math.abs(a.r - b.r), Math.abs(a.c - b.c));
   const overlap = (a, b) => dist(a, b) <= Math.max(a.rad, b.rad);
+  const covered = (p, srcId) => beasts.some(x => x.card.id === srcId && x !== p && dist(x, p) <= x.rad);
   beasts.forEach(x => { if (x.rad) out.zones.push({ r: x.r, c: x.c, rad: x.rad }); });
 
   /* --- ауры Тотемов --- */
@@ -705,188 +674,93 @@ function computeGrounds() {
 
   const floraList = beasts.filter(x => x.flora);
   const herbList = beasts.filter(x => x.herb);
+  const preds = beasts.filter(x => x.pred);
 
-  /* --- УКРЫТИЕ дичи --- */
-  const shelter = {}, strongShelter = {}, antiSneak = {};
-  /* Круг обороны b33: травоядных в его угодьях 3+ — стадо укрыто */
-  const b33Zone = {};
-  beasts.forEach(x => {
-    if (x.card.id !== 'b33') return;
-    const inside = herbList.filter(h => dist(x, h) <= x.rad);
-    if (inside.length >= 3) inside.forEach(h => { b33Zone[h.r + ',' + h.c] = 1; });
-  });
-  /* Дурман b53: хищники в его угодьях не охотят */
-  beasts.forEach(p => {
-    if (!p.pred) return;
-    if (beasts.some(x => x.card.id === 'b53' && x !== p && dist(x, p) <= x.rad)) p.frozen = true;
-  });
-  herbList.forEach(h => {
-    const key = h.r + ',' + h.c;
-    let sh = false;
-    if (SELF_SHELTER[h.card.id]) sh = true;
-    else if (floraList.some(f => overlap(f, h))) sh = true;
-    else if ((B.pen[key] || 0) > 0) sh = true;
-    else if (inAura('b51', h.r, h.c)) sh = true;
-    else if (b33Zone[key]) sh = true;
-    else if (beasts.some(x => x.card.id === 'b55' && dist(x, h) <= x.rad)) sh = true;
-    else if (beasts.some(x => x.card.id === 'b31' && dist(x, h) <= x.rad)) sh = true; // Запруда Бобра
-    if (!sh) return;
-    shelter[key] = 1;
-    /* Вековой Дуб: укрытие крепкое — Хитрость и Клык не пробивают */
-    if (floraList.some(f => f.card.id === 'b47' && dist(f, h) <= f.rad)) strongShelter[key] = 1;
-  });
-  /* Плотный подлесок b39: дичь в его угодьях не отдаётся Хитрости и Клыку */
-  beasts.forEach(x => {
-    if (x.card.id !== 'b39') return;
-    herbList.forEach(h => { if (dist(x, h) <= x.rad) antiSneak[h.r + ',' + h.c] = 1; });
-  });
-
-  /* --- СТАЯ: граф по пересечению угодий (+ законы соседства) --- */
-  const preds = beasts.filter(x => x.pred && !x.frozen);
+  /* --- СТАЯ: хищники с пересекающимися угодьями (для линий и счёта) --- */
   const comp = preds.map((_, i) => i);
   const find = i => comp[i] === i ? i : (comp[i] = find(comp[i]));
-  const uni = (i, j) => { comp[find(i)] = find(j); };
   preds.forEach((a, i) => preds.forEach((b, j) => {
-    if (j <= i) return;
-    let linked = overlap(a, b);
-    const cheb = dist(a, b);
-    /* Ошейник: стая столба — уже по соседству */
-    if (!linked && cheb <= 1 && ((laws[a.c] && laws[a.c].apex) || (laws[b.c] && laws[b.c].apex))) linked = true;
-    /* Серый Предок: для хищников в его угодьях стая считается и по соседству */
-    if (!linked && cheb <= 1 &&
-        beasts.some(x => x.card.id === 'b54' && (dist(x, a) <= x.rad || dist(x, b) <= x.rad))) linked = true;
-    if (linked) { uni(i, j); out.packEdges.push([a.r, a.c, b.r, b.c]); }
+    if (j <= i || !overlap(a, b)) return;
+    comp[find(i)] = find(j);
+    out.packEdges.push([a.r, a.c, b.r, b.c]);
   }));
-  /* Фенрир: все стаи, пересекающие его угодья, — его стая */
-  const fenrir = preds.find(x => x.card.id === 'b24');
-  if (fenrir) preds.forEach((x, i) => { if (dist(fenrir, x) <= fenrir.rad) uni(i, preds.indexOf(fenrir)); });
   const packs = {};
   preds.forEach((x, i) => { const r0 = find(i); (packs[r0] = packs[r0] || []).push(x); });
-  out.packs = Object.keys(packs).length;
-  Object.values(packs).forEach(g => { if (g.length > out.packBest) out.packBest = g.length; });
-  /* АЛЬФА: старший по редкости; равенство → ранний ряд (верх/лево); две топ-карты — двоевластие */
-  const alphaOf = {};
-  Object.keys(packs).forEach(pid => {
-    const g = packs[pid];
-    if (g.length < 2) return;
-    const top = Math.max(...g.map(x => rarityRank(x.card.rarity)));
-    const topG = g.filter(x => rarityRank(x.card.rarity) === top).sort((a, b) => (a.r - b.r) || (a.c - b.c));
-    const alpha = topG[0], dual = topG.length > 1;
-    g.forEach(x => {
-      alphaOf[x.r + ',' + x.c] = { isAlpha: x === alpha, dual, size: g.length, packId: pid, fenrir: alpha.card.id === 'b24' };
-    });
-  });
+  Object.values(packs).forEach(g => { if (g.length > 1) out.packs++; if (g.length > out.packBest) out.packBest = g.length; });
 
-  /* --- ФАЗА 1: хищники — трофеи, акты охоты, штрафы --- */
+  /* --- ФАЗА 1: хищники — трофеи --- */
   const actsList = [];
-  const actsMult = beasts.some(x => x.card.id === 'b58') ? 2 : 1;   // Полуночный Гон
   beasts.forEach(p => {
     const key = p.r + ',' + p.c;
-    const law = laws[p.c] || {};
     let bonus = 0, m = 1;
-    if (p.pred && !p.frozen) {
-      const isB9 = p.card.id === 'b9'; /* Гидра сама не охотит */
-      let preyVal = 0, preyCount = 0; const species = {}; let boarPrize = false;
-      if (!isB9) herbList.forEach(q => {
-        const qk = q.r + ',' + q.c;
-        if (dist(p, q) > p.rad) return;                       // дичь только в СВОИХ угодьях
-        if (inAura('b38', q.r, q.c)) return;                  // Сияние: не дичь вовсе
-        if (laws[q.c] && laws[q.c].apex && q.c !== p.c) return; // Ошейник: чужим не видно
+    if (p.pred) {
+      const id = p.card.id;
+      let preyVal = 0, preyCount = 0; const species = {};
+      if (id !== 'b9') herbList.forEach(q => {                  /* Гидра сама не охотит */
+        if (dist(p, q) > p.rad) return;                           /* дичь только в СВОИХ угодьях */
         let val = 1;
-        if (q.card.id === 'b0') val *= 2;                    // v1.12.2: Стайная мелочь — домашняя дичь Стаи (трофей ×2)
-        if (HARD_PREY[q.card.id]) val *= 0.5;
-        if (shelter[qk]) {
-          const petr = inAura('b8', q.r, q.c);
-          if (petr) { /* Взгляд: полный трофей */ }
-          else if (p.card.id === 'b10') { /* Царская охота: полный */ }
-          else if (strongShelter[qk]) return;
-          else if (antiSneak[qk]) return;
-          else if (SNEAKY[p.card.id]) val *= 0.5;             // Хитрость/Тихий враг
-          else if (law.fang) val *= 0.5;                      // Клык Альфы
-          else return;                                        // укрыта — трофея нет
-        }
-        if (beasts.some(x => x.card.id === 'b44' && dist(x, q) <= x.rad)) val *= 0.75; // Тис
-        if (q.card.id === 'b13') boarPrize = true;            // опасный приз
+        if (q.card.id === 'b0') val = 2;                          /* Крыса: домашняя дичь Стаи */
+        else if (q.card.id === 'b25') val = 1.5;                  /* Кролик: сытная добыча */
         preyVal += val; preyCount++; species[q.card.id] = 1;
       });
       if (preyCount > 0) actsList.push(p);
       p.trophyN = preyCount;
-      const pct = p.card.id === 'b22' ? 0.15 : R.TROPHY_PCT;
-      const cap = (law.kcap || p.card.id === 'b11') ? 9.99 : (p.card.id === 'b22' ? 0.45 : R.TROPHY_CAP);
+      const pct = id === 'b22' ? 0.15 : R.TROPHY_PCT;
+      const cap = id === 'b11' ? 9.99 : (id === 'b22' ? 0.45 : R.TROPHY_CAP);
       bonus += Math.min(cap, preyVal * pct);
-      if (p.card.id === 'b10') bonus += Math.min(1.0, 0.25 * Object.keys(species).length); // ВИДы дичи
-      if (p.card.id === 'b8') bonus += Math.min(0.40, 0.10 * herbList.filter(q => dist(p, q) <= 2).length); // Взгляд
-      if (p.card.id === 'b6') bonus += 0.05 * getNeighbors(p.r, p.c).filter(n => {
-        const nc2 = CARDS[n.item.cardId]; return nc2.faction === 'beast' && nc2.diet === 'pred' && !nc2.spirit; }).length;
-      if (p.card.id === 'b1') {
+      if (id === 'b10') bonus += Math.min(1.0, 0.25 * Object.keys(species).length);          /* Лев: за каждый ВИД дичи */
+      if (id === 'b8') bonus += Math.min(0.40, 0.10 * herbList.filter(q => dist(p, q) <= 2).length); /* Взгляд */
+      if (id === 'b6') bonus += 0.05 * getNeighbors(p.r, p.c).filter(n => { const k = CARDS[n.item.cardId]; return k.faction === 'beast' && k.diet === 'pred'; }).length;
+      if (id === 'b1') {
         const wolfs = preds.filter(x => x !== p && (x.card.id === 'b1' || x.card.id === 'b4') && overlap(x, p)).length;
         bonus += Math.min(0.30, 0.10 * wolfs);
-        if (wolfs > 0) m *= 1.5;                              // сородич в общей зоне
+        if (wolfs > 0) m *= 1.5;                                  /* сородич в общей зоне */
       }
-      if (p.card.id === 'b18' && !preds.some(x => x !== p && dist(x, p) <= Math.max(p.rad, x.rad))) bonus += 0.15; // Одиночка
-      if (p.card.id === 'b5') m *= 1.25;                      // Токсичный надел
-      if (law.savage) m *= 1.5;
+      if (id === 'b18' && !preds.some(x => x !== p && dist(x, p) <= Math.max(p.rad, x.rad))) bonus += 0.15; /* Одиночка */
+      if (id === 'b5') m *= 1.25;                                 /* Токсичный надел */
+      if (id === 'b23') m *= 1.25;                                /* Вожак */
       if ((B.pole[key] || 0) > 0) m *= R.POLE_TROPHY;
-      if (boarPrize) m *= 1.5;
-      /* штрафы от Чащи и Игл */
-      let pen = 0;
-      beasts.forEach(x => {
-        if (x.card.id === 'b14' && overlap(x, p)) pen += 0.15;                       // Шипы
-        else if (x.card.id === 'b30' && overlap(x, p)) pen = Math.min(0.15, pen + 0.05); // Иглы
-      });
-      const shrooms = beasts.filter(x => x.card.id === 'b42' && dist(x, p) <= x.rad).length;
-      if (shrooms) pen += Math.min(0.30, 0.15 * shrooms);      // Токсины
-      bonus -= pen;
-      /* стая: союзники + альфа (чужие акты считаются в фазе 2, когда список полон) */
-      const ai = alphaOf[key];
-      if (ai) {
-        bonus += Math.min(R.PACK_CAP, R.PACK_PCT * (ai.size - 1));
-        if (beasts.some(x => x.card.id === 'b23' && alphaOf[x.r + ',' + x.c] && alphaOf[x.r + ',' + x.c].packId === ai.packId)) bonus += R.ALPHA_PACK; // Вожак
-        if (ai.isAlpha) m *= ai.dual ? (1 + (R.ALPHA_CROWN - 1) * R.DUAL_CROWN) : R.ALPHA_CROWN; // двоевластие — корона вполовину силы
-        if (ai.fenrir) m *= R.ALPHA_CROWN;                    // корона Фенрира на всей стае
-      }
+      /* стая: союзники в общих угодьях */
+      const allies = preds.filter(x => x !== p && overlap(x, p)).length;
+      bonus += Math.min(R.PACK_CAP, R.PACK_PCT * allies);
+      if (covered(p, 'b23')) bonus += 0.10;                       /* Вожак: стая в его угодьях */
+      if (covered(p, 'b24')) bonus += 0.12;                       /* Зима */
+      if (covered(p, 'b54')) bonus += 0.12;                       /* Серый Предок */
+      if (beasts.some(x => x.card.id === 'b58')) m *= 1.2;        /* Полуночный Гон: все хищники поля */
     }
     out.mults[key] = m * (1 + bonus);
     if (bonus > 0 || p.trophyN > 0) out.active[key] = 1;
   });
 
-  /* --- ФАЗА 2: дичь, флора, падальщики, духи --- */
+  /* --- ФАЗА 2: дичь, флора, падальщики --- */
   beasts.forEach(p => {
-    const key = p.r + ',' + p.c;
-    const law = laws[p.c] || {};
+    const key = p.r + ',' + p.c, id = p.card.id;
     let bonus = 0, m = 1;
-    const covered = srcId => beasts.some(x => x.card.id === srcId && x !== p && dist(x, p) <= x.rad);
 
     if (p.herb) {
-      if (p.card.id === 'b0') {
-        /* Всеядная Крыса: +8% за зверя в общих угодьях */
-        bonus += Math.min(0.24, 0.08 * beasts.filter(x => x !== p && overlap(x, p)).length);
-      } else if (!(law && law.kcapFamine)) {
-        /* ВЫПАС: флоры в своих угодьях */
-        let g = floraList.filter(f => dist(p, f) <= p.rad).length *
-          R.GRAZE_PCT * (p.card.id === 'b29' ? 2 : 1);
-        if (covered('b43')) g += 0.04;                        // Тень Ивы
-        if (covered('b35')) g += 0.10;                        // Пастырь Лось
-        if (covered('b55')) g += 0.12;                        // Рогатая Мать
-        if (!g) g = 0.12;                                     // v1.12.2: Свободный выпас — вольный луг, стадо живёт и без Чащи
+      if (id === 'b0') {
+        bonus += Math.min(0.24, 0.08 * beasts.filter(x => x !== p && overlap(x, p)).length); /* Крыса: за каждого зверя рядом */
+      } else {
+        /* ВЫПАС: зелень в своих угодьях */
+        let g = floraList.filter(f => dist(p, f) <= p.rad).length * R.GRAZE_PCT * (id === 'b29' ? 2 : 1);
+        if (covered(p, 'b43')) g += 0.04;
+        if (covered(p, 'b44')) g += 0.06;
+        if (covered(p, 'b45')) g += 0.08;
+        if (covered(p, 'b35')) g += 0.10;                         /* Пастырь */
+        if (covered(p, 'b55')) g += 0.12;                         /* Рогатая Мать */
+        if (covered(p, 'b39')) g += 0.08;                         /* Плотный подлесок */
+        if (!g) g = 0.12;                                         /* вольный луг: стадо живёт и без Чащи */
         let cap = R.GRAZE_CAP;
-        if (covered('b17') || p.card.id === 'b55') cap = 9.99; // Колосс (кап снят) / Рогатая Мать
-        if (covered('b5')) g = 0;                             // Токсичный надел: выпаса нет
+        if (covered(p, 'b17') || id === 'b55') cap = 9.99;        /* Колосс / Рогатая Мать: кап снят */
         bonus += Math.min(cap, g);
-        /* Споры Гриба и Вольер: выпас ×1.5 (если есть чем) */
         if (bonus > 0) {
-          if (floraList.some(f => f.card.id === 'b15' && dist(p, f) <= p.rad)) m *= 1.5;
-          if ((B.pen[key] || 0) > 0) m *= R.PEN_GRAZE;
+          if (floraList.some(f => f.card.id === 'b15' && dist(p, f) <= p.rad)) m *= 1.5; /* Споры */
+          if ((B.pen[key] || 0) > 0) m *= R.PEN_GRAZE;            /* Вольер */
         }
       }
-      if (p.card.id === 'b26') {                              // Пугливая Косуля
-        const predNear = beasts.some(x => x.pred && !x.frozen && dist(x, p) <= Math.max(p.rad, x.rad));
-        bonus += predNear ? -0.12 : 0.12;
-      }
-      if ((p.card.id === 'b28') &&
-          beasts.some(x => x.pred && !x.frozen && dist(x, p) <= p.rad)) bonus += 0.12; // держит удар
-      /* v1.12.2: Кабан роется у построек (+8% за здание в угодьях); Мамонт умножает стадо */
-      if (p.card.id === 'b2') {
+      if (id === 'b26') bonus += beasts.some(x => x.pred && dist(x, p) <= Math.max(p.rad, x.rad)) ? 0 : 0.12; /* Косуля: пока нет хищника */
+      if (id === 'b28' && beasts.some(x => x.pred && dist(x, p) <= p.rad)) bonus += 0.12;   /* держит удар */
+      if (id === 'b2') {                                          /* Кабан роется у построек */
         let bldNear = 0;
         for (let dr = -p.rad; dr <= p.rad; dr++) for (let dc = -p.rad; dc <= p.rad; dc++) {
           const nr2 = p.r + dr, nc2 = p.c + dc;
@@ -896,12 +770,13 @@ function computeGrounds() {
         }
         bonus += Math.min(0.24, 0.08 * bldNear);
       }
-      if (covered('b37')) m *= 1.25;                          // Эпоха: стадо в угодьях Мамонта — доход ×1.25
-      if (p.card.id === 'b32') bonus += Math.min(0.24, 0.08 * beasts.filter(x => x.pred && !x.frozen && dist(x, p) <= 2).length);
-      if (p.card.id === 'b36') bonus += Math.min(0.30, 0.10 * beasts.filter(x => x.pred && !x.frozen && dist(x, p) <= p.rad).length);
-      if (p.card.id === 'b12') bonus += Math.min(0.20, 0.05 * beasts.filter(x => x.herb && x !== p && overlap(x, p)).length);
-      if (p.card.id === 'b27') bonus += Math.min(0.24, 0.08 * beasts.filter(x => x.herb && x !== p && overlap(x, p)).length);
-      if (p.card.id === 'b34') {                              // Неприручённый
+      if (covered(p, 'b37')) m *= 1.25;                           /* Мамонт: стадо в его угодьях ×1.25 */
+      if (covered(p, 'b33')) bonus += 0.10;                       /* Круг обороны */
+      if (id === 'b32') bonus += Math.min(0.24, 0.08 * beasts.filter(x => x.pred && dist(x, p) <= 2).length);
+      if (id === 'b36') bonus += Math.min(0.30, 0.10 * beasts.filter(x => x.pred && dist(x, p) <= p.rad).length);
+      if (id === 'b12') bonus += Math.min(0.20, 0.05 * beasts.filter(x => x.herb && x !== p && overlap(x, p)).length);
+      if (id === 'b27') bonus += Math.min(0.24, 0.08 * beasts.filter(x => x.herb && x !== p && overlap(x, p)).length);
+      if (id === 'b34') {                                         /* Неприручённый: ни флоры, ни зданий рядом */
         let free = true;
         for (let dr = -p.rad; dr <= p.rad && free; dr++) for (let dc = -p.rad; dc <= p.rad; dc++) {
           const nr = p.r + dr, nc = p.c + dc;
@@ -911,143 +786,73 @@ function computeGrounds() {
         }
         if (free) bonus += 0.12;
       }
-      if (p.card.id === 'b25') bonus *= 0.75;                 // Нора: выпас −25%
-      if (inAura('b38', p.r, p.c)) bonus += 0.12;             // Сияние
-      if (covered('b53')) bonus *= 1.25;                      // Дурман
-      if (law && law.boughLazy) bonus *= 0.5;                 // кара Ветви
+      if (inAura('b38', p.r, p.c)) bonus += 0.12;                 /* Сияние */
+      if (covered(p, 'b53')) bonus *= 1.25;                       /* Дурман: выпас ×1.25 */
     }
 
     if (p.flora) {
-      /* кормление: +4% за травоядную в её угодьях */
-      bonus += Math.min(R.FEED_CAP, herbList.filter(h => dist(p, h) <= p.rad).length * R.FEED_PCT);
-      /* ПОРОСЛЬ: другая флора в общих угодьях */
-      if (!(law && law.hungerSated)) {
-        let porPct = R.POR_PCT, porCap = R.POR_CAP, porN;
-        if (p.card.id === 'b40') {                            // Оплетает: радиус 2
-          porN = floraList.filter(f => f !== p && dist(p, f) <= 2).length;
-          porPct = 0.06; porCap = 0.18;
-        } else {
-          porN = floraList.filter(f => {
-            if (f === p) return false;
-            let d = dist(p, f);
-            /* Ветвь: пересечения Чащи столба считаются на расстоянии 2 */
-            const far = (law.bough && f.c === p.c) ? 2 : 0;
-            return d <= Math.max(p.rad, f.rad, far);
-          }).length;
-        }
-        let por = Math.min(porCap, porN * porPct);
-        if ((B.spring[key] || 0) > 0) por *= R.SPRING_POR;    // Солончик
-        if (law.rangeFat) por *= 0.5;                         // кара Тотема
-        bonus += por;
+      /* РОСТ: +4% за каждую дичь в угодьях (Шипы и Токсины кормят вдвое) */
+      const feedPct = (id === 'b14' || id === 'b42') ? R.FEED_PCT * 2 : R.FEED_PCT;
+      bonus += Math.min(R.FEED_CAP, herbList.filter(h => dist(p, h) <= p.rad).length * feedPct);
+      /* ПОРОСЛЬ: другая зелень в общих угодьях */
+      let porPct = R.POR_PCT, porCap = R.POR_CAP, porN;
+      if (id === 'b40') {                                         /* Оплетает: радиус 2 */
+        porN = floraList.filter(f => f !== p && dist(p, f) <= 2).length; porPct = 0.06; porCap = 0.18;
+      } else {
+        if (id === 'b46') { porPct = 0.12; porCap = 0.36; }       /* Паразит */
+        porN = floraList.filter(f => f !== p && dist(p, f) <= Math.max(p.rad, f.rad)).length;
       }
-      /* Покровители и Тотемы Чащи кормят зелень */
-      if (covered('b7')) bonus += 0.10;                       // Старый лес
-      if (covered('b47')) bonus += 0.12;                      // Вековой Дуб
-      if (covered('b48')) bonus += 0.10;                      // Секвойя
-      if (covered('b56')) bonus += 0.12;                      // Старая Крона
-      if (inAura('b51', p.r, p.c)) bonus += 0.10;             // Сердце Чащи
-      if (beasts.some(x => x.card.id === 'b50')) bonus += 0.10; // Прародитель: вся Чаща поля
-      if (p.card.id === 'b41') bonus += Math.min(0.36, 0.12 * beasts.filter(x => x.herb && x !== p && overlap(x, p)).length); // Хвоя
+      let por = Math.min(porCap, porN * porPct);
+      if ((B.spring[key] || 0) > 0) por *= R.SPRING_POR;          /* Солончик */
+      bonus += por;
+      /* Покровители и Тотемы Чащи подкармливают зелень */
+      if (covered(p, 'b7')) bonus += 0.10;
+      if (covered(p, 'b47')) bonus += 0.12;
+      if (covered(p, 'b48')) bonus += 0.10;
+      if (covered(p, 'b56')) bonus += 0.12;
+      if (covered(p, 'b31')) bonus += 0.10;                       /* Запруда Бобра */
+      if (inAura('b51', p.r, p.c)) bonus += 0.10;
+      if (beasts.some(x => x.card.id === 'b50')) bonus += 0.10;   /* Прародитель: вся Чаща поля */
+      if (id === 'b41') bonus += Math.min(0.36, 0.12 * beasts.filter(x => x.herb && x !== p && overlap(x, p)).length);
     }
 
     if (p.scav) {
-      let sense = p.card.id === 'b16' ? 3 : 2, sm = 1;
+      let sense = id === 'b16' ? 3 : 2, sm = 1;
       if ((B.pole[key] || 0) > 0) { sense += 1; sm *= R.POLE_SCAV; }
-      if (inAura('b52', p.r, p.c)) { sense += 1; sm *= 1.25; } // Шёпот
-      if (p.card.id === 'b57') {
-        /* Крылатый Пожиратель: чует весь лес */
-        bonus += Math.min(0.60, 0.15 * actsList.length * actsMult);
+      if (inAura('b52', p.r, p.c)) { sense += 1; sm *= 1.25; }    /* Шёпот */
+      if (id === 'b57') {
+        bonus += Math.min(0.60, 0.15 * actsList.length);          /* Пожиратель: чует весь лес */
       } else {
-        let n = actsList.filter(a => dist(a, p) <= sense).length * actsMult;
-        if (law && law.hungerFlip) n *= 2;                    // Кость Голода: акты двойные
-        if (p.card.id === 'b20') bonus += Math.min(0.40, 0.08 * n); // Оппортунист
+        const n = actsList.filter(a => dist(a, p) <= sense).length;
+        if (id === 'b20') bonus += Math.min(0.40, 0.08 * n);
         else bonus += Math.min(R.SCAV_CAP, R.SCAV_PCT * n * sm);
       }
-      /* v1.12.2: Падаль смеха Гиены — компания падальщиков в общих угодьях */
-      if (p.card.id === 'b19') bonus += Math.min(0.30, 0.05 * beasts.filter(x => x.scav && x !== p && overlap(x, p)).length);
-      if (covered('b45')) bonus -= 0.10;                      // Колючки
-      if (law && law.savagePain) m *= 0.5;                    // кара Рога
+      if (id === 'b19') bonus += Math.min(0.30, 0.05 * beasts.filter(x => x.scav && x !== p && overlap(x, p)).length); /* Гиена: компания */
     }
 
-    /* спец-бонусы от ЧУЖИХ актов охоты — список актов уже полон */
-    if (p.card.id === 'b9') bonus += Math.min(2.0, 0.15 * actsList.filter(a => dist(a, p) <= 2).length * actsMult);   // Гидра: кап ×3
-    if (p.card.id === 'b11') bonus += Math.min(0.40, 0.10 * actsList.filter(a => a !== p && dist(a, p) <= 3).length); // Вершина
-    if (p.card.id === 'b20') {                                                                                       // Оппортунист
-      bonus += Math.min(0.40, 0.08 * actsList.filter(a => dist(a, p) <= 2).length * actsMult);
-      const ai20 = alphaOf[key];
-      if (ai20) bonus += Math.min(0.24, 0.08 * (ai20.size - 1));
-    }
+    /* хищники, питающиеся чужой охотой */
+    if (id === 'b9') bonus += Math.min(2.0, 0.15 * actsList.filter(a => dist(a, p) <= 2).length);    /* Гидра */
+    if (id === 'b11') bonus += Math.min(0.40, 0.10 * actsList.filter(a => a !== p && dist(a, p) <= 3).length); /* Вершина */
+    if (id === 'b20') bonus += Math.min(0.24, 0.08 * preds.filter(x => x !== p && overlap(x, p)).length);     /* Оппортунист: союзники */
 
-    /* Лунный свет b49: зонные бонусы зверя +8% */
-    if (inAura('b49', p.r, p.c) && bonus > 0) bonus *= 1.08;
-    if (bonus < -0.5) bonus = -0.5;                           // пол кар
+    if (inAura('b49', p.r, p.c) && bonus > 0) bonus *= 1.08;      /* Лунный свет */
+    if (bonus < -0.5) bonus = -0.5;
     out.mults[key] = (out.mults[key] || 1) * m * (1 + bonus);
-    if (bonus > 0 || actsList.some(a => a === p) || p.card.spirit ||
-        SELF_SHELTER[p.card.id] || AURA_TOTEM[p.card.id] ||
-        p.card.id === 'b33' || p.card.id === 'b39' || p.card.id === 'b43' ||
-        p.card.id === 'b44' || p.card.id === 'b45') out.active[key] = 1;
+    if (bonus > 0 || actsList.some(a => a === p) || AURA_TOTEM[id] || id === 'b33' || id === 'b39' || id === 'b43' || id === 'b44' || id === 'b45') out.active[key] = 1;
   });
 
   out.acts = actsList.length;
-  out.alpha = alphaOf;   /* короны альф — для рендера и тултипов */
   BEAST_GROUNDS = out;
   return out;
 }
 
-/* --- Уход в Чащу: накопление актов охоты (1 раз/с, транзиентно) --- */
+/* Счётчик охот для достижения «Великая Охота» (1 раз/с, транзиентно) */
 function tickGroundsAccum(dt) {
   groundsAcc += dt;
   if (groundsAcc < 1) return;
   groundsAcc = 0;
   const acts = BEAST_GROUNDS ? (BEAST_GROUNDS.acts || 0) : 0;
-  if (!acts) return;
-  stats.huntActs = (stats.huntActs || 0) + acts;   /* ачивка/контракт «Великая Охота» */
-  spiritProgress += acts;
-  if (spiritProgress < GROUNDS_RULES.SPIRIT_EVERY) return;
-  spiritProgress = 0;
-  if (gameTime - lastSpiritAt < GROUNDS_RULES.SPIRIT_COOLDOWN) return;
-  /* зрелость экосистемы: стая ≥3, стадо ≥3, чаща ≥2 */
-  const cnt = { pack: 0, herd: 0, wilds: 0 };
-  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
-    const it = grid[r][c]; if (!it) continue;
-    const cd = CARDS[it.cardId];
-    if (cd.faction === 'beast' && !cd.isBuilding && !cd.spirit && cd.subrace) cnt[cd.subrace] = (cnt[cd.subrace] || 0) + 1;
-  }
-  if (cnt.pack < 3 || cnt.herd < 3 || cnt.wilds < 2) return;
-  if (Math.random() < GROUNDS_RULES.SPIRIT_CHANCE) departToSpirit();
-}
-
-/* Старший зверь поля уходит в лес — на его тропах встаёт Дух Леса.
-Исходная карта НЕ теряется (копии возвращаются в инвентарь забега),
-Дух ложится в вечную коллекцию. */
-function departToSpirit() {
-  const cand = [];
-  for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
-    const it = grid[r][c]; if (!it) continue;
-    const cd = CARDS[it.cardId];
-    if (cd.faction === 'beast' && !cd.isBuilding && !cd.spirit) cand.push({ r, c, it, cd });
-  }
-  if (!cand.length) return false;
-  const top = Math.max(...cand.map(x => rarityRank(x.cd.rarity)));
-  const tier = cand.filter(x => rarityRank(x.cd.rarity) === top);
-  const dep = tier[Math.floor(Math.random() * tier.length)];
-  /* Дух по происхождению ушедшего; ушедший ★5 → Великий-дух */
-  const spId = rarityRank(dep.cd.rarity) >= 5
-    ? (dep.cd.subrace === 'pack' ? 'b58' : 'b59')
-    : (dep.cd.diet === 'scav' ? 'b57' : dep.cd.subrace === 'pack' ? 'b54' : dep.cd.subrace === 'herd' ? 'b55' : 'b56');
-  const hp = cardHp(CARDS[spId].rarity);
-  inventory[dep.it.cardId] = (inventory[dep.it.cardId] || 0) + dep.it.stacks;
-  grid[dep.r][dep.c] = { cardId: spId, stacks: 1, hp, maxHp: hp,
-    predBuff: 0, mutBuff: 1, embers: 0, hunger: 1, graze: 0, floraBuff: 0, scavBuff: 0, boomUntil: 0, petrCount: 0 };
-  collectionAdd(spId, 1);
-  lastSpiritAt = gameTime;
-  fxAtCell(dep.r, dep.c, ['#5ab05a', '#a0e080', '#fff'], 24, 'big');
-  fxFloatFromCell(dep.r, dep.c, 'УШЁЛ В ЧАЩУ', '#a0e080');
-  toast('🌲 <b>УХОД В ЧАЩУ:</b> ' + dep.cd.name + ' ушёл в лес — на его тропах появился <b>' +
-    CARDS[spId].name + '</b> (в коллекции)', 'spirit', 40);
-  sfx('milestone');
-  computeIncome(); renderGrid(); renderCollection(); updateHUD(); saveRun(); checkAchievements();
-  return true;
+  if (acts) stats.huntActs = (stats.huntActs || 0) + acts;
 }
 
 /* ================= ДЕМОНЫ: УГЛИ (v1.11.0) =================

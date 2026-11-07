@@ -88,8 +88,8 @@ const CONTRACT_TPL = [
     ok: () => FACTION_INFO[faction].mechanic === 'grounds'
   },
   {
-    id: 'alpha_pack', name: 'Верховная альфа', icon: '👑', diff: 3, kind: 'live',
-    text: n => 'Соберите стаю из ' + n + ' хищников под одной короной',
+    id: 'alpha_pack', name: 'Большая стая', icon: '🐺', diff: 3, kind: 'live',
+    text: n => 'Соберите стаю из ' + n + ' хищников',
     val: () => (typeof BEAST_GROUNDS !== 'undefined' && BEAST_GROUNDS) ? BEAST_GROUNDS.packBest : 0,
     target: e => 4 + Math.min(4, Math.floor(e / 3)),
     ok: () => FACTION_INFO[faction].mechanic === 'grounds'
