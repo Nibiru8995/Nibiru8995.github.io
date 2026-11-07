@@ -363,13 +363,11 @@ function renderGrid() {
     /* ДЕМОНЫ: накопленный бафф мутаций */
     if (mutOn)
       badges += '<span class="mut-badge">▲</span>';
-    /* ДЕМОНЫ v1.11.0: тление · Пир хаоса · строй */
-    if (tleOn)
-      badges += '<span class="mut-badge" style="color:#ffb060" title="Тление: ×' + (item.tleVal || 1.1).toFixed(2) + ' — жар своего взрыва ещё тёплый">✹</span>';
+    /* ДЕМОНЫ v1.19.0: Пир (Мрак) · строй (Легион) */
     if (feastOn)
-      badges += '<span class="mut-badge" style="color:#c080ff" title="Пир хаоса: ×' + (item.feastBuff || 1).toFixed(2) + ' — чужие взрывы кормят (до ×1.5)">🍖</span>';
+      badges += '<span class="mut-badge" style="color:#c080ff" title="Пир: ×' + (item.feastBuff || 1).toFixed(2) + ' — чужие взрывы кормят (до ×1.5)">🍖</span>';
     if (formOn)
-      badges += '<span class="mut-badge" style="color:#9ab0d0" title="В строю: угли ×1.25, взрыв — контролируемый бафф ×1.25">⛨</span>';
+      badges += '<span class="mut-badge" style="color:#9ab0d0" title="В строю: угли копятся на 25% быстрее">⛨</span>';
     /* ЗВЕРИ: корона альфы (v1.12.0 — вместо бейджей сытости/голода) */
     if (bgCrown)
       badges += '<span class="anchor-badge" style="color:#ffd34d" title="' + (bgCrown.dual

@@ -75,7 +75,7 @@ const SUBRACE_BAR_INFO = {
     ],
     hints: (c) => {
       const h = [];
-      if (c.dark) h.push('💭 Мраку нужен чужой взрыв (Пир хаоса)');
+      if (c.dark) h.push('💭 Мраку нужен чужой взрыв (Пир)');
       if (c.legion && !(INC_CTX.legionForm && Object.keys(INC_CTX.legionForm).length)) h.push('⚠ Легион ждёт строя — 2+ рядом');
       return h;
     },
@@ -236,7 +236,7 @@ function showCardTooltip(e, card, income, r, c) {
   if (card.diet && DIET_INFO[card.diet]) effects += '<div class="gtt-line"><b style="color:' + DIET_INFO[card.diet].color + '">Роль в лесу: ' + DIET_INFO[card.diet].name + '.</b> ' + DIET_INFO[card.diet].desc + '</div>';
   /* --- Синергии (возможные звенья) — КАЖДАЯ С НОВОЙ СТРОКИ (v1.11.1) --- */
   const ps = pairsForCard(card).filter(p => !p.generic);
-  const subRules = card.faction === 'undead' ? (typeof UNDEAD_SUB_RULE !== 'undefined' ? UNDEAD_SUB_RULE : null) : (card.faction === 'cultist' ? (typeof CULTIST_SUB_RULE !== 'undefined' ? CULTIST_SUB_RULE : null) : (card.faction === 'beast' ? (typeof BEAST_SUB_RULE !== 'undefined' ? BEAST_SUB_RULE : null) : null));
+  const subRules = card.faction === 'undead' ? (typeof UNDEAD_SUB_RULE !== 'undefined' ? UNDEAD_SUB_RULE : null) : (card.faction === 'cultist' ? (typeof CULTIST_SUB_RULE !== 'undefined' ? CULTIST_SUB_RULE : null) : (card.faction === 'beast' ? (typeof BEAST_SUB_RULE !== 'undefined' ? BEAST_SUB_RULE : null) : (card.faction === 'demon' ? (typeof DEMON_SUB_RULE !== 'undefined' ? DEMON_SUB_RULE : null) : null)));
   const ruleTxt = (subRules && !card.isBuilding && subRules[card.subrace]) ? '<span class="tt-good">' + subRules[card.subrace] + '</span>' : '';
   const synLines = (ruleTxt ? [ruleTxt] : []).concat(ps.map(p => '<span class="tt-good">' + p.text + '</span>'));
   const syn = synLines.length ? '<div class="gtt-line">' + synLines.join('<br>') + '</div>' : '';
@@ -295,7 +295,7 @@ function showCardTooltip(e, card, income, r, c) {
     '<div class="gtt-body">' +
     '<div class="gtt-name"><span>' + card.name + '</span>' + (card.isBuilding ? '' : '<i class="gtt-stars">' + starsOf(card.rarity) + '</i>') + '</div>' +
     (card.subrace && SUBRACE_INFO[card.subrace] ? '<div class="gtt-field"><span>подраса: ' + SUBRACE_INFO[card.subrace] + '</span></div>' : '') +
-    (card.cat && CAT_INFO[card.cat] && card.faction !== 'undead' && card.faction !== 'cultist' && card.faction !== 'beast' ? '<div class="gtt-field"><span>тип: ' + CAT_INFO[card.cat].name + '</span></div>' : '') +
+    (card.cat && CAT_INFO[card.cat] && card.faction !== 'undead' && card.faction !== 'cultist' && card.faction !== 'beast' && card.faction !== 'demon' ? '<div class="gtt-field"><span>тип: ' + CAT_INFO[card.cat].name + '</span></div>' : '') +
     incLine +
     /* v1.11.1: забавное описание — ПОД РИСУНКОМ (сразу после шапки), а не в самом низу */
     '<div class="gtt-flavor">«' + card.flavor + '»</div>' +

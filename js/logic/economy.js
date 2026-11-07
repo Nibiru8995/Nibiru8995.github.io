@@ -343,25 +343,9 @@ function factionMult(r, c, card, item) {
     const emberPct = card.id === 'd21' ? 0.12 : 0.10; /* Сажевик: угли жирнее */
     let m = (1 + emberPct * (item.embers || 0)) * (item.mutBuff || 1);
     if (item.boomUntil && item.boomUntil > gameTime) m *= (item.boomMult || 2); /* «Перегрев»: ×2 (под Кошмаром ×2.5) */
-    /* ТЛЕНИЕ (Т.4.1): 8с после взрыва пепельник даёт себе ×1.1 (Тлетень d19 — ×1.2) */
-    if ((item.tleUntil || 0) > gameTime && item.tleVal) m *= item.tleVal;
     /* ПИР ХАОСА (Т.4.2): чужие взрывы кормят мракового (не Венца): +10% на 12с, стак до ×1.5 */
     if ((item.feastUntil || 0) > gameTime && (item.feastBuff || 1) > 1) m *= item.feastBuff;
-    /* Временные баффы новых карт */
-    if (card.id === 'd5' && (item.whisperUntil || 0) > gameTime) m *= 1.15;               /* Шёпот Сукуба */
-    if (card.id === 'd31' && (item.zavUntil || 0) > gameTime) m *= 1.2;                   /* Заводила подкуражен */
-    if ((item.voidUntil || 0) > gameTime && (item.voidBuff || 1) > 1) m *= item.voidBuff; /* Пустотный Вельможа */
-    /* Постоянные баффы (капы ставит тик углей) */
-    if (item.pyroBuff && item.pyroBuff > 1) m *= item.pyroBuff; /* Пирокласт: корона пожаров (до ×2.5) */
-    if (item.phxBuff && item.phxBuff > 1) m *= item.phxBuff;    /* Феникс: за свои взрывы (до ×2) */
-    if (item.harkBuff && item.harkBuff > 1) m *= item.harkBuff; /* Внемлющий: за каждый взрыв поля (до ×3) */
     const nb = getNeighbors(r, c);
-    const eng = colEngine(c);
-    /* КАРА «Кандалов Легиона» (marchLoner): одиночка −30%; Ночной Шёпот (d27) к ней невосприимчив */
-    if (eng && eng.marchLoner && card.id !== 'd27' &&
-        !getNeighbors8(r, c).some(n => CARDS[n.item.cardId].faction === 'demon' && !CARDS[n.item.cardId].isBuilding)) m *= 0.7;
-    /* КАРА «Разлома Ада» (riftDrain): −5% навсегда за каждый свой взрыв */
-    if (item.riftTax) m *= (1 - item.riftTax);
     /* СТРОЙ ЛЕГИОНА (Т.4.3) — считается в computeIncome → INC_CTX.legionForm */
     const inForm = !!(INC_CTX.legionForm && INC_CTX.legionForm[r + ',' + c]);
     const isDemon = n => CARDS[n.item.cardId].faction === 'demon' && !CARDS[n.item.cardId].isBuilding;
@@ -369,16 +353,19 @@ function factionMult(r, c, card, item) {
     if (card.id === 'd8') m *= 1 + 0.06 * nb.filter(n => CARDS[n.item.cardId].faction === 'demon').length;
     if (card.id === 'd10') m *= 1 + 0.10 * radius2(r, c).filter(n => CARDS[n.item.cardId].faction === 'demon').length;
     if (card.id === 'd0') m *= 1 + 0.08 * nb.filter(n => (n.item.embers || 0) >= 3).length;
-    if (card.id === 'd2' && item.harmBuff) m *= 1 + item.harmBuff;
-    if (card.id === 'd13' && item.tyrBuff && item.tyrBuff > 1) m *= item.tyrBuff;
     if (card.id === 'd14') m *= 1 + 0.10 * radius2(r, c).filter(n => CARDS[n.item.cardId].faction === 'demon').length;
     if (card.id === 'd9' && item.balrBuff) m *= item.balrBuff;
     if (card.id === 'd11') m *= 1 + 0.40 * nb.filter(n => CARDS[n.item.cardId].faction === 'demon').length;
-    else if (nb.some(n => n.item.cardId === 'd11')) m *= 0.9;
     if (card.id === 'd12') m *= 1 + 0.12 * nb.filter(n => (n.item.embers || 0) >= 3).length;
+    /* v1.19.0: ПИТАНИЕ ВЗРЫВАМИ — +10% за каждый чужой взрыв рядом, 20 с (до +50%) */
+    if (item.feedUntil && item.feedUntil > gameTime && item.feedStacks) m *= 1 + 0.10 * item.feedStacks;
     /* --- v1.11.0: новые пассивки (живые d4/d5/d7 + d16–d47) --- */
     if (card.id === 'd4') m *= 1 + 0.12 * nb.filter(n => CARDS[n.item.cardId].subrace === 'dark' && isDemon(n)).length;      /* Соблазн */
     if (card.id === 'd7' && inForm) m *= 1.10;                                                                                /* В ногу */
+    if (card.id === 'd15') m *= 1 + 0.10 * nb.filter(n => CARDS[n.item.cardId].subrace === 'dark' && isDemon(n)).length;    /* Холод: сосед-Мрак */
+    if (card.id === 'd19') m *= 1 + 0.10 * nb.filter(n => CARDS[n.item.cardId].subrace === 'ash' && isDemon(n)).length;     /* Тление: сосед-Пепел */
+    if (card.id === 'd30') m *= 1 + 0.08 * nb.filter(isDemon).length;                                                          /* Вдох: сосед-демон */
+    if (card.id === 'd34') m *= 1 + 0.06 * radius2(r, c).filter(isDemon).length;                                               /* Глушитель: демон в радиусе 2 */
     if (card.id === 'd16') m *= 1 + 0.12 * nb.filter(n => CARDS[n.item.cardId].subrace === 'ash' && isDemon(n)).length;       /* Искры */
     if (card.id === 'd17') m *= 1 + 0.05 * radius2(r, c).filter(n => (n.item.embers || 0) >= 3 && isDemon(n)).length;         /* v1.12.2 Дымовая завеса: главная сила — ускорение тления (×1.2 в faction_mechanics), аура ослаблена до 5% */
     if (card.id === 'd18') m *= 1 + 0.10 * nb.filter(n => (n.item.embers || 0) >= 3 && isDemon(n)).length;                    /* Чуйка */
@@ -872,8 +859,8 @@ function computeIncome() {
       else mult *= 1 + (v - 1) * a.factor;
     });
     /* ЗАКОНЫ СТОЛБА v1.4.0: кары и Корона Тлена */
-    let colMult = 1;
     const eng = colEngine(c);
+    let colMult = 1;
     if (eng) {
       /* «Корона Тлена»: прибыль Некроманта/Лича/Владыки в столбе ×2 */
       if (eng.crownLord && (card.id === 'u5' || card.id === 'u8' || card.id === 'u10')) colMult *= 2;

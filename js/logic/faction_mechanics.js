@@ -565,9 +565,8 @@ function instigatorTick() {
     if (!targets.length) continue;
     const t = pick(targets);
     t.item.embers = Math.min(5, (t.item.embers || 0) + 2);
-    t.item.zavFedUntil = gameTime + 15; /* взорвётся за 15с → Заводила +20% */
     fxAtCell(t.r, t.c, ['#c060ff', '#ff8030'], 8);
-    toast('🎭 Заводила подкинул ' + CARDS[t.item.cardId].name + ' 2 угля — взорвись, не стесняйся', 'zavod', 30);
+    toast('🎭 Заводила подкинул ' + CARDS[t.item.cardId].name + ' 2 угля', 'zavod', 30);
     changed = true;
   }
   if (changed) { computeIncome(); renderGrid(); updateHUD(); }
@@ -855,193 +854,87 @@ function tickGroundsAccum(dt) {
   if (acts) stats.huntActs = (stats.huntActs || 0) + acts;
 }
 
-/* ================= ДЕМОНЫ: УГЛИ (v1.11.0) =================
-В толпе (2+ демона рядом; Дьяволёнок и Ночной Шёпот — хватает одного)
-демон копит угли (макс 5, +10% дохода за уголёк; Сажевик — +12%).
-ЯМА удваивает накопление и делает взрывы баффами.
-ТРИ ВЕТКИ ПОДРАС (Т.4 дизайн-дока):
-• ПЕПЕЛ «Цепной пожар»: взрыв пепельника ЛЮБОГО исхода поджигает
-  соседей (+2 угля) и остальных в рад.2 (+1); поджог не каскадирует
-  мгновенно; 8с после взрыва пепельник тлеет — себе ×1.1 (Тлетень ×1.2).
-• МРАК «Пир хаоса»: чужой взрыв в рад.2 кормит мракового (не Венца):
-  +1 уголёк и +10% на 12с (стак до ×1.5); СВОЙ взрыв мракового —
-  всегда тихий бафф ×1.15 без ролла.
-• ЛЕГИОН «Строй»: 2+ легионеров-соседей (Центурион рад.2, Маршал —
-  весь Легион). В строю угли ×1.25 и взрыв — бафф ×1.25 без ролла.
-ПРИОРИТЕТЫ ИСХОДА (Т.4.5): Кулак ×1.35 → Претор (строй в рад.2) ×1.35 →
-Князь/Жрец/Яма/закон chaos ×1.25 → строй ×1.25 → Мрак ×1.15 →
-Глушитель ×1.1 → ролл 65/25/10. Гасят перегрев: Ледник, Золовка (рад.2),
-Вздох (соседи), Погибель Света (всех), закон face. Запрет превращения:
-Рыцарь (рад.1 — и весь ВЕСЬ строй защищённого), закон face.
-ЗАКОНЫ (только правила): march — угли без толпы; face — нет перегрева;
-rift — просыпается раскалённым; coin — взрыв поджигает соседа;
-crownD — чужие взрывы кормят. (Т.7.1) Поджог Цепного пожара — НЕ взрыв:
-Пир на него не отвечает. (Т.7.2) Кандалы дают угли, но не строй. */
+/* ================= ДЕМОНЫ: «ЖАР» (v1.19.0) =================
+ В толпе (2+ демона рядом; Дьяволёнок и Ночной Шёпот — достаточно одного)
+ демон копит угли: +1 каждые 8 секунд, каждый уголёк даёт +10% дохода.
+ На 5 углях — ВЗРЫВ. Исход всегда один и тот же, без броска кубика:
+  • ПЕПЕЛ — перегрев ×2 на 12 с и ЦЕПНОЙ ПОЖАР: поджигает соседей (+2 угля,
+    в радиусе 2 — +1);
+  • МРАК — закалка: +10% дохода НАВСЕГДА (до ×2.5); ПИР: чужой взрыв рядом
+    даёт +10% на 12 с (до +50%);
+  • ЛЕГИОН — перегрев ×2 на 12 с; в СТРОЮ (2+ легионера рядом) угли
+    копятся на 25% быстрее.
+ Венцы и поджигатели (Кузнецы) работают как раньше, но проще: они
+ ускоряют угли, поджигают соседей или питаются чужими взрывами.
+ Убраны: бросок кубика при взрыве, превращение карты в другого демона,
+ «гасители» перегрева, дисциплина, тление, штрафы и законы реликвий. */
+const DEMON_FEEDERS = { d2: 3, d5: 1, d13: 2, d23: 3, d33: 3, d35: 99 }; /* радиус, в котором взрыв другого демона их подкармливает */
 let demonTickN = 0; /* счётчик тиков: поджог Цепного пожара не каскадирует в тот же тик */
 function demonEmberTick() {
   let changed = false;
-  let mutated = false; /* коллекция перестраивается только при превращении */
   demonTickN++;
-  const chaosCols = {}, marchCols = {}, faceCols = {}, riftCols = {}, coinCols = {}, crownDCols = {};
-  if (epoch >= RELIC_SLOT_EPOCH) for (const k in relicSlots) {
-    const r = relicById(relicSlots[k]);
-    if (!r || r.faction !== 'demon') continue;
-    const eng = RELIC_KIND_ENGINE[r.kind]; if (!eng) continue;
-    if (eng.chaosLock) chaosCols[+k] = 1;
-    if (eng.march) marchCols[+k] = 1;
-    if (eng.face) faceCols[+k] = 1;
-    if (eng.rift) riftCols[+k] = 1;
-    if (eng.coin) coinCols[+k] = 1;
-    if (eng.crownD) crownDCols[+k] = 1;
-  }
-  const princeHere = hasCard('d10');
-  const doomHere = hasCard('d36'); /* Погибель Света: перегрев невозможен ВСЕМ */
+  const doomHere = hasCard('d36'); /* Сумрак: Мраки копят угли ×1.2 */
   const B = INC_CTX.bld || { pit: {}, glacier: {} };
-  /* СТРОЙ ЛЕГИОНА (Т.4.3): свежий расчёт на каждый тик */
+  /* СТРОЙ ЛЕГИОНА: свежий расчёт на каждый тик */
   const LEGF = buildLegionFormation();
   INC_CTX.legionForm = LEGF.map;
   INC_CTX.legionGroups = LEGF.groups;
-  const FORM = LEGF.map, FGROUPS = LEGF.groups;
+  const FORM = LEGF.map;
   const isDemonCell = n => CARDS[n.item.cardId].faction === 'demon' && !CARDS[n.item.cardId].isBuilding;
   for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
     const it = grid[r][c]; if (!it) continue;
     const card = CARDS[it.cardId];
     if (card.faction !== 'demon' || card.isBuilding) continue; /* здания не раскаляются */
-    /* Поджог Цепного пожара этого тика — не каскадирует мгновенно (Т.4.1) */
-    if (it.cfTick === demonTickN) continue;
-    let crowd = getNeighbors8(r, c).filter(isDemonCell).length;
-    /* (march): угли копятся даже в одиночестве; Дьяволёнок и Ночной Шёпот злятся рано */
-    const needCrowd = marchCols[c] ? 0 : (card.id === 'd1' || card.id === 'd27') ? 1 : 2;
+    if (it.cfTick === demonTickN) continue; /* поджог этого тика не каскадирует мгновенно */
+    const crowd = getNeighbors8(r, c).filter(isDemonCell).length;
+    const needCrowd = (card.id === 'd1' || card.id === 'd27') ? 1 : 2;
     if (crowd < needCrowd) continue;
     const key = r + ',' + c;
     const inForm = !!FORM[key];
     const inPit = (B.pit[key] || 0) > 0; /* Жертвенная Яма */
-    const eng = colEngine(c);
-    const tutored = (eng && eng.forge) ? 1 : 0; /* Сердце Вулкана */
-    /* (crownDImpatient): рой нетерпелив — взрыв на 4 углях */
-    const emberCap = (eng && eng.crownDImpatient) ? 4 : 5;
-    let gain = (inPit ? (B.pitChained ? 3 : 2) : 1) + tutored;
-    /* АКСЕЛЕРАТОРЫ РАСКАЛКИ (Кузнецы меняют темп — Т.1): */
+    const gain = inPit ? (B.pitChained ? 3 : 2) : 1;
+    /* ускорители раскалки */
     const nb1 = getNeighbors(r, c), r2d = radius2(r, c);
     let accel = 1;
-    if (nb1.some(n => n.item.cardId === 'd26')) accel *= 1.2;                     /* Подстрекатель: сосед-демон ×1.2 */
-    if (card.subrace === 'legion' && nb1.some(n => n.item.cardId === 'd39')) accel *= 1.3;  /* Кадровик: сосед-Легион ×1.3 */
-    if (card.subrace === 'ash' && r2d.some(n => n.item.cardId === 'd22')) accel *= 1.3;     /* Горнило: Пеплы рад.2 ×1.3 */
-    if (r2d.some(n => n.item.cardId === 'd32')) accel *= 1.25;                    /* Кошмар: демоны рад.2 ×1.25 */
-    if (doomHere && card.subrace === 'dark') accel *= 1.2;                        /* Погибель Света: Мраки ×1.2 */
-    if (inForm && r2d.some(n => n.item.cardId === 'd44')) accel *= 1.2;           /* Знаменосец: строй рад.2 ×1.2 */
-    if (inForm) accel *= 1.25;                                                    /* Строй: угли ×1.25 */
-    /* v1.12.2 Дым — кузнечный мех (d17): тлеющие (3+) в рад.2 копят угли ×1.2 */
-    if ((it.embers || 0) >= 3 && r2d.some(n => n.item.cardId === 'd17')) accel *= 1.2;
-    /* КАРА «Пентакля Алчности» (chaosSlow): угли копятся ВДВОЕ МЕДЛЕННЕЕ.
-       Дробный прирост копится в emberAcc — целые угли уходят на карту. */
-    let fgain = gain * accel * (eng && eng.chaosSlow ? 0.5 : 1);
-    it.emberAcc = (it.emberAcc || 0) + fgain;
+    if (nb1.some(n => n.item.cardId === 'd26')) accel *= 1.2;                          /* Подначка: сосед ×1.2 */
+    if (card.subrace === 'legion' && nb1.some(n => n.item.cardId === 'd39')) accel *= 1.3; /* Устав: сосед-Легион ×1.3 */
+    if (card.subrace === 'ash' && r2d.some(n => n.item.cardId === 'd22')) accel *= 1.3;     /* Горн: Пеплы рад.2 ×1.3 */
+    if (r2d.some(n => n.item.cardId === 'd32')) accel *= 1.25;                          /* Кошмарный разгон */
+    if (r2d.some(n => n.item.cardId === 'd14')) accel *= 1.2;                           /* Око Бури */
+    if (doomHere && card.subrace === 'dark') accel *= 1.2;                              /* Сумрак */
+    if (inForm && r2d.some(n => n.item.cardId === 'd44')) accel *= 1.2;                 /* Знамя */
+    if (inForm) accel *= 1.25;                                                          /* Строй */
+    if ((it.embers || 0) >= 3 && r2d.some(n => n.item.cardId === 'd17')) accel *= 1.2; /* Дым */
+    it.emberAcc = (it.emberAcc || 0) + gain * accel;
     const whole = Math.floor(it.emberAcc);
-    if (whole > 0) { it.emberAcc -= whole; it.embers = Math.min(emberCap, (it.embers || 0) + whole); }
-    if (fgain > 0) { fxAtCell(r, c, ['#ff9030', '#ffd34d'], 4); changed = true; }
-    if ((it.embers || 0) < emberCap) continue;
+    if (whole > 0) { it.emberAcc -= whole; it.embers = Math.min(5, (it.embers || 0) + whole); }
+    fxAtCell(r, c, ['#ff9030', '#ffd34d'], 4); changed = true;
+    if ((it.embers || 0) < 5) continue;
 
-    /* ВЗРЫВ */
+    /* ВЗРЫВ — исход определяет подраса */
     it.embers = 0;
     it.lastBoom = gameTime;
     stats.demonBooms = (stats.demonBooms || 0) + 1;
-    /* --- ИСХОД по приоритетам Т.4.5 (buffVal = null → ролл) --- */
-    let buffVal = null;
-    if (r2d.some(n => n.item.cardId === 'd14')) buffVal = 1.35;                          /* 1 Око Бури */
-    else if (inForm && r2d.some(n => n.item.cardId === 'd46')) buffVal = 1.35;           /* 2 Претор: строй в его рад.2 */
-    else if (princeHere || inPit || nb1.some(n => n.item.cardId === 'd6') || (eng && eng.chaosLock)) buffVal = 1.25; /* 3 */
-    else if (inForm) buffVal = 1.25;                                                     /* 4 Легион в строю */
-    else if (card.subrace === 'dark' && card.cat !== 'crown') buffVal = 1.15;            /* 5 Мрак: тихий бафф без ролла */
-    else if (r2d.some(n => n.item.cardId === 'd34')) buffVal = 1.1;                      /* 6 Глушитель */
-    const chilled = nb1.some(n => n.item.cardId === 'd15'); /* Иссушитель: бафф соседа сильнее */
-    if (buffVal !== null && chilled) buffVal = Math.max(buffVal, 1.35);
-    /* Дисциплина Рыцаря (Т.2 d8): в рад.1 от Рыцаря не превращается ВЕСЬ строй */
-    let disciplined = nb1.some(n => n.item.cardId === 'd8');
-    if (!disciplined && inForm && FGROUPS[key]) {
-      disciplined = FGROUPS[key].some(gk => {
-        const gr = +gk.split(',')[0], gc = +gk.split(',')[1];
-        return getNeighbors(gr, gc).some(n => n.item.cardId === 'd8');
-      });
-    }
-    if (buffVal !== null) {
-      it.mutBuff = Math.min(4, (it.mutBuff || 1) * buffVal);
-      fxAtCell(r, c, ['#ffd34d', '#ff8030', '#fff'], 16, 'big');
-      fxFloatFromCell(r, c, 'ХАОС ×' + it.mutBuff.toFixed(2), '#ff9030');
-      toast('🔥 ' + card.name + ' взорвался под контролем: БАФФ ×' + it.mutBuff.toFixed(2), 'demon', 25);
-      /* КАРА «Обола Ада» (coinDebt): контролируемый взрыв тоже стоит ХАОСа */
-      if (coinCols[c]) {
-        it.mutBuff = 1;
-        fxFloatFromCell(r, c, 'ДОЛГ ЗАБРАЛ ХАОС', '#c09040');
-      }
+    if (card.subrace === 'dark') {
+      it.mutBuff = Math.min(2.5, (it.mutBuff || 1) * 1.10);
+      fxAtCell(r, c, ['#c030c0', '#ff8030', '#fff'], 16, 'big');
+      fxFloatFromCell(r, c, 'ЗАКАЛКА ×' + it.mutBuff.toFixed(2), '#d080ff');
+      toast('🔥 ' + card.name + ' закалился: ×' + it.mutBuff.toFixed(2) + ' навсегда', 'demon', 25);
     } else {
-      /* КАРА «Сердца Вулкана» (forgeRisky): шанс перегрева ВТРОЕ выше */
-      const risky = eng && eng.forgeRisky;
-      const pBuff = risky ? 0.45 : 0.65, pTrans = risky ? 0.70 : 0.90;
-      const roll = Math.random();
-      if (roll < pBuff || disciplined) {
-        it.mutBuff = Math.min(4, (it.mutBuff || 1) * 1.25);
-        fxAtCell(r, c, ['#ffd34d', '#ff8030', '#fff'], 16, 'big');
-        fxFloatFromCell(r, c, 'ХАОС ×' + it.mutBuff.toFixed(2), '#ff9030');
-        toast('🔥 ' + card.name + ' взорвался Хаосом: БАФФ ×' + it.mutBuff.toFixed(2), 'demon', 25);
-        /* КАРА «Обола Ада» (coinDebt): долг возвращается — накопленный ХАОС теряется */
-        if (coinCols[c]) {
-          it.mutBuff = 1;
-          fxFloatFromCell(r, c, 'ДОЛГ ЗАБРАЛ ХАОС', '#c09040');
-          toast('🪙 Обол Ада забрал долг: ХАОС ' + card.name + ' сброшен', 'demon', 25);
-        }
-      } else if (roll < pTrans && !disciplined && !(eng && eng.faceNoMut)) {
-        /* Превращение в другого демона той же редкости (пул ×3 = 48 карт) */
-        const sameRarity = POOLS[card.rarity].filter(id => CARDS[id].faction === 'demon' && !CARDS[id].isBuilding && id !== card.id);
-        const newId = pick(sameRarity.length ? sameRarity : POOLS[card.rarity]);
-        const oldName = card.name;
-        it.cardId = newId; it.mutBuff = 1; it.embers = 0;
-        discovered.add(newId);
-        mutated = true; /* открыта новая карта — коллекцию обновим */
-        fxAtCell(r, c, ['#c030c0', '#ff40ff', '#fff'], 18, 'big');
-        fxFloatFromCell(r, c, 'ПРЕВРАЩЕНИЕ', '#ff60ff');
-        toast('🔥 ' + oldName + ' превратился в ' + CARDS[newId].name + '!', 'demon', 25);
-      } else if (eng && eng.faceNoMut) {
-        /* КАРА «Личины Легиона» (faceNoMut): превращения в столбе невозможны */
-        it.mutBuff = Math.min(4, (it.mutBuff || 1) * 1.05);
-        fxFloatFromCell(r, c, 'ЛИЧИНА СКРЫЛА ЛИЦО ×' + it.mutBuff.toFixed(2), '#c0e0ff');
-        toast('😈 Под личиной нет лиц: превращение отменено — тихий бафф ×' + it.mutBuff.toFixed(2), 'demon', 25);
-      } else {
-        /* ГАСИТЕЛИ перегрева: Ледник, Золовка (рад.2), Вздох (соседи),
-           Погибель Света (все), закон face → тихий бафф ×1.15 */
-        const glacier = getNeighbors8(r, c).some(n => n.item.cardId === 'bl_glacier') || (B.glacier[key] || 0) > 0;
-        const zephyr = r2d.some(n => n.item.cardId === 'd20');
-        const sigh = nb1.some(n => n.item.cardId === 'd30');
-        if (glacier || zephyr || sigh || doomHere || faceCols[c]) {
-          /* v1.12.2: Вздох (d30) остужает сильнее всех — ×1.35 */
-          const chillVal = sigh ? 1.35 : 1.15;
-          it.mutBuff = Math.min(4, (it.mutBuff || 1) * chillVal);
-          fxFloatFromCell(r, c, 'ТИХИЙ БАФФ ×' + it.mutBuff.toFixed(2), '#c0e0ff');
-          const why = glacier ? '❄️ Ледник остудил взрыв' : zephyr ? '🌬️ Золовка остудила взрыв' :
-            sigh ? '💭 Вздох превратил взрыв в прохладу' : doomHere ? '🌚 Сумрак погасил взрыв' : '😈 Личина удержала жар';
-          toast(why + ' ' + card.name + ': ×' + it.mutBuff.toFixed(2), 'demon', 25);
-        } else {
-          /* Перегрев: угли сгорают в чистую мощь (под Кошмаром — ×2.5) */
-          it.boomUntil = gameTime + 12;
-          it.boomMult = r2d.some(n => n.item.cardId === 'd32') ? 2.5 : 2;
-          fxAtCell(r, c, ['#ff4010', '#ffb060', '#fff'], 22, 'big');
-          fxFloatFromCell(r, c, 'ПЕРЕГРЕВ ×' + it.boomMult, '#ff5030');
-          toast('🔥 ' + card.name + ' перегрелся: ×' + it.boomMult + ' на 12 секунд!', 'demon', 25);
-        }
-      }
+      it.boomUntil = gameTime + 12;
+      it.boomMult = r2d.some(n => n.item.cardId === 'd32') ? 2.5 : 2; /* под Кошмаром ×2.5 */
+      fxAtCell(r, c, ['#ff4010', '#ffb060', '#fff'], 22, 'big');
+      fxFloatFromCell(r, c, 'ПЕРЕГРЕВ ×' + it.boomMult, '#ff5030');
+      toast('🔥 ' + card.name + ' перегрелся: ×' + it.boomMult + ' на 12 секунд!', 'demon', 25);
     }
-    /* --- ПОСЛЕ ВЗРЫВА (ЛЮБОЙ исход, Т.4.5) --- */
-    /* ВЕНЦЫ Пепла: Престол держит 2 угля (Т.7.3 — фича ★5), Феникс встаёт с 3 */
-    if (card.id === 'd24') it.embers = Math.min(5, 2);
-    if (card.id === 'd25') { it.embers = Math.min(5, 3); it.phxBuff = Math.min(2, (it.phxBuff || 1) + 0.10); }
-    /* ЦЕПНОЙ ПОЖАР (Т.4.1): взрыв пепельника поджигает соседей +2, остальных в рад.2 +1.
-       (Т.7.1) поджог — НЕ взрыв: Пир на него не отвечает; каскад — со следующего тика. */
+    /* после взрыва: Престол держит 2 угля, Феникс встаёт с 3 */
+    if (card.id === 'd24') it.embers = 2;
+    if (card.id === 'd25') it.embers = 3;
+    /* ЦЕПНОЙ ПОЖАР (Пепел): соседи +2, остальные в радиусе 2 — +1; поджог — не взрыв */
     if (card.subrace === 'ash') {
-      it.tleVal = card.id === 'd19' ? 1.2 : 1.1;   /* ТЛЕНИЕ: себе ×1.1/8с (Тлетень ×1.2/20с) */
-      it.tleUntil = gameTime + (card.id === 'd19' ? 20 : 8);
       const rad1 = {};
       let ignited = 0;
-      getNeighbors(r, c).forEach(n => {
+      nb1.forEach(n => {
         if (!isDemonCell(n)) return;
         n.item.embers = Math.min(5, (n.item.embers || 0) + 2);
         n.item.cfTick = demonTickN;
@@ -1058,100 +951,39 @@ function demonEmberTick() {
       });
       if (ignited) {
         stats.chainfire = (stats.chainfire || 0) + ignited; /* ачивка «Вечный пожар» */
-        toast('🔥 Цепной пожар: ' + card.name + ' поджёг ' + ignited + ' сосед' + (ignited === 1 ? 'а' : 'ей'), 'chainfire', 30); changed = true;
+        toast('🔥 Цепной пожар: ' + card.name + ' поджёг ' + ignited + ' сосед' + (ignited === 1 ? 'а' : 'ей'), 'chainfire', 30);
       }
     }
-    /* ПИР ХАОСА (Т.4.2): чужой взрыв кормит мраковых (не Венцов) в рад.2 */
+    /* ПИР (Мрак): чужой взрыв в радиусе 2 — +10% на 12 с (до +50%) */
     let feasted = 0;
     r2d.forEach(n => {
-      if (n.r === r && n.c === c) return; /* чужой взрыв — себя не кормим */
       const q = CARDS[n.item.cardId];
-      if (q.faction !== 'demon' || q.isBuilding || q.subrace !== 'dark' || q.cat === 'crown') return;
+      if (q.faction !== 'demon' || q.isBuilding || q.subrace !== 'dark') return;
       if ((n.item.feastUntil || 0) < gameTime) n.item.feastBuff = 1;
       n.item.feastBuff = Math.min(1.5, (n.item.feastBuff || 1) + 0.10);
       n.item.feastUntil = gameTime + 12;
-      n.item.embers = Math.min(5, (n.item.embers || 0) + 1);
       fxAtCell(n.r, n.c, ['#9040c0', '#ff8030'], 6);
       feasted++;
     });
     if (feasted) {
       stats.feasts = (stats.feasts || 0) + feasted; /* ачивка «Дегустатор хаоса» */
-      toast('🍖 Пир хаоса: ' + feasted + ' мраков' + (feasted === 1 ? ' кормится' : ' кормятся') + ' взрывом ' + card.name, 'feast', 30); changed = true;
+      toast('🍖 Пир: ' + feasted + (feasted === 1 ? ' мрак кормится' : ' мраков кормятся') + ' взрывом ' + card.name, 'feast', 30);
     }
-    /* ШЁПОТ Сукуба (d5) и Липкая Тень (d29): чужой взрыв в рад.1 */
+    /* ПИТАЮЩИЕСЯ ВЗРЫВАМИ: +10% на 20 с за каждый чужой взрыв в их радиусе (до +50%) */
+    for (let rr2 = 0; rr2 < GRID_SIZE; rr2++) for (let cc2 = 0; cc2 < GRID_SIZE; cc2++) {
+      const fIt = grid[rr2][cc2]; if (!fIt || (rr2 === r && cc2 === c)) continue;
+      const fr = DEMON_FEEDERS[fIt.cardId]; if (!fr) continue;
+      if (Math.max(Math.abs(rr2 - r), Math.abs(cc2 - c)) > fr) continue;
+      if ((fIt.feedUntil || 0) < gameTime) fIt.feedStacks = 0;
+      fIt.feedStacks = Math.min(5, (fIt.feedStacks || 0) + 1);
+      fIt.feedUntil = gameTime + 20;
+      fxAtCell(rr2, cc2, ['#c060ff', '#ffd34d'], 5);
+    }
+    /* Липкая Тень (d29): чужой взрыв в радиусе 1 — +1 уголёк */
     nb1.forEach(n => {
-      if (n.r === r && n.c === c) return;
-      if (n.item.cardId === 'd5') n.item.whisperUntil = gameTime + 15;
       if (n.item.cardId === 'd29') { n.item.embers = Math.min(5, (n.item.embers || 0) + 1); fxAtCell(n.r, n.c, ['#ff8030', '#ffd34d'], 5); }
     });
-    /* Взрыв кормит соседей — Пепельный Тиран (рад.2), Гончая Ада (рад.3),
-       Пирокласт (рад.3, только взрывы Пепла), Пустотный Вельможа (рад.3) */
-    for (let dr = -3; dr <= 3; dr++) for (let dc = -3; dc <= 3; dc++) {
-      const nr = r + dr, nc = c + dc;
-      if (nr < 0 || nr >= GRID_SIZE || nc < 0 || nc >= GRID_SIZE) continue;
-      const nb = grid[nr] && grid[nr][nc]; if (!nb) continue;
-      const dist = Math.max(Math.abs(dr), Math.abs(dc));
-      if (nb.cardId === 'd13' && dist <= 2) nb.tyrBuff = Math.min(3, (nb.tyrBuff || 1) * 1.2);
-      if (nb.cardId === 'd2' && dist <= 3) nb.harmBuff = Math.min(1.0, (nb.harmBuff || 0) + 0.05);
-      if (nb.cardId === 'd23' && dist <= 3 && card.subrace === 'ash') nb.pyroBuff = Math.min(2.5, (nb.pyroBuff || 1) * 1.15);
-      /* Пустотный Вельможа: только ЧУЖОЙ взрыв (свой — уже был его результатом) */
-      if (nb.cardId === 'd33' && dist > 0 && dist <= 3) {
-        if (!(nb.voidUntil > gameTime)) nb.voidBuff = 1;
-        nb.voidBuff = Math.min(2, (nb.voidBuff || 1) + 0.20);
-        nb.voidUntil = gameTime + 20;
-      }
-    }
-    /* Внемлющий (d35): КАЖДЫЙ взрыв на поле — +10% НАВСЕГДА (до ×3) */
-    for (let rr2 = 0; rr2 < GRID_SIZE; rr2++) for (let cc2 = 0; cc2 < GRID_SIZE; cc2++) {
-      const hIt = grid[rr2] && grid[rr2][cc2];
-      if (hIt && hIt.cardId === 'd35') hIt.harkBuff = Math.min(3, (hIt.harkBuff || 1) + 0.10);
-    }
-    /* Заводила (d31): подкинутый сосед взорвался за 15с → +20% на 30с */
-    if ((it.zavFedUntil || 0) > gameTime) {
-      r2d.forEach(n => {
-        if (n.item.cardId === 'd31') {
-          n.item.zavUntil = gameTime + 30;
-          fxAtCell(n.r, n.c, ['#c060ff', '#ffd34d'], 8);
-          toast('🎭 ' + card.name + ' взорвался по заварке — Заводила доволен: +20%', 'zavod', 30);
-        }
-      });
-      it.zavFedUntil = 0;
-    }
-    /* (rift): демон просыпается УЖЕ РАСКАЛЁННЫМ.
-       КАРА (riftDrain): каждый взрыв — НАВСЕГДА −5% дохода (до −50%)*/
-    if (riftCols[c]) {
-      it.embers = Math.min(5, 2);
-      it.riftTax = Math.min(0.5, (it.riftTax || 0) + 0.05);
-      fxAtCell(r, c, ['#ff9030', '#ffd34d'], 5);
-      fxFloatFromCell(r, c, 'РАЗЛОМ ПЬЁТ ЖАР −5%', '#a080ff');
-    }
-    /* (coin): взрыв столба ПОДЖИГАЕТ СОСЕДА */
-    if (coinCols[c]) {
-      const nb2 = getNeighbors8(r, c).filter(isDemonCell);
-      if (nb2.length) {
-        const t = pick(nb2);
-        t.item.embers = Math.min(5, (t.item.embers || 0) + 2);
-        fxAtCell(t.r, t.c, ['#ff8030', '#ffd34d'], 8);
-        toast('🪙 Обол Ада перешёл к ' + CARDS[t.item.cardId].name + ': +2 угля', 'demon', 25);
-        changed = true;
-      }
-    }
-    /* (crownD): КАЖДЫЙ ВЗРЫВ НА ПОЛЕ кормит демонов столба */
-    const crownList = Object.keys(crownDCols).map(Number);
-    for (const cc of crownList) {
-      for (let rr2 = 0; rr2 < GRID_SIZE; rr2++) {
-        const cIt = grid[rr2][cc];
-        if (!cIt) continue;
-        const cCard = CARDS[cIt.cardId];
-        if (cCard.faction !== 'demon' || cCard.isBuilding) continue;
-        cIt.embers = Math.min(5, (cIt.embers || 0) + 1);
-        fxAtCell(rr2, cc, ['#ff8030', '#ffd34d'], 5);
-        changed = true;
-      }
-    }
   }
-  /* renderCollection здесь не нужен — тик углей не меняет
-инвентарь (полный ребилд коллекции с картинками каждые 8с давал
- заметный фриз). Перестраиваем только при превращении (discovered).*/
-  if (changed) { computeIncome(); renderGrid(); if (mutated) renderCollection(); updateHUD(); }
+  /* renderCollection здесь не нужен: превращений больше нет */
+  if (changed) { computeIncome(); renderGrid(); updateHUD(); }
 }
